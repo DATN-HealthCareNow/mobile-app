@@ -1,0 +1,37 @@
+export const SAMPLE_MEAL_DATA_VI = {
+  _id: "651d2e3f4a5b6c",
+  user_id: "65a1b2c3d4e5f6a7b8c9d001",
+  timestamp: "2026-01-22T12:30:00.000Z",
+  meal_type: "LUNCH",
+  photo_url: "https://s3.amazonaws.com/healthcarenow/meals/lunch_2201.jpg",
+  ai_analysis_id: "652e3f4a5b6c7d",
+  food_items: [
+    {
+      name: "Ức gà áp chảo",
+      quantity_g: 200,
+      calories: 330.0,
+      protein_g: 62.0,
+      fat_g: 7.0,
+      carbs_g: 0.0,
+      fiber_g: 0.0,
+      ai_confidence: 0.98,
+    },
+    {
+      name: "Gạo lứt",
+      quantity_g: 150,
+      calories: 165.0,
+      protein_g: 3.5,
+      fat_g: 1.2,
+      carbs_g: 35.0,
+      fiber_g: 2.5,
+      ai_confidence: 0.95,
+    },
+  ],
+  total_nutrition: {
+    calories: 495.0,
+    protein_g: 65.5,
+    fat_g: 8.2,
+    carbs_g: 35.0,
+    fiber_g: 2.5,
+  },
+};
