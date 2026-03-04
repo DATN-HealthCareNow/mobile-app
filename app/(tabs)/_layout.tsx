@@ -1,73 +1,136 @@
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import React from "react";
+import { View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
-import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+function AnimatedIcon({ focused, children }: any) {
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: withSpring(focused ? 1.2 : 1) },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View style={animatedStyle}>
+      {children}
+    </Animated.View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: "#0ea5e9",
+        tabBarInactiveTintColor: "#94a3b8",
+        tabBarStyle: {
+          height: 75,
+          paddingBottom: 10,
+          backgroundColor: "white",
+          borderTopWidth: 0,
+          elevation: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          marginTop: -4,
+        },
       }}
     >
+      {/* HOME */}
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedIcon focused={focused}>
+              <Ionicons name="home" size={size} color={color} />
+            </AnimatedIcon>
           ),
         }}
       />
+
+      {/* ACTIVITY */}
       <Tabs.Screen
         name="activity"
         options={{
           title: "Activity",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="figure.run" color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedIcon focused={focused}>
+              <Ionicons name="pulse" size={size} color={color} />
+            </AnimatedIcon>
           ),
         }}
       />
+
+      {/* AI CENTER FLOAT */}
       <Tabs.Screen
-        name="nutrition"
+        name="chat"
         options={{
-          title: "Nutrition",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="fork.knife" color={color} />
+          title: "",
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <View
+                style={{
+                  width: 65,
+                  height: 65,
+                  borderRadius: 35,
+                  backgroundColor: "#0ea5e9",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#0ea5e9",
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  elevation: 10,
+                }}
+              >
+                <Ionicons name="chatbubble-ellipses" size={28} color="white" />
+              </View>
+            </View>
           ),
         }}
       />
+
+      {/* ANALYSIS */}
       <Tabs.Screen
-        name="records"
+        name="analysis"
         options={{
-          title: "Records",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="doc.text" color={color} />
+          title: "Analysis",
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedIcon focused={focused}>
+              <MaterialIcons name="description" size={size} color={color} />
+            </AnimatedIcon>
           ),
         }}
       />
+
+      {/* PROFILE */}
       <Tabs.Screen
-        name="ai"
+        name="profile"
         options={{
-          title: "AI",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="cpu" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="gearshape.fill" color={color} />
+          title: "Profile",
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedIcon focused={focused}>
+              <Ionicons
+          name={focused ? "person" : "person-outline"}
+          size={24}
+          color={focused ? "#0ea5e9" : "#9ca3af"}
+        />
+
+            </AnimatedIcon>
           ),
         }}
       />
