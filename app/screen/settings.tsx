@@ -1,127 +1,128 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function Settings() {
   const router = useRouter();
-  const [darkMode, setDarkMode] = React.useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={22} color="#0f172a" />
+    <LinearGradient
+      colors={["#0D5B8C", "#009DE0"]}
+      style={styles.container}
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <TouchableOpacity style={styles.headerRightBtn}>
+            <Ionicons name="settings" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* PROFILE */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={require("@/assets/images/logo.jpg")}
+              style={styles.avatar}
+            />
+            <View style={styles.activeDot} />
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>Sarah Jenkins</Text>
+            <Text style={styles.profileSub}>Premium Member</Text>
+          </View>
+        </View>
+
+        {/* ACCOUNT */}
+        <Text style={styles.sectionTitle}>ACCOUNT</Text>
+        <View style={styles.card}>
+          <SettingItem icon="person-outline" title="Personal Info" />
+          <Divider />
+          <SettingItem icon="notifications-outline" title="Notifications" />
+          <Divider />
+          <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" />
+        </View>
+
+        {/* PREFERENCES */}
+        <Text style={styles.sectionTitle}>PREFERENCES</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="moon" size={18} color="#fff" />
+              </View>
+              <Text style={styles.itemText}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: "rgba(255,255,255,0.3)", true: "rgba(255,255,255,0.8)" }}
+              thumbColor={darkMode ? "#fff" : "#f1f5f9"}
+            />
+          </View>
+          <Divider />
+          <SettingItem icon="globe-outline" title="Language" rightText="English" />
+        </View>
+
+        {/* DEVICE */}
+        <Text style={styles.sectionTitle}>DEVICE</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+              </View>
+              <View>
+                <Text style={styles.itemText}>Apple iPhone</Text>
+                <Text style={styles.itemSubText}>
+                  <Text style={{ color: "#34d399", fontSize: 10 }}>● </Text>
+                  Active - Health Kit
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="settings" size={20} color="rgba(255,255,255,0.6)" />
+          </View>
+        </View>
+
+        {/* LOGOUT */}
+        <TouchableOpacity style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Settings</Text>
-
-        <View style={styles.rightCircle}>
-          <Ionicons name="play" size={18} color="#fff" />
-        </View>
-      </View>
-
-      {/* ACCOUNT */}
-      <Text style={styles.sectionLabel}>ACCOUNT</Text>
-
-      <View style={styles.card}>
-        <SettingItem icon="shield-checkmark" title="Security" />
-        <Divider />
-        <SettingItem icon="notifications" title="Notifications" />
-      </View>
-
-      {/* APP */}
-      <Text style={styles.sectionLabel}>APP</Text>
-
-      <View style={styles.card}>
-        <SettingItem
-          icon="globe-outline"
-          title="Language"
-          rightText="English"
-        />
-        <Divider />
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <View style={[styles.iconCircle, { backgroundColor: "#d1fae5" }]}>
-              <Ionicons name="moon" size={18} color="#059669" />
-            </View>
-            <Text style={styles.itemText}>Dark Mode</Text>
-          </View>
-          <Switch
-            value={darkMode}
-            onValueChange={setDarkMode}
-            trackColor={{ false: "#cbd5e1", true: "#0ea5e9" }}
-          />
-        </View>
-      </View>
-
-      {/* DEVICES */}
-      <Text style={styles.sectionLabel}>DEVICES</Text>
-
-      <View style={styles.card}>
-        <SettingItem
-          icon="watch-outline"
-          title="IoT Watch"
-          rightText="Connected"
-          rightColor="#16a34a"
-        />
-        <Divider />
-        <SettingItem
-          icon="scale-outline"
-          title="Smart Scale"
-          rightText="Not Paired"
-        />
-      </View>
-
-      {/* SUPPORT */}
-      <Text style={styles.sectionLabel}>SUPPORT</Text>
-
-      <View style={styles.card}>
-        <SettingItem icon="help-circle-outline" title="Help Center" />
-      </View>
-    </ScrollView>
+        <Text style={styles.versionText}>HealthCare Now App v2.4.0</Text>
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
-/* COMPONENTS */
-
-function SettingItem({
-  icon,
-  title,
-  rightText,
-  rightColor,
-}: any) {
+function SettingItem({ icon, title, rightText }: any) {
   return (
     <TouchableOpacity style={styles.row}>
       <View style={styles.rowLeft}>
         <View style={styles.iconCircle}>
-          <Ionicons name={icon} size={18} color="#0ea5e9" />
+          <Ionicons name={icon} size={18} color="#fff" />
         </View>
         <Text style={styles.itemText}>{title}</Text>
       </View>
-
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        {rightText && (
-          <Text style={[styles.rightText, rightColor && { color: rightColor }]}>
-            {rightText}
-          </Text>
-        )}
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color="#94a3b8"
-        />
+        {rightText && <Text style={styles.rightText}>{rightText}</Text>}
+        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
       </View>
     </TouchableOpacity>
   );
@@ -131,96 +132,141 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
-/* STYLES */
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
     paddingHorizontal: 20,
   },
-
   header: {
-    marginTop: 50,
+    marginTop: 60,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-
-  backBtn: {
-    width: 45,
-    height: 45,
-    borderRadius: 22,
-    backgroundColor: "#e2e8f0",
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  headerRightBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
-
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
-
-  rightCircle: {
-    width: 45,
-    height: 45,
-    borderRadius: 22,
-    backgroundColor: "#0ea5e9",
-    justifyContent: "center",
+  profileSection: {
+    flexDirection: "row",
     alignItems: "center",
-  },
-
-  sectionLabel: {
     marginTop: 30,
     marginBottom: 10,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#64748b",
   },
-
-  card: {
+  avatarContainer: {
+    position: "relative",
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 15,
   },
-
+  activeDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#34d399",
+    borderWidth: 2,
+    borderColor: "#0D5B8C",
+  },
+  profileInfo: {
+    marginLeft: 15,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  profileSub: {
+    fontSize: 14,
+    color: "#bae6fd",
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "rgba(255, 255, 255, 0.7)",
+    marginTop: 25,
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  card: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
-
   rowLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#e0f2fe",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 15,
   },
-
   itemText: {
     fontSize: 16,
-    color: "#0f172a",
     fontWeight: "500",
+    color: "#fff",
   },
-
+  itemSubText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
   rightText: {
-    marginRight: 8,
+    color: "rgba(255,255,255,0.6)",
     fontSize: 14,
-    color: "#64748b",
+    marginRight: 8,
   },
-
   divider: {
     height: 1,
-    backgroundColor: "#e2e8f0",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    marginLeft: 50, // offset to align with text
+  },
+  logoutBtn: {
+    marginTop: 40,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    borderRadius: 25,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  logoutText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  versionText: {
+    textAlign: "center",
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    marginTop: 20,
   },
 });
