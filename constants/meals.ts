@@ -35,3 +35,38 @@ export const SAMPLE_MEAL_DATA_VI = {
     fiber_g: 2.5,
   },
 };
+
+export const SAMPLE_AI_MEAL_PLAN = {
+  id: "plan_001",
+  target_calories: 2200,
+  target_protein: 150,
+  target_carbs: 200,
+  target_fat: 65,
+  meals: [
+    {
+      type: "Breakfast",
+      time: "07:30 AM",
+      name: "Oatmeal & Boiled Eggs",
+      calories: 450,
+      description:
+        "A solid mix of slow-digesting carbs and high-quality protein.",
+    },
+    {
+      type: "Lunch",
+      time: "12:30 PM",
+      name: "Grilled Chicken Salad",
+      calories: 550,
+      description: "High protein, rich in fiber, and packed with vitamins.",
+    },
+    {
+      type: "Dinner",
+      time: "07:00 PM",
+      name: "Salmon with Brown Rice",
+      calories: 600,
+      description:
+        "Heart-healthy fats, complex carbs, and protein for recovery.",
+    },
+  ],
+  ai_note:
+    "Based on your goal to build muscle while maintaining a lean physique, I designed this high-protein, moderate-carb meal plan. Stay hydrated!",
+};
