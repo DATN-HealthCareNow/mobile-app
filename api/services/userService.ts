@@ -1,4 +1,4 @@
-import { axiosClient } from '../axiosClient';
+import { axiosClient } from "../axiosClient";
 
 export interface UserProfileResponse {
   id: string;
@@ -27,14 +27,34 @@ export interface DeviceTokenRequest {
 
 export const userService = {
   get_profile: async (): Promise<UserProfileResponse> => {
-    return axiosClient.get('/api/v1/users/profile');
+    const response = await axiosClient.get("/api/v1/users/profile") as UserProfileResponse;
+    console.log("[userService] get_profile response body:", JSON.stringify(response));
+    return response;
   },
 
-  update_profile: async (data: UpdateProfileRequest): Promise<UserProfileResponse> => {
-    return axiosClient.put('/api/v1/users/profile', data);
+  update_profile: async (
+    data: UpdateProfileRequest,
+  ): Promise<UserProfileResponse> => {
+    const response = await axiosClient.put("/api/v1/users/profile", data) as UserProfileResponse;
+    console.log("[userService] update_profile response body:", JSON.stringify(response));
+    return response;
   },
 
   update_device_token: async (data: DeviceTokenRequest): Promise<void> => {
-    return axiosClient.post('/api/v1/users/device-token', data);
-  }
+    const response = await axiosClient.post("/api/v1/users/device-token", data);
+    console.log("[userService] update_device_token response:", JSON.stringify(response));
+  },
+
+  upload_avatar: async (formData: FormData): Promise<string> => {
+    const response = await axiosClient.post<string>(
+      "/api/v1/users/avatar",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  },
 };

@@ -1,7 +1,9 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import React from "react";
 import {
     ActivityIndicator,
+    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,9 +13,11 @@ import {
 import Svg, { Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useWaterProgress, useLogWater } from "../../hooks/useWaterIntake";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function Hydration() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { data: progressData, isLoading } = useWaterProgress();
   const { mutate: logWater } = useLogWater();
 
@@ -25,10 +29,12 @@ export default function Hydration() {
     logWater({ amount_ml: amount, adjustment_reason: "Quick Add" });
   };
 
+  const styles = createStyles(colors, isDark);
+
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -40,19 +46,26 @@ export default function Hydration() {
         {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color="#94a3b8" />
+            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={{ alignItems: "center" }}>
-            <Text style={styles.brandText}>PHOENIX HEALTH</Text>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="water" size={16} color="#3b82f6" />
-              <Text style={styles.title}> Hydration</Text>
+          <View style={{ alignItems: "center", flexDirection: "row" }}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logoSmall}
+              resizeMode="contain"
+            />
+            <View>
+              <Text style={styles.brandText}>HEALTHCARE NOW</Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="water" size={14} color={colors.primary} />
+                <Text style={styles.title}> Hydration</Text>
+              </View>
             </View>
           </View>
 
           <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="ellipsis-vertical" size={20} color="#94a3b8" />
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -67,7 +80,7 @@ export default function Hydration() {
           <View style={styles.tank}>
             <View style={[styles.waterFill, { height: `${percent}%` }]}>
               <LinearGradient
-                colors={["#60a5fa", "#2563eb"]}
+                colors={["#60a5fa", colors.primary]}
                 style={StyleSheet.absoluteFill}
               />
               <Svg
@@ -78,8 +91,8 @@ export default function Hydration() {
               >
                 <Path
                   d="M0 50 Q 100 20 200 50 T 400 50 V100 H0 Z"
-                  fill="#3b82f6"
-                  opacity={0.7}
+                  fill={isDark ? colors.background : "#FFF"}
+                  opacity={0.2}
                 />
               </Svg>
             </View>
@@ -101,7 +114,7 @@ export default function Hydration() {
 
         <View style={styles.quickRow}>
           <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickAdd(250)}>
-            <Ionicons name="water-outline" size={20} color="#94a3b8" />
+            <Ionicons name="water-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.quickText}>+ 250ml</Text>
           </TouchableOpacity>
 
@@ -111,7 +124,7 @@ export default function Hydration() {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickCard}>
-            <Ionicons name="add" size={20} color="#94a3b8" />
+            <Ionicons name="add" size={20} color={colors.textSecondary} />
             <Text style={styles.quickText}>Custom</Text>
           </TouchableOpacity>
         </View>
@@ -119,7 +132,9 @@ export default function Hydration() {
         {/* RECENT ACTIVITY */}
         <View style={styles.recentHeader}>
           <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
-          <Text style={styles.viewAll}>View All</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.activityContainer}>
@@ -131,7 +146,7 @@ export default function Hydration() {
             <View key={index} style={styles.activityCard}>
                 <View style={styles.activityLeft}>
                     <View style={styles.activityIcon}>
-                        <Ionicons name={item.icon as any} size={18} color="#60a5fa" />
+                        <Ionicons name={item.icon as any} size={18} color={colors.primary} />
                     </View>
                     <View>
                         <Text style={styles.activityTitle}>{item.title}</Text>
@@ -142,16 +157,16 @@ export default function Hydration() {
             </View>
             ))}
         </View>
-        <View style={{height: 50}} />
+        <View style={{height: 100}} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1120",
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
@@ -164,36 +179,40 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
   },
+  logoSmall: {
+    width: 32,
+    height: 32,
+    marginRight: 10,
+  },
   brandText: {
-    color: "#64748b",
     fontSize: 10,
-    fontWeight: "bold",
-    letterSpacing: 2,
-    marginBottom: 4,
+    fontWeight: "900",
+    color: colors.textSecondary,
+    letterSpacing: 1.5,
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#fff",
+    color: colors.text,
   },
   datePill: {
     alignSelf: "center",
-    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "rgba(59, 130, 246, 0.1)",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.3)",
+    borderColor: isDark ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.1)",
   },
   dateText: {
-    color: "#bfdbfe",
+    color: isDark ? "#bfdbfe" : colors.primary,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -207,21 +226,21 @@ const styles = StyleSheet.create({
     width: 220,
     height: 380,
     borderRadius: 110,
-    backgroundColor: "#2563eb",
-    opacity: 0.15,
-    shadowColor: "#2563eb",
+    backgroundColor: colors.primary,
+    opacity: 0.1,
+    shadowColor: colors.primary,
     shadowRadius: 50,
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 0 },
   },
   tank: {
-    width: 220,
-    height: 380,
-    borderRadius: 110,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    width: 200,
+    height: 340,
+    borderRadius: 100,
+    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
     overflow: "hidden",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
     justifyContent: "flex-end",
   },
   waterFill: {
@@ -243,31 +262,32 @@ const styles = StyleSheet.create({
   percentText: {
     fontSize: 64,
     fontWeight: "bold",
-    color: "#fff",
+    color: isDark ? "#fff" : colors.text,
   },
   amount: {
     fontSize: 32,
     fontWeight: "800",
     textAlign: "center",
-    color: "#fff",
+    color: colors.text,
     marginTop: 30,
   },
   ml: {
     fontSize: 18,
-    color: "#94a3b8",
+    color: colors.textSecondary,
   },
   goal: {
     textAlign: "center",
-    color: "#64748b",
+    color: colors.textSecondary,
     marginTop: 4,
     marginBottom: 40,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "bold",
-    letterSpacing: 1.5,
-    color: "#64748b",
-    marginBottom: 15,
+    letterSpacing: 1,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    marginLeft: 4,
   },
   quickRow: {
     flexDirection: "row",
@@ -276,28 +296,28 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     flex: 1,
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.card,
     paddingVertical: 18,
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: "center",
     marginHorizontal: 5,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: colors.border,
   },
   quickCardPrimary: {
     flex: 1,
-    backgroundColor: "#3b82f6",
+    backgroundColor: colors.primary,
     paddingVertical: 18,
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: "center",
     marginHorizontal: 5,
-    shadowColor: "#3b82f6",
-    shadowRadius: 15,
-    shadowOpacity: 0.4,
-    elevation: 5,
+    shadowColor: colors.primary,
+    shadowRadius: 10,
+    shadowOpacity: 0.3,
+    elevation: 4,
   },
   quickText: {
-    color: "#cbd5e1",
+    color: colors.text,
     marginTop: 8,
     fontWeight: "600",
   },
@@ -312,20 +332,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   viewAll: {
-    color: "#3b82f6",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "700",
     fontSize: 13,
   },
   activityContainer: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.card,
     borderRadius: 24,
-    padding: 10,
+    padding: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-    marginTop: 10,
+    borderColor: colors.border,
+    marginTop: 12,
   },
   activityCard: {
-    padding: 15,
+    padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -337,24 +357,24 @@ const styles = StyleSheet.create({
   activityIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    borderRadius: 14,
+    backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 16,
   },
   activityTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#f8fafc",
+    color: colors.text,
   },
   activityTime: {
-    color: "#64748b",
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   activityAmount: {
-    color: "#60a5fa",
-    fontWeight: "bold",
+    color: colors.primary,
+    fontWeight: "700",
   },
 });

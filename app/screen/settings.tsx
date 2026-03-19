@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   Image,
   ScrollView,
@@ -10,52 +9,117 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from "../../context/ThemeContext";
+import { useLogout, useSession } from "../../hooks/useAuth";
+import { useProfile, useUploadAvatar } from "../../hooks/useUser";
 
 export default function Settings() {
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
+  const logout = useLogout();
+  const { colors, isDark, toggleTheme } = useTheme();
+  const { token } = useSession();
+  const { data: profile } = useProfile(token);
+  const uploadAvatarMutation = useUploadAvatar();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/(auth)/login');
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+       mediaTypes: ['images'],
+       allowsEditing: true,
+       aspect: [1, 1],
+       quality: 0.5,
+     });
+
+    if (!result.canceled && result.assets[0].uri) {
+      const uri = result.assets[0].uri;
+      const filename = uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image`;
+
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append('file', { uri, name: filename, type });
+
+      uploadAvatarMutation.mutate(formData, {
+        onSuccess: () => {
+          Alert.alert("Success", "Avatar updated successfully!");
+        },
+        onError: () => {
+          Alert.alert("Error", "Failed to upload avatar.");
+        }
+      });
+    }
+  };
+
+  const getAvatarSource = () => {
+    if (profile?.avatar_url) {
+      return { uri: profile.avatar_url };
+    }
+    if (profile?.gender === 'Male') {
+      return require("../../assets/images/avatar_male.png");
+    }
+    return require("../../assets/images/avatar_female.png");
+  };
+
+  const styles = createStyles(colors, isDark);
 
   return (
-    <LinearGradient
-      colors={["#0D5B8C", "#009DE0"]}
-      style={styles.container}
+    <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
+      {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Settings</Text>
-          <TouchableOpacity style={styles.headerRightBtn}>
-            <Ionicons name="settings" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ width: 44 }} />
         </View>
 
         {/* PROFILE */}
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Image
-              source={require("@/assets/images/logo.jpg")}
-              style={styles.avatar}
+                source={getAvatarSource()}
+                style={styles.avatarMini}
             />
             <View style={styles.activeDot} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Sarah Jenkins</Text>
+            <Text style={styles.profileName}>{profile?.full_name || "New User"}</Text>
             <Text style={styles.profileSub}>Premium Member</Text>
           </View>
+          <TouchableOpacity
+              style={styles.editBtn}
+              onPress={handlePickImage}
+              disabled={uploadAvatarMutation.isPending}
+          >
+            {uploadAvatarMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+                <Ionicons name="create-outline" size={20} color={colors.primary} />
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* ACCOUNT */}
         <Text style={styles.sectionTitle}>ACCOUNT</Text>
         <View style={styles.card}>
-          <SettingItem icon="person-outline" title="Personal Info" />
-          <Divider />
-          <SettingItem icon="notifications-outline" title="Notifications" />
-          <Divider />
-          <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" />
+          <SettingItem icon="person-outline" title="Personal Info" colors={colors} styles={styles} isDark={isDark} />
+          <Divider colors={colors} styles={styles} />
+          <SettingItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} isDark={isDark} />
+          <Divider colors={colors} styles={styles} />
+          <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" colors={colors} styles={styles} isDark={isDark} />
         </View>
 
         {/* PREFERENCES */}
@@ -63,20 +127,20 @@ export default function Settings() {
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="moon" size={18} color="#fff" />
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                <Ionicons name="moon" size={18} color={colors.primary} />
               </View>
               <Text style={styles.itemText}>Dark Mode</Text>
             </View>
             <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: "rgba(255,255,255,0.3)", true: "rgba(255,255,255,0.8)" }}
-              thumbColor={darkMode ? "#fff" : "#f1f5f9"}
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: "#E2E8F0", true: colors.primary }}
+              thumbColor="#FFF"
             />
           </View>
-          <Divider />
-          <SettingItem icon="globe-outline" title="Language" rightText="English" />
+          <Divider colors={colors} styles={styles} />
+          <SettingItem icon="globe-outline" title="Language" rightText="English" colors={colors} styles={styles} isDark={isDark} />
         </View>
 
         {/* DEVICE */}
@@ -84,57 +148,60 @@ export default function Settings() {
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
               </View>
               <View>
                 <Text style={styles.itemText}>Apple iPhone</Text>
                 <Text style={styles.itemSubText}>
-                  <Text style={{ color: "#34d399", fontSize: 10 }}>● </Text>
+                  <Text style={{ color: colors.success, fontSize: 10 }}>● </Text>
                   Active - Health Kit
                 </Text>
               </View>
             </View>
-            <Ionicons name="settings" size={20} color="rgba(255,255,255,0.6)" />
+            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
           </View>
         </View>
 
         {/* LOGOUT */}
-        <TouchableOpacity style={styles.logoutBtn}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>HealthCare Now App v2.4.0</Text>
-        <View style={{ height: 40 }} />
+        <Text style={styles.versionText}>v2.4.0 (Healthcare Now)</Text>
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </LinearGradient>
   );
 }
 
-function SettingItem({ icon, title, rightText }: any) {
+function SettingItem({ icon, title, rightText, colors, styles, isDark }: any) {
   return (
     <TouchableOpacity style={styles.row}>
       <View style={styles.rowLeft}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={icon} size={18} color="#fff" />
+        <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]}>
+          <Ionicons name={icon} size={18} color={colors.primary} />
         </View>
         <Text style={styles.itemText}>{title}</Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         {rightText && <Text style={styles.rightText}>{rightText}</Text>}
-        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
       </View>
     </TouchableOpacity>
   );
 }
 
-function Divider() {
-  return <View style={styles.divider} />;
+function Divider({ colors, styles }: any) {
+  return <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
   },
   header: {
@@ -143,35 +210,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  headerRightBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
     justifyContent: "center",
     alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
   },
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 30,
     marginBottom: 10,
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatarContainer: {
     position: "relative",
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
-    backgroundColor: "#fff",
+  avatarMini: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.card,
   },
   activeDot: {
     position: "absolute",
@@ -180,36 +250,48 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#34d399",
+    backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: "#0D5B8C",
+    borderColor: colors.card,
   },
   profileInfo: {
+    flex: 1,
     marginLeft: 15,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: colors.text,
   },
   profileSub: {
     fontSize: 14,
-    color: "#bae6fd",
+    color: colors.textSecondary,
     marginTop: 2,
+  },
+  editBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+    justifyContent: "center",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "rgba(255, 255, 255, 0.7)",
+    color: colors.textSecondary,
     marginTop: 25,
-    marginBottom: 10,
+    marginBottom: 12,
     letterSpacing: 1,
+    marginLeft: 4,
   },
   card: {
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 5,
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   row: {
     flexDirection: "row",
@@ -222,51 +304,53 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 16,
   },
   itemText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
   },
   itemSubText: {
     fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
+    color: colors.textSecondary,
     marginTop: 2,
   },
   rightText: {
-    color: "rgba(255,255,255,0.6)",
+    color: colors.textSecondary,
     fontSize: 14,
     marginRight: 8,
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    marginLeft: 50, // offset to align with text
+    marginLeft: 56,
   },
   logoutBtn: {
-    marginTop: 40,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderRadius: 25,
-    paddingVertical: 15,
+    marginTop: 32,
+    flexDirection: 'row',
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+    borderRadius: 20,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
   },
   logoutText: {
-    color: "#fff",
+    color: colors.error,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
+    marginLeft: 8,
   },
   versionText: {
     textAlign: "center",
-    color: "rgba(255,255,255,0.5)",
+    color: colors.textSecondary,
     fontSize: 12,
-    marginTop: 20,
+    marginTop: 24,
   },
 });
