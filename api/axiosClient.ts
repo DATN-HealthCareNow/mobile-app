@@ -1,5 +1,6 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { notifySessionChange } from '../utils/sessionEvents';
 
 // Lấy API_URL từ biến môi trường của Expo, fallback về localhost nếu chưa set
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost';
@@ -41,10 +42,9 @@ axiosClient.interceptors.response.use(
     // Xử lý các lỗi common như 401 Unauthorized (hết hạn token)
     if (error.response?.status === 401) {
       console.log('Token expired or unauthorized');
-      // Thêm logic handle refresh token hoặc gọi hàm logout ở đây
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('userId');
-      // TODO: navigate to Login screen if needed
+      notifySessionChange();
     }
     return Promise.reject(error);
   }

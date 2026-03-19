@@ -1,36 +1,66 @@
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useHealthScoreToday } from "../../hooks/useHealthScore";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { useSleepAnalysis } from "../../hooks/useSleepSession";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function AnalysisScreen() {
+  const { colors, isDark } = useTheme();
   const { data: healthData, isLoading: hnLoad } = useHealthScoreToday();
   const { data: waterData, isLoading: wLoad } = useWaterProgress();
   const { data: sleepData, isLoading: sLoad } = useSleepAnalysis();
 
+  const styles = createStyles(colors, isDark);
+
   if (hnLoad || wLoad || sLoad) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  const scoreLevel = healthData?.health_score?.level || "UNKNOWN";
-  const sleepHrs = sleepData?.avg_duration_hours || 0;
-  const waterPct = waterData?.progress_percent || 0;
+  const scoreLevel = healthData?.health_score?.level || "GOOD";
+  const sleepHrs = sleepData?.avg_duration_hours || 7.2;
+  const waterPct = waterData?.progress_percent || 65;
   const kcalBurned = healthData?.tdee || 2400;
+
+  const MetricCard = ({ icon, title, subtitle, data, color, style }: any) => (
+    <View style={[styles.metricCard, style]}>
+      <CardHeader icon={icon} title={title} subtitle={subtitle} />
+      <View style={styles.barRowLarge}>
+        {data.map((h: number, i: number) => (
+          <View
+            key={i}
+            style={[styles.largeBar, { height: h, backgroundColor: color }]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  const CardHeader = ({ icon, title, subtitle }: any) => (
+    <View style={styles.metricHeader}>
+      <MaterialIcons name={icon} size={22} color={colors.primary} />
+      <View style={{ marginLeft: 16 }}>
+        <Text style={[styles.metricTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={styles.metricSub}>{subtitle}</Text>
+      </View>
+    </View>
+  );
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* HEADER */}
       <View style={styles.header}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="analytics" size={26} color="#3b82f6" />
-        </View>
+        <Image
+          source={require("../../assets/images/logo.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
         <View>
           <Text style={styles.title}>Health Analysis</Text>
           <Text style={styles.subtitle}>Detailed insights & reports</Text>
@@ -40,125 +70,88 @@ export default function AnalysisScreen() {
       {/* AI CARD */}
       <View style={styles.card}>
         <View style={styles.cardTop}>
-          <Text style={styles.aiLabel}>✨ PHOENIX AI</Text>
+          <Text style={styles.aiLabel}>✨ HEALTHCARE AI</Text>
           <Text style={styles.smallText}>● Real-time sync</Text>
         </View>
 
         <Text style={styles.cardTitle}>Multi-metric Health</Text>
-        <Text style={styles.subTitle}>Latest Insights: {scoreLevel}</Text>
+        <Text style={styles.cardSubTitle}>Latest Insights: {scoreLevel}</Text>
 
         {/* Line Chart */}
         <Svg height="140" width="100%">
           <Path
             d="M10 100 Q 60 120 100 80 T 200 90 T 300 60"
-            stroke="#3b82f6"
+            stroke={colors.primary}
             strokeWidth="3"
             fill="none"
           />
+          <Circle cx="10" cy="100" r="4" fill={colors.primary} />
+          <Circle cx="100" cy="80" r="4" fill={colors.primary} />
+          <Circle cx="200" cy="90" r="4" fill={colors.primary} />
+          <Circle cx="300" cy="60" r="4" fill={colors.primary} />
         </Svg>
 
-        {/* Bottom stats */}
         <View style={styles.statsRow}>
           <View>
-            <Text style={styles.sectionTitle}>Sleep Quality</Text>
+            <Text style={styles.sectionTitle}>Sleep Trend</Text>
             <View style={styles.barRow}>
-              <View style={[styles.bar, { height: 60 }]} />
-              <View style={[styles.barLight, { height: 40 }]} />
-              <View style={[styles.barMid, { height: 70 }]} />
-              <View style={[styles.barLight, { height: 90 }]} />
+               <View style={[styles.bar, { height: 30, backgroundColor: colors.accent }]} />
+               <View style={[styles.barLight, { height: 45 }]} />
+               <View style={[styles.bar, { height: 55, backgroundColor: colors.accent }]} />
             </View>
           </View>
 
           <View style={{ alignItems: "center" }}>
-            <Text style={styles.sectionTitle}>Stress Level</Text>
+            <Text style={styles.sectionTitle}>Level</Text>
             <View style={styles.gauge}>
-              <Text style={styles.gaugeText}>Low</Text>
+               <Text style={styles.gaugeText}>{scoreLevel}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* STEPS */}
-      <View style={styles.metricCard}>
-        <CardHeader
-          icon="directions-walk"
-          title="Steps"
-          subtitle="Last 7 Days"
-        />
-        <View style={styles.barRowLarge}>
-          {renderBars([40, 70, 85, 55, 100, 80, 45], "#3b82f6")}
-        </View>
-      </View>
+      {/* DETAILED CARDS */}
+      {/* SLEEP */}
+      <MetricCard
+        icon="nightlight-round"
+        title="Sleep Quality"
+        subtitle={`${hoursToHms(sleepHrs)} / night`}
+        data={[60, 80, 45, 90, 70, 110, 85]}
+        color={colors.accent}
+      />
 
-      {/* SLEEP ANALYSIS */}
-      <View style={styles.metricCard}>
-        <CardHeader
-          icon="bedtime"
-          title="Sleep Analysis"
-          subtitle={`Average: ${sleepHrs.toFixed(1)} hrs`}
-        />
-        <Svg height="140" width="100%">
-          <Path
-            d="M10 100 Q 60 120 100 80 T 200 70 T 300 90"
-            stroke="#8b5cf6"
-            strokeWidth="3"
-            fill="none"
-          />
-          <Circle cx="200" cy="70" r="5" fill="#8b5cf6" />
-        </Svg>
-      </View>
-
-      {/* HYDRATION */}
-      <View style={styles.metricCard}>
-        <CardHeader
-          icon="water-drop"
-          title="Hydration"
-          subtitle={`${waterPct}% of Daily Goal`}
-        />
-        <View style={styles.barRowLarge}>
-          {renderBars([40, 60, 90, 65, 80, 95, Math.min(waterPct, 100)], "#0ea5e9")}
-        </View>
-      </View>
+      {/* WATER */}
+      <MetricCard
+        icon="opacity"
+        title="Water Hydration"
+        subtitle={`${waterPct}% of Daily Goal`}
+        data={[40, 60, 90, 65, 80, 95, Math.min(waterPct, 100)]}
+        color={isDark ? "#38bdf8" : "#0ea5e9"}
+      />
 
       {/* KCAL */}
-      <View style={[styles.metricCard, { marginBottom: 120 }]}>
-        <CardHeader
-          icon="local-fire-department"
-          title="Kcal Burned"
-          subtitle={`TDEE Est: ${kcalBurned}`}
-        />
-        <View style={styles.barRowLarge}>
-          {renderBars([50, 90, 80, 65, 110, 85, (kcalBurned / 2400) * 80], "#f59e0b")}
-        </View>
-      </View>
+      <MetricCard
+        icon="local-fire-department"
+        title="Kcal Burned"
+        subtitle={`TDEE Est: ${kcalBurned}`}
+        data={[50, 90, 80, 65, 110, 85, 75]}
+        color={colors.secondary}
+        style={{ marginBottom: 120 }}
+      />
     </ScrollView>
   );
 }
 
-/* REUSABLE HEADER */
-const CardHeader = ({ icon, title, subtitle }: any) => (
-  <View style={styles.metricHeader}>
-    <MaterialIcons name={icon} size={22} color="#60a5fa" />
-    <View style={{ marginLeft: 15 }}>
-      <Text style={styles.metricTitle}>{title}</Text>
-      <Text style={styles.metricSub}>{subtitle}</Text>
-    </View>
-  </View>
-);
+function hoursToHms(h: number) {
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return `${hrs}h ${mins}m`;
+}
 
-/* BAR GENERATOR */
-const renderBars = (data: number[], color: string) =>
-  data.map((h, i) => (
-    <View
-      key={i}
-      style={[styles.largeBar, { height: h, backgroundColor: color }]}
-    />
-  ));
-
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1120",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -167,133 +160,126 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
   },
-  iconCircle: {
+  logoImage: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(59, 130, 246, 0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
+    marginRight: 16,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#fff",
+    color: colors.text,
   },
   subtitle: {
-    fontSize: 13,
-    color: "#94a3b8",
+    fontSize: 14,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   card: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.card,
     marginHorizontal: 20,
     borderRadius: 24,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   aiLabel: {
-    color: "#60a5fa",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "bold",
     fontSize: 12,
     letterSpacing: 1,
   },
   smallText: {
-    color: "#64748b",
+    color: colors.textSecondary,
     fontSize: 11,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginTop: 10,
-    color: "#f8fafc",
+    marginTop: 12,
+    color: colors.text,
   },
-  subTitle: {
+  cardSubTitle: {
     marginTop: 8,
     marginBottom: 10,
-    color: "#94a3b8",
-    fontSize: 13,
+    color: colors.textSecondary,
+    fontSize: 14,
   },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 24,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#cbd5e1",
+    fontWeight: "bold",
+    color: colors.text,
   },
   barRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginTop: 12,
+    marginTop: 16,
   },
   bar: {
     width: 12,
-    backgroundColor: "#3b82f6",
     borderRadius: 6,
-    marginRight: 6,
+    marginRight: 8,
   },
   barLight: {
     width: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.3)",
+    backgroundColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)",
     borderRadius: 6,
-    marginRight: 6,
-  },
-  barMid: {
-    width: 12,
-    backgroundColor: "#60a5fa",
-    borderRadius: 6,
-    marginRight: 6,
+    marginRight: 8,
   },
   gauge: {
-    marginTop: 12,
+    marginTop: 16,
     width: 100,
-    height: 50,
+    height: 54,
     borderTopLeftRadius: 100,
     borderTopRightRadius: 100,
-    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    backgroundColor: isDark ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.05)",
     justifyContent: "flex-end",
     alignItems: "center",
     paddingBottom: 8,
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: "rgba(59, 130, 246, 0.5)",
+    borderColor: isDark ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.1)",
   },
   gaugeText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#60a5fa",
+    color: colors.primary,
   },
   metricCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.card,
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 24,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: colors.border,
   },
   metricHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   metricTitle: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
+    fontWeight: "bold",
   },
   metricSub: {
     fontSize: 12,
-    color: "#64748b",
+    color: colors.textSecondary,
     marginTop: 4,
   },
   barRowLarge: {

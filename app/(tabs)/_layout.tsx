@@ -5,12 +5,13 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
+import { useTheme } from "../../context/ThemeContext";
 
 function AnimatedIcon({ focused, children }: any) {
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { scale: withSpring(focused ? 1.2 : 1) },
+        { scale: withSpring(focused ? 1.2 : 1.1) },
       ],
     };
   });
@@ -23,22 +24,26 @@ function AnimatedIcon({ focused, children }: any) {
 }
 
 export default function TabLayout() {
+  const { colors, isDark } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: "#0ea5e9",
-        tabBarInactiveTintColor: "#94a3b8",
+        tabBarActiveTintColor: colors.tabIconSelected,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
-          height: 75,
-          paddingBottom: 10,
-          backgroundColor: "white",
-          borderTopWidth: 0,
-          elevation: 10,
+          height: 80,
+          paddingBottom: 20,
+          backgroundColor: colors.tabBar,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
+          fontWeight: '600',
           marginTop: -4,
         },
       }}
@@ -48,22 +53,22 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size, focused }) => (
+          tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <Ionicons name="home" size={size} color={color} />
+              <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
             </AnimatedIcon>
           ),
         }}
       />
 
-      {/* ACTIVITY */}
+      {/* ANALYSIS */}
       <Tabs.Screen
-        name="activity"
+        name="analysis"
         options={{
-          title: "Activity",
-          tabBarIcon: ({ color, size, focused }) => (
+          title: "Analysis",
+          tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <Ionicons name="pulse" size={size} color={color} />
+              <MaterialIcons name="description" size={24} color={color} />
             </AnimatedIcon>
           ),
         }}
@@ -85,33 +90,35 @@ export default function TabLayout() {
             >
               <View
                 style={{
-                  width: 65,
-                  height: 65,
-                  borderRadius: 35,
-                  backgroundColor: "#0ea5e9",
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  backgroundColor: colors.primary,
                   justifyContent: "center",
                   alignItems: "center",
-                  shadowColor: "#0ea5e9",
+                  shadowColor: colors.primary,
                   shadowOpacity: 0.4,
-                  shadowRadius: 12,
-                  elevation: 10,
+                  shadowRadius: 10,
+                  elevation: 8,
+                  borderWidth: 4,
+                  borderColor: colors.background,
                 }}
               >
-                <Ionicons name="chatbubble-ellipses" size={28} color="white" />
+                <Ionicons name="chatbubble-ellipses" size={26} color="white" />
               </View>
             </View>
           ),
         }}
       />
 
-      {/* ANALYSIS */}
+      {/* ACTIVITY */}
       <Tabs.Screen
-        name="analysis"
+        name="activity"
         options={{
-          title: "Analysis",
-          tabBarIcon: ({ color, size, focused }) => (
+          title: "Activity",
+          tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <MaterialIcons name="description" size={size} color={color} />
+              <Ionicons name={focused ? "pulse" : "pulse-outline"} size={22} color={color} />
             </AnimatedIcon>
           ),
         }}
@@ -122,14 +129,13 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size, focused }) => (
+          tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
               <Ionicons
-          name={focused ? "person" : "person-outline"}
-          size={24}
-          color={focused ? "#0ea5e9" : "#9ca3af"}
-        />
-
+                name={focused ? "person" : "person-outline"}
+                size={22}
+                color={color}
+              />
             </AnimatedIcon>
           ),
         }}

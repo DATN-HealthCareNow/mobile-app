@@ -39,7 +39,14 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share profile pictures."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

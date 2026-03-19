@@ -1,42 +1,109 @@
-import { useMutation } from '@tanstack/react-query';
-import * as SecureStore from 'expo-secure-store';
-import { authService, LoginRequest, RegisterRequest } from '../api/services/authService';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as SecureStore from "expo-secure-store";
+import React from "react";
+import {
+  authService,
+  LoginRequest,
+  RegisterRequest,
+} from "../api/services/authService";
+import {
+  notifySessionChange,
+  subscribeToSessionChanges,
+} from "../utils/sessionEvents";
 
 export const useLogin = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: LoginRequest) => authService.login(data),
     onSuccess: async (data) => {
-      // Lưu token vào Store nếu trả về token
+      // Clear all cache before saving new user info to avoid stale data
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
+      // Save token and userId to Store
       if (data.token) {
-        await SecureStore.setItemAsync('accessToken', data.token);
+        await SecureStore.setItemAsync("accessToken", data.token);
       }
       if (data.user_id) {
-        await SecureStore.setItemAsync('userId', data.user_id);
+        await SecureStore.setItemAsync("userId", data.user_id);
       }
-      console.log('Login success', data);
+
+      // Notify session change - this triggers useSession update and forces refetch
+      notifySessionChange();
+
+      console.log("[useLogin] Success, session updated");
     },
     onError: (error) => {
-      console.error('Login failed', error);
+      console.error("Login failed", error);
     },
   });
 };
 
 export const useRegister = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: RegisterRequest) => authService.register(data),
-    onSuccess: (data) => {
-      console.log('Register success', data);
+    onSuccess: async (data) => {
+      // Clear old cache
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
+      // Save new session
+      if (data.token) {
+        await SecureStore.setItemAsync("accessToken", data.token);
+      }
+      if (data.user_id) {
+        await SecureStore.setItemAsync("userId", data.user_id);
+      }
+      notifySessionChange();
+      console.log("[useRegister] Success, session updated");
     },
     onError: (error) => {
-      console.error('Register failed', error);
+      console.error("Register failed", error);
     },
   });
 };
 
 export const useLogout = () => {
+  const queryClient = useQueryClient();
+
   return async () => {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('userId');
-    console.log('Logged out');
+    await SecureStore.deleteItemAsync("accessToken");
+    await SecureStore.deleteItemAsync("userId");
+    queryClient.clear(); // Xóa toàn bộ dữ liệu cũ khi logout
+    notifySessionChange();
+    console.log("Logged out");
   };
+};
+
+export const useSession = () => {
+  const [session, setSession] = React.useState<{
+    token: string | null;
+    userId: string | null;
+    isLoading: boolean;
+  }>({
+    token: null,
+    userId: null,
+    isLoading: true,
+  });
+
+  const loadSession = React.useCallback(async () => {
+    try {
+      const [token, userId] = await Promise.all([
+        SecureStore.getItemAsync("accessToken"),
+        SecureStore.getItemAsync("userId"),
+      ]);
+      setSession({ token, userId, isLoading: false });
+    } catch (e) {
+      console.error("[useSession] Error loading session:", e);
+      setSession({ token: null, userId: null, isLoading: false });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadSession();
+    return subscribeToSessionChanges(loadSession);
+  }, [loadSession]);
+
+  return session;
 };

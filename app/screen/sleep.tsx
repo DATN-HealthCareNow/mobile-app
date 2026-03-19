@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import React from "react";
 import {
     ActivityIndicator,
+    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,22 +12,26 @@ import {
 import Svg, { Circle, Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useSleepAnalysis } from "../../hooks/useSleepSession";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function SleepScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { data: sleepAnalysis, isLoading } = useSleepAnalysis();
+
+  const styles = createStyles(colors, isDark);
 
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
-  const score = sleepAnalysis?.avg_efficiency || 0; 
-  const hours = Math.floor(sleepAnalysis?.avg_duration_hours || 0);
-  const minutes = Math.round(((sleepAnalysis?.avg_duration_hours || 0) % 1) * 60);
+  const score = sleepAnalysis?.avg_efficiency || 88; 
+  const hours = Math.floor(sleepAnalysis?.avg_duration_hours || 7);
+  const minutes = Math.round(((sleepAnalysis?.avg_duration_hours || 7.2) % 1) * 60);
 
   return (
     <View style={styles.container}>
@@ -34,28 +39,35 @@ export default function SleepScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#f8fafc" />
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Last Night</Text>
+          <View style={styles.logoTitleRow}>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={styles.logoTiny}
+              resizeMode="contain"
+            />
+            <Text style={styles.title}>Sleep Analysis</Text>
+          </View>
           <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="share-outline" size={20} color="#f8fafc" />
+            <Ionicons name="share-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         {/* DATE */}
         <View style={styles.datePill}>
-          <Ionicons name="chevron-back" size={14} color="#64748b" />
+          <Ionicons name="chevron-back" size={14} color={colors.textSecondary} />
           <Text style={styles.dateText}>Oct 24 - Oct 25</Text>
-          <Ionicons name="chevron-forward" size={14} color="#64748b" />
+          <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
         </View>
 
         {/* CIRCULAR PROGRESS */}
         <View style={styles.scoreContainer}>
           <View style={styles.scoreGlow} />
           <Svg width="220" height="220" viewBox="0 0 100 100">
-            <Circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
-            <Circle cx="50" cy="50" r="40" stroke="#3b82f6" strokeWidth="8" fill="none"
-              strokeDasharray="251" strokeDashoffset="37" strokeLinecap="round" />
+            <Circle cx="50" cy="50" r="40" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} strokeWidth="8" fill="none" />
+            <Circle cx="50" cy="50" r="40" stroke={colors.primary} strokeWidth="8" fill="none"
+              strokeDasharray="251" strokeDashoffset={251 * (1 - score/100)} strokeLinecap="round" />
           </Svg>
           <View style={styles.scoreInner}>
             <Text style={styles.scoreNumber}>{score}</Text>
@@ -73,33 +85,25 @@ export default function SleepScreen() {
             <View style={styles.legend}>
               <View style={[styles.legendDot, { backgroundColor: "#4f46e5" }]} />
               <Text style={styles.legendText}>Deep</Text>
-              <View style={[styles.legendDot, { backgroundColor: "#3b82f6" }]} />
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
               <Text style={styles.legendText}>Light</Text>
-              <View style={[styles.legendDot, { backgroundColor: "#8b5cf6" }]} />
-              <Text style={styles.legendText}>REM</Text>
-              <View style={[styles.legendDot, { backgroundColor: "#f59e0b" }]} />
-              <Text style={styles.legendText}>Awake</Text>
             </View>
           </View>
           <View style={styles.graphSpace}>
             <Svg height="120" width="100%" style={{ position: "absolute" }}>
-                <Path d="M0 60 Q 50 20 100 80 T 200 60 T 350 40" stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4 4" fill="none" />
-                <Path d="M0 90 Q 50 90 100 110 T 200 100 T 350 90" stroke="rgba(244, 63, 94, 0.4)" strokeWidth="1" fill="none" />
+                <Path d="M0 60 Q 50 20 100 80 T 200 60 T 350 40" stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} strokeWidth="1" strokeDasharray="4 4" fill="none" />
             </Svg>
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "10%", height: 30, top: 40 }]} />
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "12%", height: 30, top: 40 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.primary, left: "10%", height: 30, top: 40 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.primary, left: "12%", height: 30, top: 40 }]} />
             <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "25%", height: 40, top: 30 }]} />
             <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "27%", height: 40, top: 30 }]} />
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "45%", height: 35, top: 35 }]} />
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "47%", height: 35, top: 35 }]} />
-            <View style={[styles.bar, { backgroundColor: "#8b5cf6", left: "65%", height: 25, top: 45 }]} />
-            <View style={[styles.bar, { backgroundColor: "#8b5cf6", left: "67%", height: 25, top: 45 }]} />
-            <View style={[styles.bar, { backgroundColor: "#f59e0b", left: "85%", height: 15, top: 55 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.primary, left: "45%", height: 35, top: 35 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.primary, left: "47%", height: 35, top: 35 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.accent, left: "65%", height: 25, top: 45 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.accent, left: "67%", height: 25, top: 45 }]} />
             
             <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "15%", height: 50, top: 65 }]} />
-            <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "17%", height: 50, top: 65 }]} />
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "35%", height: 40, top: 75 }]} />
-            <View style={[styles.bar, { backgroundColor: "#3b82f6", left: "37%", height: 40, top: 75 }]} />
+            <View style={[styles.bar, { backgroundColor: colors.primary, left: "35%", height: 40, top: 75 }]} />
           </View>
           <View style={styles.timeLabels}>
             <Text style={styles.timeLabelText}>11 PM</Text>
@@ -113,63 +117,16 @@ export default function SleepScreen() {
         {/* BREAKDOWN */}
         <Text style={styles.sectionTitle}>Breakdown</Text>
         <View style={styles.breakdownGrid}>
-          {/* DEEP */}
-          <View style={styles.breakdownCard}>
-            <View style={styles.bdHeader}>
-              <Ionicons name="moon" size={14} color="#4f46e5" style={{marginRight: 6}} />
-              <Text style={styles.bdTitle}>DEEP</Text>
-            </View>
-            <Text style={styles.bdTime}>1h 30m</Text>
-            <Text style={styles.bdSub}>18% of total</Text>
-            <View style={styles.bdLineBase}>
-              <View style={[styles.bdLineFill, { width: "30%", backgroundColor: "#4f46e5" }]} />
-            </View>
-          </View>
-
-          {/* LIGHT */}
-          <View style={styles.breakdownCard}>
-            <View style={styles.bdHeader}>
-              <Ionicons name="partly-sunny" size={14} color="#3b82f6" style={{marginRight: 6}} />
-              <Text style={styles.bdTitle}>LIGHT</Text>
-            </View>
-            <Text style={styles.bdTime}>4h 02m</Text>
-            <Text style={styles.bdSub}>58% of total</Text>
-            <View style={styles.bdLineBase}>
-              <View style={[styles.bdLineFill, { width: "60%", backgroundColor: "#3b82f6" }]} />
-            </View>
-          </View>
-
-          {/* REM */}
-          <View style={styles.breakdownCard}>
-            <View style={styles.bdHeader}>
-              <Ionicons name="color-wand" size={14} color="#8b5cf6" style={{marginRight: 6}} />
-              <Text style={styles.bdTitle}>REM</Text>
-            </View>
-            <Text style={styles.bdTime}>2h 10m</Text>
-            <Text style={styles.bdSub}>24% of total</Text>
-            <View style={styles.bdLineBase}>
-              <View style={[styles.bdLineFill, { width: "40%", backgroundColor: "#8b5cf6" }]} />
-            </View>
-          </View>
-
-          {/* AWAKE */}
-          <View style={styles.breakdownCard}>
-            <View style={styles.bdHeader}>
-              <Ionicons name="sunny" size={14} color="#f59e0b" style={{marginRight: 6}} />
-              <Text style={styles.bdTitle}>AWAKE</Text>
-            </View>
-            <Text style={styles.bdTime}>20m</Text>
-            <Text style={styles.bdSub}>3 interruptions</Text>
-            <View style={styles.bdLineBase}>
-              <View style={[styles.bdLineFill, { width: "10%", backgroundColor: "#f59e0b" }]} />
-            </View>
-          </View>
+          <BreakdownCard icon="moon" title="DEEP" time="1h 30m" sub="18% of total" progress={30} color="#4f46e5" colors={colors} styles={styles} />
+          <BreakdownCard icon="partly-sunny" title="LIGHT" time="4h 02m" sub="58% of total" progress={60} color={colors.primary} colors={colors} styles={styles} />
+          <BreakdownCard icon="color-wand" title="REM" time="2h 10m" sub="24% of total" progress={40} color={colors.accent} colors={colors} styles={styles} />
+          <BreakdownCard icon="sunny" title="AWAKE" time="20m" sub="3 interruptions" progress={10} color={colors.secondary} colors={colors} styles={styles} />
         </View>
 
         {/* RECOVERY INSIGHT */}
         <View style={styles.insightCard}>
           <View style={styles.insightIconBox}>
-            <Ionicons name="sparkles" size={20} color="#60a5fa" />
+            <Ionicons name="sparkles" size={20} color="#3b82f6" />
           </View>
           <View style={styles.insightContent}>
             <Text style={styles.insightTitle}>
@@ -181,53 +138,79 @@ export default function SleepScreen() {
           </View>
         </View>
 
-        <View style={{ height: 50 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function BreakdownCard({ icon, title, time, sub, progress, color, colors, styles }: any) {
+  return (
+    <View style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.bdHeader}>
+        <Ionicons name={icon as any} size={14} color={color} style={{marginRight: 6}} />
+        <Text style={[styles.bdTitle, { color: colors.text }]}>{title}</Text>
+      </View>
+      <Text style={[styles.bdTime, { color: colors.text }]}>{time}</Text>
+      <Text style={styles.bdSub}>{sub}</Text>
+      <View style={[styles.bdLineBase, { backgroundColor: colors.border }]}>
+        <View style={[styles.bdLineFill, { width: `${progress}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0B1120",
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
     marginTop: 60,
+  },
+  logoTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoTiny: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
   },
   circleBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#fff",
+    fontWeight: "bold",
+    color: colors.text,
   },
   datePill: {
     flexDirection: "row",
     alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: colors.card,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 25,
     marginTop: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: colors.border,
   },
   dateText: {
-    color: "#cbd5e1",
+    color: colors.text,
     fontWeight: "600",
     fontSize: 13,
     marginHorizontal: 15,
@@ -242,9 +225,9 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "#3b82f6",
-    opacity: 0.2,
-    shadowColor: "#3b82f6",
+    backgroundColor: colors.primary,
+    opacity: 0.1,
+    shadowColor: colors.primary,
     shadowRadius: 50,
     shadowOpacity: 1,
     top: 40,
@@ -258,34 +241,34 @@ const styles = StyleSheet.create({
   scoreNumber: {
     fontSize: 56,
     fontWeight: "bold",
-    color: "#fff",
+    color: colors.text,
   },
   scoreText: {
     fontSize: 10,
     fontWeight: "bold",
-    color: "#60a5fa",
+    color: colors.primary,
     letterSpacing: 1.5,
   },
   totalTime: {
     textAlign: "center",
     fontSize: 28,
-    fontWeight: "700",
-    color: "#fff",
+    fontWeight: "800",
+    color: colors.text,
     marginTop: 20,
   },
   totalTimeSub: {
     textAlign: "center",
     fontSize: 13,
-    color: "#64748b",
+    color: colors.textSecondary,
     marginTop: 4,
   },
   stagesCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     marginTop: 30,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    borderColor: colors.border,
   },
   stagesHeader: {
     flexDirection: "row",
@@ -296,7 +279,7 @@ const styles = StyleSheet.create({
   stagesTitle: {
     fontSize: 15,
     fontWeight: "bold",
-    color: "#f8fafc",
+    color: colors.text,
   },
   legend: {
     flexDirection: "row",
@@ -309,16 +292,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   legendText: {
-    fontSize: 9,
-    color: "#94a3b8",
-    marginRight: 6,
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginRight: 8,
   },
   graphSpace: {
     height: 120,
     width: "100%",
     position: "relative",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
+    borderBottomColor: colors.border,
   },
   bar: {
     width: 6,
@@ -332,14 +315,15 @@ const styles = StyleSheet.create({
   },
   timeLabelText: {
     fontSize: 10,
-    color: "#64748b",
+    color: colors.textSecondary,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "bold",
-    color: "#f8fafc",
-    marginTop: 30,
-    marginBottom: 15,
+    color: colors.text,
+    marginTop: 32,
+    marginBottom: 16,
+    marginLeft: 4,
   },
   breakdownGrid: {
     flexDirection: "row",
@@ -348,12 +332,10 @@ const styles = StyleSheet.create({
   },
   breakdownCard: {
     width: "48%",
-    backgroundColor: "#1e293b",
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
   },
   bdHeader: {
     flexDirection: "row",
@@ -362,24 +344,21 @@ const styles = StyleSheet.create({
   bdTitle: {
     fontSize: 11,
     fontWeight: "bold",
-    color: "#f8fafc",
     letterSpacing: 1,
   },
   bdTime: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
     marginTop: 10,
   },
   bdSub: {
     fontSize: 11,
-    color: "#64748b",
+    color: colors.textSecondary,
     marginTop: 4,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   bdLineBase: {
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 2,
     width: "100%",
   },
@@ -388,44 +367,47 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   insightCard: {
-    backgroundColor: "#1e3a8a",
+    backgroundColor: isDark ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.05)",
     borderWidth: 1,
-    borderColor: "#3b82f6",
-    borderRadius: 20,
+    borderColor: colors.primary,
+    borderRadius: 24,
     padding: 20,
     flexDirection: "row",
-    marginTop: 10,
+    marginTop: 16,
   },
   insightIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.2)",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   insightContent: {
     flex: 1,
   },
   insightTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "bold",
-    color: "#fff",
+    color: colors.text,
     marginBottom: 4,
-    flexDirection: "row",
-    alignItems: "center",
   },
   greenDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#10b981",
+    backgroundColor: colors.success,
     marginLeft: 6,
   },
   insightText: {
-    fontSize: 12,
-    color: "#bfdbfe",
-    lineHeight: 18,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
 });

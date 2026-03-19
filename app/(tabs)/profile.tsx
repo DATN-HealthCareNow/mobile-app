@@ -3,173 +3,270 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
-const router = useRouter();
+import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from "../../context/ThemeContext";
+import { useLogout, useSession } from "../../hooks/useAuth";
+import { useProfile, useUploadAvatar } from "../../hooks/useUser";
+
 export default function Profile() {
+  const router = useRouter();
+  const { colors, isDark, toggleTheme } = useTheme();
+  const logout = useLogout();
+  const { token } = useSession();
+  const { data: profile, isLoading } = useProfile(token);
+  const uploadAvatarMutation = useUploadAvatar();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/(auth)/login');
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled && result.assets[0].uri) {
+      const uri = result.assets[0].uri;
+      const filename = uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename || '');
+      const type = match ? `image/${match[1]}` : `image`;
+
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append('file', { uri, name: filename, type });
+
+      uploadAvatarMutation.mutate(formData, {
+        onSuccess: () => {
+          Alert.alert("Success", "Avatar updated successfully!");
+        },
+        onError: () => {
+          Alert.alert("Error", "Failed to upload avatar.");
+        }
+      });
+    }
+  };
+
+  const styles = createStyles(colors, isDark);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  // Helper to calculate age from DOB
+  const calculateAge = (dobString?: string) => {
+    if (!dobString) return "--";
+    const dob = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    return age.toString();
+  };
+
+  const getAvatarSource = () => {
+    const avatar = profile?.avatarUrl || profile?.avatar_url;
+    if (avatar) {
+      return { uri: avatar };
+    }
+    if (profile?.gender === 'Male') {
+      return require("../../assets/images/avatar_male.png");
+    }
+    return require("../../assets/images/avatar_female.png");
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+    >
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.circleBtn}>
-          <Ionicons name="moon" size={22} color="#fff" />
+        <TouchableOpacity style={styles.circleBtn} onPress={toggleTheme}>
+          <Ionicons name={isDark ? "sunny" : "moon"} size={22} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push({
-            pathname: "/screen/settings",
-          })}>
-          <Ionicons name="settings-outline" size={26} color="#64748b" />
+        <TouchableOpacity onPress={() => router.push("/screen/settings")}>
+          <Ionicons name="settings-outline" size={26} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       {/* AVATAR */}
       <View style={styles.avatarWrapper}>
         <LinearGradient
-          colors={["#3b82f6", "#06b6d4"]}
+          colors={[colors.primary, colors.accent]}
           style={styles.avatarBorder}
         >
           <Image
-            source={{
-              uri: "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
-            }}
+            source={getAvatarSource()}
             style={styles.avatar}
           />
         </LinearGradient>
 
-        <TouchableOpacity style={styles.editBtn}>
-          <Ionicons name="pencil" size={16} color="#fff" />
+        <TouchableOpacity 
+            style={styles.editBtn} 
+            onPress={handlePickImage}
+            disabled={uploadAvatarMutation.isPending}
+        >
+          {uploadAvatarMutation.isPending ? (
+              <ActivityIndicator size="small" color="#fff" />
+          ) : (
+              <Ionicons name="pencil" size={16} color="#fff" />
+          )}
         </TouchableOpacity>
       </View>
 
       {/* NAME */}
-      <Text style={styles.name}>Nguyen Cong Danh</Text>
+      <Text style={styles.name}>{profile?.fullName || profile?.full_name || "New User"}</Text>
 
       <View style={styles.badge}>
-        <Ionicons name="shield-checkmark" size={16} color="#2563eb" />
+        <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
         <Text style={styles.badgeText}> Premium Member</Text>
       </View>
 
       {/* BODY METRICS */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Body Metrics</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/screen/metric_entry')}>
           <Text style={styles.updateText}>Update</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.grid}>
         <MetricCard
-          icon={<MaterialIcons name="height" size={24} color="#3b82f6" />}
+          icon={<MaterialIcons name="height" size={24} color={colors.primary} />}
           label="Height"
-          value="175"
+          value={profile?.height?.toString() || "--"}
           unit="cm"
+          colors={colors}
+          styles={styles}
         />
 
         <MetricCard
-          icon={<FontAwesome5 name="weight" size={20} color="#06b6d4" />}
+          icon={<FontAwesome5 name="weight" size={20} color={colors.accent} />}
           label="Weight"
-          value="70"
+          value={profile?.weight?.toString() || "--"}
           unit="kg"
+          colors={colors}
+          styles={styles}
         />
 
         <MetricCard
           icon={<Ionicons name="gift" size={22} color="#a855f7" />}
           label="Age"
-          value="28"
+          value={calculateAge(profile?.dateOfBirth || profile?.date_of_birth)}
           unit="yrs"
+          colors={colors}
+          styles={styles}
         />
 
         <MetricCard
           icon={<Ionicons name="male-female" size={22} color="#6366f1" />}
           label="Gender"
-          value="Male"
+          value={profile?.gender || "--"}
+          colors={colors}
+          styles={styles}
         />
       </View>
 
       {/* ACCOUNT */}
-      <Text style={[styles.sectionTitle, { marginTop: 25 }]}>Account</Text>
+      <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
 
-      <AccountItem icon="person-outline" title="Personal Data" />
-      <AccountItem icon="notifications-outline" title="Notifications" />
-      <AccountItem icon="card-outline" title="Subscription Plan" />
-      <AccountItem icon="log-out-outline" title="Logout" danger />
+      <AccountItem icon="person-outline" title="Personal Data" colors={colors} styles={styles} />
+      <AccountItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} />
+      <AccountItem icon="card-outline" title="Subscription Plan" colors={colors} styles={styles} />
+      <AccountItem icon="log-out-outline" title="Logout" danger onPress={handleLogout} colors={colors} styles={styles} />
+      
+      <View style={{height: 120}} />
     </ScrollView>
   );
 }
 
-/* ================= COMPONENTS ================= */
-
-function MetricCard({ icon, label, value, unit }: any) {
+function MetricCard({ icon, label, value, unit, colors, styles }: any) {
   return (
-    <View style={styles.card}>
-      <View style={styles.iconBox}>{icon}</View>
-
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.iconBox, { backgroundColor: colors.background }]}>{icon}</View>
       <Text style={styles.cardLabel}>{label}</Text>
-
       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-        <Text style={styles.cardValue}>{value}</Text>
+        <Text style={[styles.cardValue, { color: colors.text }]}>{value}</Text>
         {unit && <Text style={styles.cardUnit}> {unit}</Text>}
       </View>
     </View>
   );
 }
 
-function AccountItem({ icon, title, danger }: any) {
+function AccountItem({ icon, title, danger, onPress, colors, styles }: any) {
   return (
-    <TouchableOpacity style={styles.accountItem}>
+    <TouchableOpacity style={[styles.accountItem, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={onPress}>
       <Ionicons
         name={icon}
         size={22}
-        color={danger ? "#ef4444" : "#334155"}
+        color={danger ? colors.error : colors.text}
       />
       <Text
         style={[
           styles.accountText,
-          danger && { color: "#ef4444" },
+          { color: colors.text },
+          danger && { color: colors.error },
         ]}
       >
         {title}
       </Text>
-      <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
     </TouchableOpacity>
   );
 }
 
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
   },
-
   header: {
-    marginTop: 50,
+    marginTop: 60,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   circleBtn: {
-    width: 45,
-    height: 45,
+    width: 44,
+    height: 44,
     borderRadius: 22,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-
   avatarWrapper: {
     alignItems: "center",
     marginTop: 20,
   },
-
   avatarBorder: {
     width: 140,
     height: 140,
@@ -177,125 +274,112 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   avatar: {
-    width: 125,
-    height: 125,
-    borderRadius: 62,
-    backgroundColor: "#fff",
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: colors.card,
   },
-
   editBtn: {
     position: "absolute",
-    bottom: 10,
-    right: 115,
+    bottom: 5,
+    right: "35%",
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 3,
+    borderColor: colors.background,
   },
-
   name: {
     textAlign: "center",
     fontSize: 24,
-    fontWeight: "700",
-    marginTop: 15,
-    color: "#0f172a",
+    fontWeight: "800",
+    marginTop: 16,
+    color: colors.text,
   },
-
   badge: {
     flexDirection: "row",
     alignSelf: "center",
-    backgroundColor: "#dbeafe",
-    paddingHorizontal: 15,
+    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 8,
+    marginTop: 10,
     alignItems: "center",
   },
-
   badgeText: {
-    color: "#2563eb",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 13,
   },
-
   sectionHeader: {
-    marginTop: 30,
+    marginTop: 32,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: "800",
+    color: colors.text,
   },
-
   updateText: {
-    color: "#0ea5e9",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "700",
   },
-
   grid: {
-    marginTop: 15,
+    marginTop: 16,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-
   card: {
     width: "48%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 15,
-    elevation: 4,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    elevation: 2,
   },
-
   iconBox: {
-    width: 45,
-    height: 45,
-    borderRadius: 12,
-    backgroundColor: "#f1f5f9",
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 12,
   },
-
   cardLabel: {
-    color: "#64748b",
-    marginBottom: 5,
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 6,
   },
-
   cardValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontSize: 26,
+    fontWeight: "800",
   },
-
   cardUnit: {
     fontSize: 14,
-    color: "#64748b",
+    color: colors.textSecondary,
     marginBottom: 4,
+    marginLeft: 2,
   },
-
   accountItem: {
-    marginTop: 15,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 15,
+    marginTop: 12,
+    borderRadius: 20,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: 1,
   },
-
   accountText: {
     flex: 1,
-    marginLeft: 15,
+    marginLeft: 16,
     fontSize: 16,
-    color: "#334155",
+    fontWeight: '500',
   },
 });
