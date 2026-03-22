@@ -9,11 +9,57 @@ import {
     View,
 } from "react-native";
 
+import { useSession } from "../../../hooks/useAuth";
+import { useUserActivities } from "../../../hooks/useActivity";
+
 export default function ActivityDetail() {
   const { type } = useLocalSearchParams();
   const router = useRouter();
+  const { userId } = useSession();
 
   const isRunning = type === "running";
+
+  const { data: activitiesPage } = useUserActivities(userId || "", 0, 50);
+  const activities = (activitiesPage?.content || activitiesPage || []) as any[];
+
+  // Tính trung bình / tổng cộng của ngày hôm nay
+  let avgSpeed = "--";
+  let totalCalories = "--";
+  let totalDistance = "--";
+
+  if (isRunning && activities.length > 0) {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todaysRuns = activities.filter(
+      (a: any) =>
+        a.type === "RUN" &&
+        a.start_at &&
+        (a.start_at.startsWith(todayStr) || a.start_at.includes(todayStr))
+    );
+
+    if (todaysRuns.length > 0) {
+      let sumDist = 0;
+      let sumCal = 0;
+      let sumDurationSec = 0;
+
+      todaysRuns.forEach((r: any) => {
+        const dist = r.outdoor_context?.distance_meter || r.distance_meter || 0;
+        const cal = r.summary_metrics?.active_calories || r.calories_burned || 0;
+        const dur = r.summary_metrics?.total_duration || r.duration_seconds || 0;
+
+        sumDist += dist;
+        sumCal += cal;
+        sumDurationSec += dur;
+      });
+
+      if (sumDurationSec > 0) {
+        // Speed = (km) / (hours)
+        const speed = (sumDist / 1000) / (sumDurationSec / 3600);
+        avgSpeed = speed.toFixed(1) + " KM/H";
+      }
+      totalCalories = sumCal.toFixed(0) + " KCAL";
+      totalDistance = (sumDist / 1000).toFixed(2) + " KM";
+    }
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -55,9 +101,9 @@ export default function ActivityDetail() {
         {/* STATS */}
         {isRunning ? (
           <>
-            <InfoRow icon="heart-outline" label="Heart Rate" value="145 BPM" />
-            <InfoRow icon="speedometer" label="Avg. Speed" value="12.4 KM/H" />
-            <InfoRow icon="fire-outline" label="Calories" value="342 KCAL" />
+            <InfoRow icon="walk-outline" label="Total Distance" value={totalDistance} />
+            <InfoRow icon="speedometer" label="Avg. Speed" value={avgSpeed} />
+            <InfoRow icon="fire-outline" label="Calories" value={totalCalories} />
           </>
         ) : (
           <>
@@ -67,7 +113,16 @@ export default function ActivityDetail() {
           </>
         )}
 
-        <TouchableOpacity style={styles.startBtn}>
+        <TouchableOpacity 
+          style={styles.startBtn}
+          onPress={() => {
+            if (isRunning) {
+              router.push("/screen/running");
+            } else {
+              alert("Tính năng Gym đang được phát triển!");
+            }
+          }}
+        >
           <Text style={styles.startText}>Start</Text>
         </TouchableOpacity>
       </View>
