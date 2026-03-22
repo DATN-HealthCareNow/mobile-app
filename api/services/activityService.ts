@@ -2,7 +2,7 @@ import { axiosClient } from '../axiosClient';
 
 export interface ActivityStartRequest {
   type: string;
-  source: string;
+  mode: string;
 }
 
 export interface HeartRateUpdateRequest {
