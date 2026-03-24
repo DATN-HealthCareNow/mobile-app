@@ -15,6 +15,11 @@ export interface ActivityFinishRequest {
   calories_burned?: number;
   distance_meter?: number;
   avg_heart_rate?: number;
+  workoutLogs?: {
+    exercise: string;
+    reps: number;
+    weight: number;
+  }[];
 }
 
 export interface Activity {

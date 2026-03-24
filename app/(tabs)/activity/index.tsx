@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -13,6 +13,7 @@ import {
 import { useTheme } from "../../../context/ThemeContext";
 import { useStepReport } from "../../../hooks/useDailyStep";
 import { useHealthScoreToday } from "../../../hooks/useHealthScore";
+import { useHealthKit } from "../../../hooks/useHealthKit";
 
 export default function Activity() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function Activity() {
   const today = new Date().toISOString().split('T')[0];
   const { data: stepReport, isLoading: stepsLoading } = useStepReport(today, today);
   const { data: healthData, isLoading: healthLoading } = useHealthScoreToday();
+  const { steps: hkSteps, calories: hkCalories } = useHealthKit();
 
   const styles = createStyles(colors, isDark);
 
@@ -32,8 +34,8 @@ export default function Activity() {
     );
   }
 
-  const stepsToday = stepReport?.length ? stepReport[0].steps : 0;
-  const burnedCalories = healthData?.tdee ? Math.round(healthData.tdee * 0.25) : 0; // Simplified estimate or use actual if available
+  const stepsToday = hkSteps > 0 ? hkSteps : (stepReport?.length ? stepReport[0].steps : 0);
+  const burnedCalories = hkCalories > 0 ? hkCalories : (healthData?.tdee ? Math.round(healthData.tdee * 0.25) : 0); // Override with HealthKit or Server default
 
 
   const ActivityItem = ({ icon, title, sub, color, onPress, colors }: any) => {
@@ -143,16 +145,48 @@ export default function Activity() {
           <ActivityItem 
             icon="bike" 
             title="Cycling" 
-            sub="Goal: 10 km" 
+            sub="Phổ biến" 
             color="#22c55e" 
+            onPress={() => router.push({
+              pathname: "/activity/[type]",
+              params: { type: "cycling" },
+            })}
             colors={colors}
           />
 
           <ActivityItem 
-            icon="swim" 
-            title="Swimming" 
-            sub="Goal: 30 min" 
-            color="#06b6d4" 
+            icon="foot-print" 
+            title="Walking" 
+            sub="Auto Tracking" 
+            color="#10b981" 
+            onPress={() => router.push({
+              pathname: "/activity/[type]",
+              params: { type: "walking" },
+            })}
+            colors={colors}
+          />
+          
+          <ActivityItem 
+            icon="human-handsup" 
+            title="Stretching" 
+            sub="Quick Recovery" 
+            color="#8b5cf6" 
+            onPress={() => router.push({
+              pathname: "/activity/[type]",
+              params: { type: "stretching" },
+            })}
+            colors={colors}
+          />
+
+          <ActivityItem 
+            icon="yoga" 
+            title="Yoga" 
+            sub="Mindfulness" 
+            color="#0ea5e9" 
+            onPress={() => router.push({
+              pathname: "/activity/[type]",
+              params: { type: "yoga" },
+            })}
             colors={colors}
           />
         </View>

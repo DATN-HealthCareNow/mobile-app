@@ -18,6 +18,11 @@ export default function ActivityDetail() {
   const { userId } = useSession();
 
   const isRunning = type === "running";
+  const isYoga = type === "yoga";
+  const isGym = type === "gym";
+  const isWalking = type === "walking";
+  const isStretching = type === "stretching";
+  const isCycling = type === "cycling";
 
   const { data: activitiesPage } = useUserActivities(userId || "", 0, 50);
   const activities = (activitiesPage?.content || activitiesPage || []) as any[];
@@ -79,19 +84,19 @@ export default function ActivityDetail() {
         <View style={styles.cardHeader}>
           <View>
             <Text style={styles.activityTitle}>
-              {isRunning ? "Running" : "Gym"}
+              {isRunning ? "Running" : isYoga ? "Yoga" : isWalking ? "Walking" : isStretching ? "Stretching" : isCycling ? "Cycling" : "Gym"}
             </Text>
 
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
-                {isRunning ? "Aerobic" : "Strength"}
+                {isRunning ? "Aerobic" : isYoga ? "Flexibility" : isWalking ? "Active" : isStretching ? "Recovery" : isCycling ? "Wheels" : "Strength"}
               </Text>
             </View>
           </View>
 
           <View style={styles.iconCircle}>
             <MaterialCommunityIcons
-              name={isRunning ? "run" : "dumbbell"}
+              name={isRunning ? "run" : isYoga ? "yoga" : isWalking ? "walk" : isStretching ? "human-handsup" : isCycling ? "bike" : "dumbbell"}
               size={26}
               color="#fff"
             />
@@ -99,17 +104,46 @@ export default function ActivityDetail() {
         </View>
 
         {/* STATS */}
-        {isRunning ? (
+        {isRunning && (
           <>
             <InfoRow icon="walk-outline" label="Total Distance" value={totalDistance} />
             <InfoRow icon="speedometer" label="Avg. Speed" value={avgSpeed} />
             <InfoRow icon="fire-outline" label="Calories" value={totalCalories} />
           </>
-        ) : (
+        )}
+        {isGym && (
           <>
-            <InfoRow icon="repeat" label="Reps" value="50" />
-            <InfoRow icon="layers-outline" label="Sets" value="3" />
-            <InfoRow icon="barbell-outline" label="Weight" value="60 KG" />
+            <InfoRow icon="repeat" label="Reps" value="0" />
+            <InfoRow icon="layers-outline" label="Sets" value="0" />
+            <InfoRow icon="barbell-outline" label="Weight" value="0 KG" />
+          </>
+        )}
+        {isYoga && (
+          <>
+            <InfoRow icon="time-outline" label="Total Flow Time" value="0 min" />
+            <InfoRow icon="body-outline" label="Completed Poses" value="0" />
+            <InfoRow icon="flame-outline" label="Calories" value="0 KCAL" />
+          </>
+        )}
+        {isWalking && (
+          <>
+            <InfoRow icon="footsteps-outline" label="Daily Steps" value="0" />
+            <InfoRow icon="walk-outline" label="Distance" value="0 KM" />
+            <InfoRow icon="flame-outline" label="Calories Burned" value="0 KCAL" />
+          </>
+        )}
+        {isStretching && (
+          <>
+            <InfoRow icon="medical-outline" label="Recovery Time" value="0 min" />
+            <InfoRow icon="body-outline" label="Stretches Done" value="0" />
+            <InfoRow icon="heart-outline" label="Relief" value="100%" />
+          </>
+        )}
+        {isCycling && (
+          <>
+            <InfoRow icon="bicycle-outline" label="Avg. Speed" value="0.0 KM/H" />
+            <InfoRow icon="map-outline" label="Total Distance" value="0 KM" />
+            <InfoRow icon="flame-outline" label="Calories Burned" value="0 KCAL" />
           </>
         )}
 
@@ -118,8 +152,16 @@ export default function ActivityDetail() {
           onPress={() => {
             if (isRunning) {
               router.push("/screen/running");
+            } else if (isYoga) {
+              router.push("/screen/yoga_selection" as any);
+            } else if (isWalking) {
+              router.push("/screen/walking" as any);
+            } else if (isStretching) {
+              router.push("/screen/stretch_selection" as any);
+            } else if (isCycling) {
+              router.push("/screen/cycling" as any);
             } else {
-              alert("Tính năng Gym đang được phát triển!");
+              router.push("/screen/gym_selection" as any);
             }
           }}
         >
