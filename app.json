@@ -27,7 +27,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "package": "com.danhvip2k4.mobileapp"
     },
     "web": {
       "output": "static",
@@ -54,11 +56,26 @@
         {
           "photosPermission": "The app accesses your photos to let you share profile pictures."
         }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f00819af-a085-4b1a-bad3-c29822fa145f"
+      }
     }
   }
 }
