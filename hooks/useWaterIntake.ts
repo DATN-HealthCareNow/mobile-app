@@ -4,6 +4,7 @@ import { waterIntakeService, WaterLogRequest } from '../api/services/waterIntake
 export const WATER_KEYS = {
   all: ['water'] as const,
   progress: () => [...WATER_KEYS.all, 'progress'] as const,
+  logs: () => [...WATER_KEYS.all, 'logs'] as const,
 };
 
 export const useWaterProgress = () => {
@@ -13,13 +14,22 @@ export const useWaterProgress = () => {
   });
 };
 
+export const useWaterLogs = () => {
+  return useQuery({
+    queryKey: WATER_KEYS.logs(),
+    queryFn: waterIntakeService.get_logs,
+  });
+};
+
 export const useLogWater = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: WaterLogRequest) => waterIntakeService.log_water(data),
     onSuccess: () => {
+      // Invalidate để kéo lại cả progress (từ core) và log (từ iot)
       queryClient.invalidateQueries({ queryKey: WATER_KEYS.progress() });
+      queryClient.invalidateQueries({ queryKey: WATER_KEYS.logs() });
     },
   });
 };

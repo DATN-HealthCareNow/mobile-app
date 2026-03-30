@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -150,8 +150,14 @@ export default function StretchActiveScreen() {
                     <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
                 )}
                 <View style={[styles.avatarCard, styles.shadow]}>
-                    {/* Placeholder for real illustration */}
-                    <MaterialCommunityIcons name="human-handsup" size={140} color="#7c3aed" />
+                    <Image 
+                        source={{ uri: `https://picsum.photos/seed/${pose.id}/800/800` }}
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
+                    />
+                    <LinearGradient
+                        colors={['rgba(124, 58, 237, 0.2)', 'rgba(139, 92, 246, 0.4)']}
+                        style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
+                    />
 
                     {/* TIMER OVERLAY */}
                     <View style={styles.timerBox}>

@@ -7,6 +7,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { activityService } from '../../api/services/activityService';
 
+import { GpsBatchRequest } from '../../api/services/gpsTrackService';
+import { useBatchGpsPoints } from '../../hooks/useGpsTrack';
+
 const { width, height } = Dimensions.get('window');
 
 // Công thức Haversine tính khoảng cách giữa 2 điểm GPS (trả về km)
@@ -32,9 +35,12 @@ export default function RunningScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [distanceKm, setDistanceKm] = useState(0);
   const [activityId, setActivityId] = useState<string | null>(null);
+  const activityIdRef = useRef<string | null>(null);
   
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [routePath, setRoutePath] = useState<{latitude: number, longitude: number}[]>([]);
+  const batchPointsQueue = useRef<GpsBatchRequest['points']>([]);
+  const { mutateAsync: batchGpsAsync } = useBatchGpsPoints();
   
   const mapRef = useRef<MapView>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
@@ -58,7 +64,10 @@ export default function RunningScreen() {
         // Gọi API lên server để thông báo "Đã bắt đầu chạy", lấy ID về
         try {
            const act = await activityService.start({ type: "RUN", mode: "OUTDOOR" });
-           if (act && act.id) setActivityId(act.id);
+           if (act && act.id) {
+               setActivityId(act.id);
+               activityIdRef.current = act.id;
+           }
         } catch (e) {
            console.log("Failed to create activity on Server", e);
         }
@@ -74,7 +83,23 @@ export default function RunningScreen() {
           if (!mounted) return;
           const { latitude, longitude } = newLoc.coords;
           
-          setCurrentLocation(newLoc.coords);
+          const currentId = activityIdRef.current;
+          if (mounted && currentId) {
+             batchPointsQueue.current.push({
+               lat: latitude,
+               lng: longitude,
+               acc: newLoc.coords.accuracy || 0,
+               ts: new Date(newLoc.timestamp).toISOString()
+             });
+
+             if (batchPointsQueue.current.length >= 10) {
+               const pointsToSend = [...batchPointsQueue.current];
+               batchPointsQueue.current = [];
+               batchGpsAsync({ activityId: currentId, data: { points: pointsToSend } }).catch(e => {
+                  console.log("Failed to batch GPS", e);
+               });
+             }
+          }
 
           // Chỉ lưu tọa độ vẽ đường và cộng dồn khoảng cách nếu đang chạy
           setIsRunning((prevIsRunning) => {
@@ -155,6 +180,14 @@ export default function RunningScreen() {
     setIsRunning(false);
     setIsPaused(true);
     
+    // Flush remaining GPS points
+    const currentActId = activityIdRef.current;
+    if (currentActId && batchPointsQueue.current.length > 0) {
+       const pointsToSend = [...batchPointsQueue.current];
+       batchPointsQueue.current = [];
+       batchGpsAsync({ activityId: currentActId, data: { points: pointsToSend } }).catch(() => {});
+    }
+
     let snapshotUri = "";
     try {
        if (mapRef.current) {
@@ -236,9 +269,7 @@ export default function RunningScreen() {
              <Text style={styles.gpsText}>GPS ACTIVE</Text>
           </View>
 
-          <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="settings-sharp" size={20} color="#0284c7" />
-          </TouchableOpacity>
+          <View style={{ width: 48 }} />
         </View>
       </View>
 

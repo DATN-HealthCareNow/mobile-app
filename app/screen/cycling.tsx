@@ -9,6 +9,9 @@ import { activityService } from '../../api/services/activityService';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 
+import { GpsBatchRequest } from '../../api/services/gpsTrackService';
+import { useBatchGpsPoints } from '../../hooks/useGpsTrack';
+
 const { width, height } = Dimensions.get('window');
 
 // Công thức Haversine tính khoảng cách giữa 2 điểm GPS (trả về km)
@@ -34,10 +37,13 @@ export default function CyclingScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [distanceKm, setDistanceKm] = useState(0);
   const [activityId, setActivityId] = useState<string | null>(null);
+  const activityIdRef = useRef<string | null>(null);
   const [lastAnnouncedKm, setLastAnnouncedKm] = useState(0);
   
   const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [routePath, setRoutePath] = useState<{latitude: number, longitude: number}[]>([]);
+  const batchPointsQueue = useRef<GpsBatchRequest['points']>([]);
+  const { mutateAsync: batchGpsAsync } = useBatchGpsPoints();
   
   const mapRef = useRef<MapView>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
@@ -65,7 +71,10 @@ export default function CyclingScreen() {
         
         try {
            const act = await activityService.start({ type: "CYCLING", mode: "OUTDOOR" });
-           if (act && act.id) setActivityId(act.id);
+           if (act && act.id) {
+               setActivityId(act.id);
+               activityIdRef.current = act.id;
+           }
         } catch (e) {
            console.log("Failed to create activity on Server", e);
         }
@@ -81,6 +90,25 @@ export default function CyclingScreen() {
           if (!mounted) return;
           const { latitude, longitude } = newLoc.coords;
           
+          // Queue point for server syncing
+          const currentActId = activityIdRef.current;
+          if (mounted && currentActId) {
+             batchPointsQueue.current.push({
+               lat: latitude,
+               lng: longitude,
+               acc: newLoc.coords.accuracy || 0,
+               ts: new Date(newLoc.timestamp).toISOString()
+             });
+
+             if (batchPointsQueue.current.length >= 10) {
+               const pointsToSend = [...batchPointsQueue.current];
+               batchPointsQueue.current = [];
+               batchGpsAsync({ activityId: currentActId, data: { points: pointsToSend } }).catch(e => {
+                  console.log("Failed to batch GPS", e);
+               });
+             }
+          }
+
           setCurrentLocation(newLoc.coords);
 
           setIsRunning((prevIsRunning) => {
@@ -169,6 +197,14 @@ export default function CyclingScreen() {
     setIsPaused(true);
     Speech.stop();
     
+    // Flush remaining GPS points
+    const currentActId = activityIdRef.current;
+    if (currentActId && batchPointsQueue.current.length > 0) {
+       const pointsToSend = [...batchPointsQueue.current];
+       batchPointsQueue.current = [];
+       batchGpsAsync({ activityId: currentActId, data: { points: pointsToSend } }).catch(() => {});
+    }
+
     let snapshotUri = "";
     try {
        if (mapRef.current) {
@@ -249,9 +285,7 @@ export default function CyclingScreen() {
              <Text style={styles.gpsText}>GPS ACTIVE</Text>
           </View>
 
-          <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="settings-sharp" size={20} color="#16a34a" />
-          </TouchableOpacity>
+          <View style={{ width: 48 }} />
         </View>
       </View>
 

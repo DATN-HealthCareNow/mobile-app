@@ -1,12 +1,11 @@
 import { axiosClient } from '../axiosClient';
 
 export interface GpsPoint {
-  latitude: number;
-  longitude: number;
-  altitude?: number;
+  lat: number;
+  lng: number;
+  acc?: number;
   speed?: number;
-  accuracy?: number;
-  timestamp: string;
+  ts: string;
 }
 
 export interface GpsBatchRequest {

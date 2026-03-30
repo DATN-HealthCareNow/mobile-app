@@ -18,11 +18,20 @@ export interface DailyStep {
 
 export const dailyStepService = {
   sync_steps: async (data: DailyStepSyncRequest): Promise<DailyStep> => {
-    return axiosClient.post('/api/v1/steps/sync', data);
+    // Convert to DailyHealth payload for iot-service health-sync
+    const payload = {
+      dateString: data.date,
+      source: data.source,
+      metrics: {
+        steps: data.steps,
+      }
+    };
+    return axiosClient.post('/api/v1/tracking/health-sync', payload);
   },
 
-  get_report: async (startDate: string, endDate: string): Promise<DailyStep[]> => {
+  get_report: async (startDate: string, endDate: string): Promise<any[]> => {
     // startDate, endDate format chuẩn ISO (ví dụ: '2023-10-01T00:00:00Z')
-    return axiosClient.get(`/api/v1/steps/report?startDate=${startDate}&endDate=${endDate}`);
+    // We pass it to tracking report which expects string dates like 'YYYY-MM-DD'
+    return axiosClient.get(`/api/v1/tracking/report?startDate=${startDate}&endDate=${endDate}`);
   }
 };

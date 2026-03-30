@@ -12,18 +12,20 @@ import {
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
-import { useWaterProgress, useLogWater } from "../../hooks/useWaterIntake";
+import { useWaterProgress, useWaterLogs, useLogWater } from "../../hooks/useWaterIntake";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function Hydration() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { data: progressData, isLoading } = useWaterProgress();
+  const { data: progressData, isLoading: isProgressLoading } = useWaterProgress();
+  const { data: logsData, isLoading: isLogsLoading } = useWaterLogs();
   const { mutate: logWater } = useLogWater();
 
-  const percent = progressData?.progress_percent || 0;
-  const current = progressData?.total_today_ml || 0;
-  const goal = progressData?.goal_ml || 2500;
+  const percent = progressData?.progressPercent || 0;
+  const current = progressData?.totalTodayMl || 0;
+  const goal = progressData?.goalMl || 2500;
+  const logs = logsData || [];
 
   const handleQuickAdd = (amount: number) => {
     logWater({ amount_ml: amount, adjustment_reason: "Quick Add" });
@@ -31,7 +33,7 @@ export default function Hydration() {
 
   const styles = createStyles(colors, isDark);
 
-  if (isLoading) {
+  if (isProgressLoading || isLogsLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -138,24 +140,23 @@ export default function Hydration() {
         </View>
 
         <View style={styles.activityContainer}>
-            {[
-            { title: "Water", time: "10:30 AM", amount: "+ 250ml", icon: "water" },
-            { title: "Glass of Water", time: "08:15 AM", amount: "+ 250ml", icon: "beaker" },
-            { title: "Tea", time: "07:00 AM", amount: "+ 200ml", icon: "cafe" },
-            ].map((item, index) => (
+            {logs.map((item: any, index: number) => (
             <View key={index} style={styles.activityCard}>
                 <View style={styles.activityLeft}>
                     <View style={styles.activityIcon}>
-                        <Ionicons name={item.icon as any} size={18} color={colors.primary} />
+                        <Ionicons name="water" size={18} color={colors.primary} />
                     </View>
                     <View>
-                        <Text style={styles.activityTitle}>{item.title}</Text>
-                        <Text style={styles.activityTime}>{item.time}</Text>
+                        <Text style={styles.activityTitle}>{item.adjustmentReason || "Water"}</Text>
+                        <Text style={styles.activityTime}>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
                     </View>
                 </View>
-                <Text style={styles.activityAmount}>{item.amount}</Text>
+                <Text style={styles.activityAmount}>+ {item.amountMl}ml</Text>
             </View>
             ))}
+            {logs.length === 0 && (
+               <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>No logs today yet.</Text>
+            )}
         </View>
         <View style={{height: 100}} />
       </ScrollView>

@@ -1,18 +1,17 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useTheme } from "../../../context/ThemeContext";
 import { useStepReport } from "../../../hooks/useDailyStep";
-import { useHealthConnect } from "../../../hooks/useHealthConnect";
 import { useHealthScoreToday } from "../../../hooks/useHealthScore";
 
 export default function Activity() {
@@ -25,7 +24,6 @@ export default function Activity() {
     today,
   );
   const { data: healthData, isLoading: healthLoading } = useHealthScoreToday();
-  const { steps: hkSteps, calories: hkCalories } = useHealthConnect();
 
   const styles = createStyles(colors, isDark);
 
@@ -42,14 +40,10 @@ export default function Activity() {
     );
   }
 
-  const stepsToday =
-    hkSteps > 0 ? hkSteps : stepReport?.length ? stepReport[0].steps : 0;
-  const burnedCalories =
-    hkCalories > 0
-      ? hkCalories
-      : healthData?.tdee
-        ? Math.round(healthData.tdee * 0.25)
-        : 0; // Override with HealthKit or Server default
+  const stepsToday = stepReport?.length ? stepReport[0].steps : 0;
+  const burnedCalories = healthData?.tdee
+    ? Math.round(healthData.tdee * 0.25)
+    : 0; // Override with Server default
 
   const ActivityItem = ({ icon, title, sub, color, onPress, colors }: any) => {
     return (
@@ -137,7 +131,7 @@ export default function Activity() {
           <ActivityItem
             icon="run"
             title="Running"
-            sub="Goal: 5 km"
+            sub="Outdoor"
             color="#0ea5e9"
             onPress={() =>
               router.push({
@@ -151,7 +145,7 @@ export default function Activity() {
           <ActivityItem
             icon="dumbbell"
             title="Gym"
-            sub="Leg Day"
+            sub="Indoor"
             color="#6366f1"
             onPress={() =>
               router.push({
@@ -165,7 +159,7 @@ export default function Activity() {
           <ActivityItem
             icon="bike"
             title="Cycling"
-            sub="Phổ biến"
+            sub="Outdoor"
             color="#22c55e"
             onPress={() =>
               router.push({
@@ -179,7 +173,7 @@ export default function Activity() {
           <ActivityItem
             icon="foot-print"
             title="Walking"
-            sub="Auto Tracking"
+            sub="Outdoor"
             color="#10b981"
             onPress={() =>
               router.push({
@@ -193,7 +187,7 @@ export default function Activity() {
           <ActivityItem
             icon="human-handsup"
             title="Stretching"
-            sub="Quick Recovery"
+            sub="Indoor"
             color="#8b5cf6"
             onPress={() =>
               router.push({
@@ -207,7 +201,7 @@ export default function Activity() {
           <ActivityItem
             icon="yoga"
             title="Yoga"
-            sub="Mindfulness"
+            sub="Indoor"
             color="#0ea5e9"
             onPress={() =>
               router.push({
@@ -220,6 +214,14 @@ export default function Activity() {
         </View>
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* FLOATING ACTION BUTTON FOR ADD SCHEDULE */}
+      <TouchableOpacity 
+          style={styles.fabBtn} 
+          onPress={() => router.push("/screen/schedule_new" as any)}
+      >
+          <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -390,4 +392,20 @@ const createStyles = (colors: any, isDark: boolean) =>
       color: colors.textSecondary,
       marginTop: 4,
     },
+    fabBtn: {
+      position: 'absolute',
+      bottom: 20,
+      right: 20,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: '#0ea5e9',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#0ea5e9',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 5,
+    }
   });

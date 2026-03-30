@@ -54,7 +54,7 @@ export const userService = {
           "Content-Type": "multipart/form-data",
         },
       },
-    );
-    return response.data;
+    ) as unknown as string;
+    return response;
   },
 };

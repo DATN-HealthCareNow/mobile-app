@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,7 +65,7 @@ export default function YogaActiveScreen() {
                 const line = pose.voiceLines[i];
                 setCurrentSubtitle(`"${line}"`);
                 Speech.speak(line, {
-                    language: 'en-US',
+                    language: 'vi-VN',
                     pitch: 1.1,
                     rate: 0.85,
                 });
@@ -86,7 +86,7 @@ export default function YogaActiveScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Speech.stop();
         if (currentPoseIndex < activeFlow.poses.length - 1) {
-            Speech.speak("Prepare for the next pose", { rate: 0.9, pitch: 1 });
+            Speech.speak("Chuẩn bị cho tư thế tiếp theo", { language: 'vi-VN', rate: 0.9, pitch: 1 });
             nextPose();
         } else {
             handleFinish();
@@ -101,7 +101,7 @@ export default function YogaActiveScreen() {
 
     const handleFinish = () => {
         Speech.stop();
-        Speech.speak("Namaste. Your practice is complete.", { rate: 0.8 });
+        Speech.speak("Namaste. Bạn đã hoàn thành buổi tập yoga.", { language: 'vi-VN', rate: 0.8 });
         router.replace("/screen/yoga_summary" as any);
     };
 
@@ -169,11 +169,16 @@ export default function YogaActiveScreen() {
                 )}
                 
                 <View style={[styles.imageCard, styles.shadow]}>
+                    <Image 
+                        source={{ uri: `https://picsum.photos/seed/${pose.id}/800/800` }}
+                        style={StyleSheet.absoluteFillObject}
+                        borderRadius={40}
+                    />
                     <LinearGradient
-                        colors={['#38bdf8', '#0284c7']}
+                        colors={['rgba(2, 132, 199, 0.2)', 'rgba(56, 189, 248, 0.4)']}
                         style={styles.cardGradient}
                     >
-                        <MaterialCommunityIcons name="yoga" size={120} color="rgba(255,255,255,0.8)" />
+                        <MaterialCommunityIcons name="yoga" size={64} color="rgba(255,255,255,0.9)" />
                         
                         {/* WARNING CHIP */}
                         {pose.warnings && pose.warnings.length > 0 && (
@@ -232,10 +237,7 @@ export default function YogaActiveScreen() {
                         <Ionicons name="play-skip-forward" size={24} color="#bae6fd" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.sideBtn} onPress={() => {}}>
-                        <Ionicons name="options-outline" size={24} color="#7dd3fc" />
-                        <Text style={styles.sideBtnText}>SETTINGS</Text>
-                    </TouchableOpacity>
+                    <View style={styles.sideBtn} />
                 </View>
             </View>
         </LinearGradient>
