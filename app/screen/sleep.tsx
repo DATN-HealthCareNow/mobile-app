@@ -1,413 +1,122 @@
-import { useRouter } from "expo-router";
-import React from "react";
-import {
-    ActivityIndicator,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
-import { useSleepAnalysis } from "../../hooks/useSleepSession";
-import { useTheme } from "../../context/ThemeContext";
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { BarChart } from 'react-native-chart-kit';
 
-export default function SleepScreen() {
-  const router = useRouter();
-  const { colors, isDark } = useTheme();
-  const { data: sleepAnalysis, isLoading } = useSleepAnalysis();
+const { width } = Dimensions.get('window');
 
-  const styles = createStyles(colors, isDark);
+export default function SleepDashboardScreen() {
+    const router = useRouter();
+    const { colors, isDark } = useTheme();
 
-  if (isLoading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  const score = sleepAnalysis?.avg_efficiency || 88; 
-  const hours = Math.floor(sleepAnalysis?.avg_duration_hours || 7);
-  const minutes = Math.round(((sleepAnalysis?.avg_duration_hours || 7.2) % 1) * 60);
-
-  return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.logoTitleRow}>
-            <Image
-              source={require("../../assets/images/logo.png")}
-              style={styles.logoTiny}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>Sleep Analysis</Text>
-          </View>
-          <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="share-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        {/* DATE */}
-        <View style={styles.datePill}>
-          <Ionicons name="chevron-back" size={14} color={colors.textSecondary} />
-          <Text style={styles.dateText}>Oct 24 - Oct 25</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
-        </View>
-
-        {/* CIRCULAR PROGRESS */}
-        <View style={styles.scoreContainer}>
-          <View style={styles.scoreGlow} />
-          <Svg width="220" height="220" viewBox="0 0 100 100">
-            <Circle cx="50" cy="50" r="40" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} strokeWidth="8" fill="none" />
-            <Circle cx="50" cy="50" r="40" stroke={colors.primary} strokeWidth="8" fill="none"
-              strokeDasharray="251" strokeDashoffset={251 * (1 - score/100)} strokeLinecap="round" />
-          </Svg>
-          <View style={styles.scoreInner}>
-            <Text style={styles.scoreNumber}>{score}</Text>
-            <Text style={styles.scoreText}>EXCELLENT</Text>
-          </View>
-        </View>
-
-        <Text style={styles.totalTime}>{hours}h {minutes}m</Text>
-        <Text style={styles.totalTimeSub}>Total Sleep Time</Text>
-
-        {/* SLEEP STAGES GRAPH */}
-        <View style={styles.stagesCard}>
-          <View style={styles.stagesHeader}>
-            <Text style={styles.stagesTitle}>Sleep Stages</Text>
-            <View style={styles.legend}>
-              <View style={[styles.legendDot, { backgroundColor: "#4f46e5" }]} />
-              <Text style={styles.legendText}>Deep</Text>
-              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-              <Text style={styles.legendText}>Light</Text>
+        <View style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]}>
+            {/* Header */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+                    <Ionicons name="arrow-back" size={24} color={isDark ? '#fff' : '#334155'} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#0f172a' }]}>Sleep Tracking</Text>
+                <View style={styles.iconBtn} />
             </View>
-          </View>
-          <View style={styles.graphSpace}>
-            <Svg height="120" width="100%" style={{ position: "absolute" }}>
-                <Path d="M0 60 Q 50 20 100 80 T 200 60 T 350 40" stroke={isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"} strokeWidth="1" strokeDasharray="4 4" fill="none" />
-            </Svg>
-            <View style={[styles.bar, { backgroundColor: colors.primary, left: "10%", height: 30, top: 40 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.primary, left: "12%", height: 30, top: 40 }]} />
-            <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "25%", height: 40, top: 30 }]} />
-            <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "27%", height: 40, top: 30 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.primary, left: "45%", height: 35, top: 35 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.primary, left: "47%", height: 35, top: 35 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.accent, left: "65%", height: 25, top: 45 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.accent, left: "67%", height: 25, top: 45 }]} />
-            
-            <View style={[styles.bar, { backgroundColor: "#4f46e5", left: "15%", height: 50, top: 65 }]} />
-            <View style={[styles.bar, { backgroundColor: colors.primary, left: "35%", height: 40, top: 75 }]} />
-          </View>
-          <View style={styles.timeLabels}>
-            <Text style={styles.timeLabelText}>11 PM</Text>
-            <Text style={styles.timeLabelText}>1 AM</Text>
-            <Text style={styles.timeLabelText}>3 AM</Text>
-            <Text style={styles.timeLabelText}>5 AM</Text>
-            <Text style={styles.timeLabelText}>7 AM</Text>
-          </View>
-        </View>
 
-        {/* BREAKDOWN */}
-        <Text style={styles.sectionTitle}>Breakdown</Text>
-        <View style={styles.breakdownGrid}>
-          <BreakdownCard icon="moon" title="DEEP" time="1h 30m" sub="18% of total" progress={30} color="#4f46e5" colors={colors} styles={styles} />
-          <BreakdownCard icon="partly-sunny" title="LIGHT" time="4h 02m" sub="58% of total" progress={60} color={colors.primary} colors={colors} styles={styles} />
-          <BreakdownCard icon="color-wand" title="REM" time="2h 10m" sub="24% of total" progress={40} color={colors.accent} colors={colors} styles={styles} />
-          <BreakdownCard icon="sunny" title="AWAKE" time="20m" sub="3 interruptions" progress={10} color={colors.secondary} colors={colors} styles={styles} />
-        </View>
+            {/* AI INSIGHTS & SLEEP SCORE */}
+            <View style={styles.topSection}>
+                <View style={[styles.scoreCircle, { borderColor: '#3b82f6', backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+                    <Text style={[styles.scoreText, { color: isDark ? '#fff' : '#0f172a' }]}>85</Text>
+                    <Text style={styles.scoreSub}>/100</Text>
+                </View>
+                <View style={[styles.aiBox, { backgroundColor: isDark ? '#1e293b' : '#eff6ff' }]}>
+                    <Ionicons name="sparkles" size={16} color="#3b82f6" />
+                    <Text style={[styles.aiText, { color: isDark ? '#cbd5e1' : '#334155' }]}>
+                        Đêm qua bạn có 2 tiếng ngủ sâu, phục hồi rất tốt sau buổi tập Yoga!
+                    </Text>
+                </View>
+            </View>
 
-        {/* RECOVERY INSIGHT */}
-        <View style={styles.insightCard}>
-          <View style={styles.insightIconBox}>
-            <Ionicons name="sparkles" size={20} color="#3b82f6" />
-          </View>
-          <View style={styles.insightContent}>
-            <Text style={styles.insightTitle}>
-              Recovery Insight <View style={styles.greenDot} />
-            </Text>
-            <Text style={styles.insightText}>
-              {sleepAnalysis?.quality_assessment || "You got 15% more Deep Sleep than usual. Excellent for muscle recovery."}
-            </Text>
-          </View>
-        </View>
+            {/* CHART SECTION */}
+            <View style={styles.chartSection}>
+                <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#0f172a' }]}>Chu kỳ giấc ngủ</Text>
+                <BarChart
+                    data={{
+                        labels: ['Thức', 'Nông', 'Sâu', 'REM'],
+                        datasets: [{ data: [15, 50, 20, 15] }]
+                    }}
+                    width={width - 50}
+                    height={180}
+                    yAxisLabel=""
+                    yAxisSuffix="%"
+                    chartConfig={{
+                        backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                        backgroundGradientFrom: isDark ? '#0f172a' : '#f8fafc',
+                        backgroundGradientTo: isDark ? '#0f172a' : '#f8fafc',
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
+                        labelColor: (opacity = 1) => isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+                        barPercentage: 0.6,
+                    }}
+                    style={{ borderRadius: 16, marginTop: 15 }}
+                    showValuesOnTopOfBars={true}
+                />
+            </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    </View>
-  );
+            {/* BOTTOM BUTTONS */}
+            <View style={styles.actionRow}>
+                <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#3b82f6' }]}
+                    onPress={() => router.push("/screen/sleep_alarm_setup" as any)}
+                >
+                    <Ionicons name="alarm-outline" size={24} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.startSleepText}>Đặt Báo Thức</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: isDark ? '#1e293b' : '#fff', borderWidth: 1, borderColor: '#3b82f6' }]}
+                    onPress={() => router.push("/screen/sleep_music" as any)}
+                >
+                    <Ionicons name="musical-notes-outline" size={24} color="#3b82f6" style={{ marginRight: 8 }} />
+                    <Text style={[styles.startSleepText, { color: '#3b82f6' }]}>Nghe Nhạc</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
 }
 
-function BreakdownCard({ icon, title, time, sub, progress, color, colors, styles }: any) {
-  return (
-    <View style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.bdHeader}>
-        <Ionicons name={icon as any} size={14} color={color} style={{marginRight: 6}} />
-        <Text style={[styles.bdTitle, { color: colors.text }]}>{title}</Text>
-      </View>
-      <Text style={[styles.bdTime, { color: colors.text }]}>{time}</Text>
-      <Text style={styles.bdSub}>{sub}</Text>
-      <View style={[styles.bdLineBase, { backgroundColor: colors.border }]}>
-        <View style={[styles.bdLineFill, { width: `${progress}%`, backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
+const styles = StyleSheet.create({
+    container: { flex: 1, paddingHorizontal: 25, paddingTop: 50 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 50 },
+    iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    headerTitle: { fontSize: 18, fontWeight: 'bold' },
+    
+    artworkContainer: { alignItems: 'center', marginVertical: 30 },
+    artworkShadow: { 
+        width: 180, height: 180, borderRadius: 90, 
+        justifyContent: 'center', alignItems: 'center',
+        elevation: 15, shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20
+    },
+    
+    titleSection: { alignItems: 'center', marginBottom: 50 },
+    songTitle: { fontSize: 24, fontWeight: '800' },
+    
+    cardsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
+    infoCard: { width: '48%', borderRadius: 20, padding: 15, flexDirection: 'row', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.03, shadowOffset: { width: 0, height: 2 }, shadowRadius: 10 },
+    cardIconBox: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+    cardLabel: { fontSize: 9, fontWeight: 'bold', color: '#94a3b8', letterSpacing: 1 },
+    cardValue: { fontSize: 14, fontWeight: '800', marginTop: 2 },
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 60,
-  },
-  logoTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logoTiny: {
-    width: 32,
-    height: 32,
-    marginRight: 8,
-  },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  datePill: {
-    flexDirection: "row",
-    alignSelf: "center",
-    backgroundColor: colors.card,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginTop: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  dateText: {
-    color: colors.text,
-    fontWeight: "600",
-    fontSize: 13,
-    marginHorizontal: 15,
-  },
-  scoreContainer: {
-    alignItems: "center",
-    marginTop: 30,
-    position: "relative",
-  },
-  scoreGlow: {
-    position: "absolute",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.primary,
-    opacity: 0.1,
-    shadowColor: colors.primary,
-    shadowRadius: 50,
-    shadowOpacity: 1,
-    top: 40,
-  },
-  scoreInner: {
-    position: "absolute",
-    justifyContent: "center",
-    alignItems: "center",
-    top: 65,
-  },
-  scoreNumber: {
-    fontSize: 56,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  scoreText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: colors.primary,
-    letterSpacing: 1.5,
-  },
-  totalTime: {
-    textAlign: "center",
-    fontSize: 28,
-    fontWeight: "800",
-    color: colors.text,
-    marginTop: 20,
-  },
-  totalTimeSub: {
-    textAlign: "center",
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  stagesCard: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 20,
-    marginTop: 30,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  stagesHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  stagesTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  legend: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginHorizontal: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginRight: 8,
-  },
-  graphSpace: {
-    height: 120,
-    width: "100%",
-    position: "relative",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  bar: {
-    width: 6,
-    position: "absolute",
-    borderRadius: 4,
-  },
-  timeLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  timeLabelText: {
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.text,
-    marginTop: 32,
-    marginBottom: 16,
-    marginLeft: 4,
-  },
-  breakdownGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  breakdownCard: {
-    width: "48%",
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-  },
-  bdHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  bdTitle: {
-    fontSize: 11,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  bdTime: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 10,
-  },
-  bdSub: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  bdLineBase: {
-    height: 4,
-    borderRadius: 2,
-    width: "100%",
-  },
-  bdLineFill: {
-    height: 4,
-    borderRadius: 2,
-  },
-  insightCard: {
-    backgroundColor: isDark ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.05)",
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 24,
-    padding: 20,
-    flexDirection: "row",
-    marginTop: 16,
-  },
-  insightIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  insightContent: {
-    flex: 1,
-  },
-  insightTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  greenDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-    marginLeft: 6,
-  },
-  insightText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
+    actionRow: { flexDirection: 'column', gap: 15, marginTop: 'auto', marginBottom: 20 },
+    actionBtn: { flexDirection: 'row', height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5 },
+    startSleepText: { fontSize: 16, fontWeight: 'bold' },
+    
+    topSection: { alignItems: 'center', marginBottom: 20 },
+    scoreCircle: { width: 120, height: 120, borderRadius: 60, borderWidth: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 5, shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+    scoreText: { fontSize: 36, fontWeight: '900' },
+    scoreSub: { fontSize: 14, color: '#94a3b8', fontWeight: 'bold' },
+    aiBox: { flexDirection: 'row', padding: 15, borderRadius: 16, alignItems: 'center', elevation: 1 },
+    aiText: { flex: 1, marginLeft: 10, fontSize: 13, lineHeight: 20, fontWeight: '500' },
+    chartSection: { marginTop: 10 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 }
 });
+

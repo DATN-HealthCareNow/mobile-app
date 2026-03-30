@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { useSession } from "../hooks/useAuth";
+import { GlobalUI } from "../components/GlobalUI";
 
 // Cấu hình React Query refetch khi app từ background quay lại foreground
 focusManager.setEventListener((handleFocus) => {
@@ -66,7 +67,7 @@ function RootLayoutNav() {
     } else if (token && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [token, isLoading, segments]);
+  }, [token, isLoading, segments, router]);
 
   if (isLoading) {
     return (
@@ -100,6 +101,7 @@ function RootLayoutNav() {
           options={{ presentation: "modal" }}
         />
       </Stack>
+      <GlobalUI />
     </>
   );
 }

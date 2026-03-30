@@ -35,19 +35,19 @@ export const YOGA_FLOWS: YogaFlow[] = [
       {
         id: 'p1', name: 'Cat-Cow Pose', sanskritName: 'Marjaryasana', durationSec: 30, group: 'Warm-up',
         description: 'Warm up your spine and prepare for movement.',
-        voiceLines: ["Get on your hands and knees.", "Inhale, drop your belly down.", "Exhale, round your spine up like a cat."],
+        voiceLines: ["Vào tư thế chống bằng hai tay và hai gối.", "Hít vào, hạ bụng xuống nhẹ nhàng.", "Thở ra, cong lưng lên như con mèo."],
         hasBreathingSync: true
       },
       {
         id: 'p2', name: 'Mountain Pose', sanskritName: 'Tadasana', durationSec: 30, group: 'Standing',
         description: 'Establish your grounding and posture.',
-        voiceLines: ["Stand tall with feet together.", "Ground your feet firmly.", "Roll shoulders back, spine long."],
+        voiceLines: ["Đứng thẳng, hai chân khép nhẹ.", "Giữ bàn chân bám chắc trên sàn.", "Mở vai ra sau, kéo dài cột sống."],
         warnings: ["Don't lock your knees."]
       },
       {
         id: 'p3', name: 'Forward Fold', sanskritName: 'Uttanasana', durationSec: 45, group: 'Flexibility',
         description: 'Release tension in your back.',
-        voiceLines: ["Exhale and hinge at your hips.", "Let your head hang heavy.", "Bend your knees slightly if needed."],
+        voiceLines: ["Thở ra và gập người từ hông.", "Thả lỏng đầu và cổ.", "Nếu cần, hơi chùng đầu gối."],
         warnings: ["Don't overstretch if you feel pain."]
       }
     ]
@@ -62,19 +62,19 @@ export const YOGA_FLOWS: YogaFlow[] = [
       {
         id: 'p4', name: 'Plank Pose', sanskritName: 'Phalakasana', durationSec: 45, group: 'Strength',
         description: 'Core stability and strength.',
-        voiceLines: ["Step your feet back into a push-up position.", "Keep your core tight.", "Press the floor away from you."],
+        voiceLines: ["Bước hai chân ra sau vào tư thế plank.", "Siết chặt cơ bụng.", "Dùng tay đẩy sàn ra xa cơ thể."],
         hasBreathingSync: false
       },
       {
         id: 'p5', name: 'Tree Pose', sanskritName: 'Vrksasana', durationSec: 60, group: 'Balance',
         description: 'Find your center and balance.',
-        voiceLines: ["Shift weight to your left foot.", "Place your right foot on your inner thigh.", "Find a focal point to stare at. Breathe."],
+        voiceLines: ["Dồn trọng tâm sang chân trái.", "Đặt bàn chân phải vào mặt trong đùi trái.", "Nhìn cố định một điểm và hít thở đều."],
         warnings: ["Do not place foot on the knee joint."]
       },
       {
         id: 'p6', name: 'Child\'s Pose', sanskritName: 'Balasana', durationSec: 60, group: 'Relaxation',
         description: 'Rest and surrender.',
-        voiceLines: ["Kneel on the floor, toes together.", "Sit back on your heels.", "Walk your hands forward, rest your forehead."],
+        voiceLines: ["Quỳ gối xuống sàn, hai ngón chân cái chạm nhau.", "Ngồi lùi về gót chân.", "Trườn hai tay về trước và đặt trán xuống sàn."],
         hasBreathingSync: true
       }
     ]

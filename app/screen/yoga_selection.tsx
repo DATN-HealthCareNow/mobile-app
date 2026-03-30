@@ -1,17 +1,30 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useYogaStore, YOGA_FLOWS } from '../../store/yogaStore';
-import { LinearGradient } from 'expo-linear-gradient';
 
+const { width } = Dimensions.get('window');
 
+const levels = [
+  { id: 'Beginner', name: 'Beginner', icon: 'leaf-outline' },
+  { id: 'Intermediate', name: 'Intermediate', icon: 'flame-outline' },
+  { id: 'Advanced', name: 'Advanced', icon: 'flash-outline' },
+  { id: 'All', name: 'All Levels', icon: 'infinite-outline' }
+];
 
 export default function YogaSelectionScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
     const { startFlow } = useYogaStore();
+    const [selectedLevel, setSelectedLevel] = useState('All');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredFlows = YOGA_FLOWS.filter(flow => 
+        (selectedLevel === 'All' || flow.level === selectedLevel) &&
+        flow.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const handleStartWorkout = (id: string) => {
         startFlow(id);
@@ -19,55 +32,83 @@ export default function YogaSelectionScreen() {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#e0f2fe' }]}>
-            {/* HEADER */}
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-                    <Ionicons name="chevron-back" size={24} color={isDark ? '#e2e8f0' : '#0f172a'} />
+                    <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: isDark ? '#f8fafc' : '#0f172a' }]}>Yoga & Mindfulness</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Yoga Library</Text>
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.bannerContainer}>
-                    <Text style={[styles.bannerTitle, { color: isDark ? '#f8fafc' : '#0f172a' }]}>
-                        Find Your Center
-                    </Text>
-                    <Text style={styles.bannerSubtitle}>
-                        Choose a guided flow based on your daily goal.
-                    </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                    <Ionicons name="search" size={20} color="#64748b" />
+                    <TextInput
+                        style={[styles.searchInput, { color: colors.text }]}
+                        placeholder="Search flows..."
+                        placeholderTextColor="#94a3b8"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
                 </View>
 
-                {/* FLOWS LIST */}
-                <View style={styles.flowsList}>
-                    {YOGA_FLOWS.map((flow, index) => (
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Levels</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleScroll}>
+                    {levels.map((lvl) => (
                         <TouchableOpacity
-                            key={flow.id}
-                            style={[styles.flowCard, styles.shadow]}
-                            activeOpacity={0.9}
-                            onPress={() => handleStartWorkout(flow.id)}
+                            key={lvl.id}
+                            style={[
+                                styles.muscleCard,
+                                { backgroundColor: selectedLevel === lvl.id ? '#0ea5e9' : (isDark ? '#1e293b' : '#fff') },
+                                selectedLevel !== lvl.id && styles.shadow
+                            ]}
+                            onPress={() => setSelectedLevel(lvl.id)}
                         >
-                            {/* Fake image using gradient background to simulate premium image */}
-                            <LinearGradient
-                                colors={isDark ? ['#1e293b', '#0f172a'] : ['#bae6fd', '#38bdf8']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.cardImageBg}
-                            >
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>{flow.level}</Text>
-                                </View>
-                                
-                                <View style={styles.cardContent}>
-                                    <Text style={styles.cardTitle}>{flow.title}</Text>
-                                    <View style={styles.cardMeta}>
-                                        <Ionicons name="time-outline" size={14} color="#f8fafc" />
-                                        <Text style={styles.metaText}>{flow.totalDurationMin} min • {flow.poses.length} Poses</Text>
-                                    </View>
-                                </View>
-                            </LinearGradient>
+                            <Ionicons 
+                                name={lvl.icon as any} 
+                                size={24} 
+                                color={selectedLevel === lvl.id ? '#fff' : '#0ea5e9'} 
+                            />
+                            <Text style={[
+                                styles.muscleName, 
+                                { color: selectedLevel === lvl.id ? '#fff' : (isDark ? '#cbd5e1' : '#334155') }
+                            ]}>
+                                {lvl.name}
+                            </Text>
                         </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Yoga Flows
+                </Text>
+                <View style={styles.exerciseList}>
+                    {filteredFlows.map((flow) => (
+                        <View 
+                            key={flow.id} 
+                            style={[
+                                styles.exerciseCard, 
+                                { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: colors.border },
+                                styles.shadow
+                            ]}
+                        >
+                            <View style={styles.exerciseInfo}>
+                                <View style={styles.exerciseImagePlaceholder}>
+                                    <MaterialCommunityIcons name="yoga" size={24} color="#0ea5e9" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.exerciseNameText, { color: colors.text }]}>{flow.title}</Text>
+                                    <Text style={styles.exerciseMeta}>{flow.totalDurationMin} min • {flow.poses.length} poses • {flow.level}</Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.startBtn}
+                                onPress={() => handleStartWorkout(flow.id)}
+                            >
+                                <Text style={styles.startBtnText}>START</Text>
+                            </TouchableOpacity>
+                        </View>
                     ))}
                 </View>
             </ScrollView>
@@ -76,101 +117,23 @@ export default function YogaSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: 60,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        letterSpacing: 0.5,
-    },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 40,
-    },
-    bannerContainer: {
-        marginBottom: 30,
-        marginTop: 10,
-    },
-    bannerTitle: {
-        fontSize: 32,
-        fontWeight: '900',
-        marginBottom: 8,
-    },
-    bannerSubtitle: {
-        fontSize: 16,
-        color: '#64748b',
-    },
-    flowsList: {
-        marginTop: 10,
-    },
-    flowCard: {
-        width: '100%',
-        height: 180,
-        borderRadius: 24,
-        overflow: 'hidden',
-        marginBottom: 20,
-    },
-    cardImageBg: {
-        flex: 1,
-        padding: 20,
-        justifyContent: 'space-between',
-    },
-    badge: {
-        alignSelf: 'flex-start',
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        backdropFilter: 'blur(10px)'
-    },
-    badgeText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-    },
-    cardContent: {
-        marginTop: 'auto',
-    },
-    cardTitle: {
-        color: '#fff',
-        fontSize: 24,
-        fontWeight: '800',
-        marginBottom: 6,
-        textShadowColor: 'rgba(0,0,0,0.1)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
-    },
-    cardMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    metaText: {
-        color: '#f8fafc',
-        fontSize: 14,
-        marginLeft: 6,
-        fontWeight: '600',
-    },
-    shadow: {
-        shadowColor: '#0369a1',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 10,
-    }
+  container: { flex: 1, paddingHorizontal: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 60, paddingBottom: 20 },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, marginBottom: 25 },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  muscleScroll: { marginBottom: 25 },
+  muscleCard: { width: width * 0.25, height: 100, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  muscleName: { marginTop: 8, fontSize: 13, fontWeight: '600' },
+  exerciseList: { paddingBottom: 30 },
+  exerciseCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderRadius: 20, marginBottom: 15, borderWidth: 1 },
+  exerciseInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
+  exerciseImagePlaceholder: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  exerciseNameText: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+  exerciseMeta: { fontSize: 12, color: '#64748b' },
+  startBtn: { backgroundColor: '#0ea5e9', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 },
+  startBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  shadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 }
 });

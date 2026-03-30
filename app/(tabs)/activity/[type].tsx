@@ -28,9 +28,9 @@ export default function ActivityDetail() {
   const activities = (activitiesPage?.content || activitiesPage || []) as any[];
 
   // Tính trung bình / tổng cộng của ngày hôm nay
-  let avgSpeed = "--";
-  let totalCalories = "--";
-  let totalDistance = "--";
+  let avgSpeed = "-- KM/H";
+  let totalCalories = "-- KCAL";
+  let totalDistance = "-- KM";
 
   if (isRunning && activities.length > 0) {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -113,37 +113,37 @@ export default function ActivityDetail() {
         )}
         {isGym && (
           <>
-            <InfoRow icon="repeat" label="Reps" value="0" />
-            <InfoRow icon="layers-outline" label="Sets" value="0" />
-            <InfoRow icon="barbell-outline" label="Weight" value="0 KG" />
+            <InfoRow icon="repeat" label="Reps" value="-- / --" />
+            <InfoRow icon="layers-outline" label="Sets" value="--" />
+            <InfoRow icon="barbell-outline" label="Weight" value="-- KG" />
           </>
         )}
         {isYoga && (
           <>
-            <InfoRow icon="time-outline" label="Total Flow Time" value="0 min" />
-            <InfoRow icon="body-outline" label="Completed Poses" value="0" />
-            <InfoRow icon="flame-outline" label="Calories" value="0 KCAL" />
+            <InfoRow icon="time-outline" label="Total Flow Time" value="-- MIN" />
+            <InfoRow icon="body-outline" label="Completed Poses" value="--" />
+            <InfoRow icon="flame-outline" label="Calories" value="-- KCAL" />
           </>
         )}
         {isWalking && (
           <>
-            <InfoRow icon="footsteps-outline" label="Daily Steps" value="0" />
-            <InfoRow icon="walk-outline" label="Distance" value="0 KM" />
-            <InfoRow icon="flame-outline" label="Calories Burned" value="0 KCAL" />
+            <InfoRow icon="footsteps-outline" label="Daily Steps" value="--" />
+            <InfoRow icon="walk-outline" label="Distance" value="-- KM" />
+            <InfoRow icon="flame-outline" label="Calories Burned" value="-- KCAL" />
           </>
         )}
         {isStretching && (
           <>
-            <InfoRow icon="medical-outline" label="Recovery Time" value="0 min" />
-            <InfoRow icon="body-outline" label="Stretches Done" value="0" />
-            <InfoRow icon="heart-outline" label="Relief" value="100%" />
+            <InfoRow icon="medical-outline" label="Recovery Time" value="-- MIN" />
+            <InfoRow icon="body-outline" label="Stretches Done" value="--" />
+            <InfoRow icon="heart-outline" label="Relief" value="-- %" />
           </>
         )}
         {isCycling && (
           <>
-            <InfoRow icon="bicycle-outline" label="Avg. Speed" value="0.0 KM/H" />
-            <InfoRow icon="map-outline" label="Total Distance" value="0 KM" />
-            <InfoRow icon="flame-outline" label="Calories Burned" value="0 KCAL" />
+            <InfoRow icon="bicycle-outline" label="Avg. Speed" value="-- KM/H" />
+            <InfoRow icon="map-outline" label="Total Distance" value="-- KM" />
+            <InfoRow icon="flame-outline" label="Calories Burned" value="-- KCAL" />
           </>
         )}
 
