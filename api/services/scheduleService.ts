@@ -1,4 +1,5 @@
 import { axiosClient } from '../axiosClient';
+import * as SecureStore from 'expo-secure-store';
 import { AxiosError } from 'axios';
 
 export interface RecurrenceConfig {
@@ -45,13 +46,30 @@ class ScheduleService {
 
   async getUpcomingSchedules(): Promise<ExerciseSchedule[]> {
     try {
+      const token = await SecureStore.getItemAsync('accessToken');
+      if (!token) {
+        // Silent fail nếu chưa login - không throw error
+        if (__DEV__) {
+          console.log('[scheduleService] No token found, skipping getUpcomingSchedules');
+        }
+        return [];
+      }
+
       const response = await axiosClient.get<ExerciseSchedule[]>(
         '/api/v1/schedules/upcoming'
       ) as unknown as ExerciseSchedule[];
       return response;
     } catch (error) {
-      console.error('Error fetching upcoming schedules:', error);
       const axiosError = error as AxiosError;
+      // Nếu 401, chỉ log warning (không log error spam)
+      if (axiosError.response?.status === 401) {
+        if (__DEV__) {
+          console.warn('[scheduleService] getUpcomingSchedules: Unauthorized - user may have logged out');
+        }
+        return [];
+      }
+      // Các error khác thì log error bình thường
+      console.error('Error fetching upcoming schedules:', error);
       if (axiosError.response) {
         console.error('[scheduleService] getUpcomingSchedules status:', axiosError.response.status);
         console.error('[scheduleService] getUpcomingSchedules response:', JSON.stringify(axiosError.response.data));

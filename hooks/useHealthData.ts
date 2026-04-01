@@ -1,11 +1,24 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import { useCallback } from "react";
 import { HealthSyncPayload, iotService } from "../api/services/iotService";
 import { useGoogleFit } from "./useGoogleFit";
+import { DAILY_HEALTH_KEYS } from "./useDailyHealthMetric";
+import { STEP_KEYS } from "./useDailyStep";
+import { HEALTH_SCORE_KEYS } from "./useHealthScore";
 
 export const useHealthData = () => {
+  const queryClient = useQueryClient();
   const { fetchHealthData, authorize, accessToken } = useGoogleFit();
+
+  const getDateInVietnam = () => {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  };
 
   // Hook push dữ liệu lên server
   const syncMutation = useMutation({
@@ -21,33 +34,54 @@ export const useHealthData = () => {
 
       // Lấy dữ liệu sức khỏe thật và mới nhất từ thiết bị qua REST API
       const healthData = await fetchHealthData();
+      console.log('[useHealthData] Google Fit data fetched:', healthData);
 
       const now = new Date();
-      // Format Ngày về YYYY-MM-DD
-      const dateString = now.toISOString().split("T")[0];
+      const dateString = getDateInVietnam();
 
       const payload: HealthSyncPayload = {
-        userId,
-        dateString,
-        rawDate: now.toISOString(),
-        source: "Google Fit - HTTP REST API", // Source chính thức
+        user_id: userId,
+        date_string: dateString,
+        date_string_local: dateString,
+        raw_date: now.toISOString(),
+        source: "GOOGLE_FIT", // Source chính thức
         metrics: {
-          steps: healthData?.steps || 0,
-          activeCalories: healthData?.calories || 0,
-          exerciseMinutes: 0, // Hiện tại demo tạm gán cứng
-          sleepMinutes: 0, // Mở rộng sau: lấy sleep & water từ Health Connect
-          restingCalories: 1500,
-          waterConsumedMl: 0,
+          steps: healthData?.steps,
+          active_calories: healthData?.calories,
+          google_exercise_minutes: healthData?.googleExerciseMinutes,
+          sleep_minutes: healthData?.sleepMinutes,
+          heart_rate: healthData?.heartRate,
         },
       };
 
-      return iotService.syncHealthData(payload);
+      console.log('[useHealthData] Prepared sync payload:', JSON.stringify(payload, null, 2));
+      console.log('[useHealthData] Sending to /api/v1/tracking/health-sync...');
+
+      const response = await iotService.syncHealthData(payload);
+      console.log('[useHealthData] Sync response:', response);
+
+      const persisted = await iotService.getDailyHealth(dateString);
+      console.log('[useHealthData] Persisted daily record:', persisted);
+
+      if (!persisted || !persisted.metrics) {
+        throw new Error('Sync completed but daily metrics record is missing in API response.');
+      }
+
+      return persisted;
     },
-    onSuccess: () => {
-      console.log("Real Health Connect data synced successfully.");
+    onSuccess: (persisted) => {
+      console.log("✅ Real Health Connect data synced successfully.");
+      console.log('[useHealthData] Final persisted metrics:', persisted.metrics);
+      
+      // Invalidate UI queries để refresh activity tab với data mới
+      queryClient.invalidateQueries({ queryKey: DAILY_HEALTH_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: STEP_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: HEALTH_SCORE_KEYS.all });
+      
+      console.log('[useHealthData] UI queries invalidated, refetching...');
     },
     onError: (error) => {
-      console.error("Failed to sync health data:", error);
+      console.error("❌ Failed to sync health data:", error);
     },
   });
 

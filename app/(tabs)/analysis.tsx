@@ -25,7 +25,7 @@ export default function AnalysisScreen() {
 
   const scoreLevel = healthData?.health_score?.level || "GOOD";
   const sleepHrs = sleepData?.avg_duration_hours || 7.2;
-  const waterPct = waterData?.progress_percent || 65;
+  const waterPct = Math.round(Number(waterData?.progress_percent ?? waterData?.percentage ?? 0));
   const kcalBurned = healthData?.tdee || 2400;
 
   const MetricCard = ({ icon, title, subtitle, data, color, style }: any) => (

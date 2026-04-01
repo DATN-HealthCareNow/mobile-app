@@ -27,8 +27,10 @@ export default function HomeScreen() {
   const { isSyncing, syncData, authorize, hasToken } = useHealthData();
   const { schedules, loadSchedules } = useScheduleStore();
   const todayCount = schedules.filter(s => s.isActive && isScheduleToday(s)).length;
+  const todaySchedules = schedules.filter(s => s.isActive && isScheduleToday(s));
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [weatherText, setWeatherText] = useState("Loading...");
+  const [showAllTodaySchedules, setShowAllTodaySchedules] = useState(false);
 
   useEffect(() => {
     loadSchedules();
@@ -196,7 +198,7 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.manageCardTitle}>Water</Text>
           <Text style={styles.manageCardSub}>
-            {waterProgress?.goal_ml ? (waterProgress.goal_ml / 1000).toFixed(1) : "2.5"}L Goal
+            {(Number(waterProgress?.goal_ml ?? waterProgress?.goalMl ?? 2500) / 1000).toFixed(1)}L Goal
           </Text>
         </TouchableOpacity>
 
@@ -232,26 +234,35 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {schedules.filter(s => s.isActive && isScheduleToday(s)).length === 0 ? (
+        {todaySchedules.length === 0 ? (
           <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>No workouts scheduled for today. Rest day! 🎉</Text>
         ) : (
-          schedules.filter(s => s.isActive && isScheduleToday(s)).slice(0, 3).map(schedule => (
-            <View key={schedule.id} style={styles.reminderCard}>
-              <View style={styles.reminderIconBox}>
-                <Ionicons
-                  name="barbell"
-                  size={20}
-                  color={isDark ? "#60a5fa" : "#3b82f6"}
-                />
+          <>
+            {todaySchedules.slice(0, showAllTodaySchedules ? todaySchedules.length : 3).map(schedule => (
+              <View key={schedule.id} style={styles.reminderCard}>
+                <View style={styles.reminderIconBox}>
+                  <Ionicons
+                    name="barbell"
+                    size={20}
+                    color={isDark ? "#60a5fa" : "#3b82f6"}
+                  />
+                </View>
+                <View>
+                  <Text style={styles.reminderHeading}>{schedule.type}</Text>
+                  <Text style={styles.reminderSub}>
+                    {schedule.time} - {schedule.goal}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.reminderHeading}>{schedule.type}</Text>
-                <Text style={styles.reminderSub}>
-                  {schedule.time} - {schedule.goal}
+            ))}
+            {todaySchedules.length > 3 && (
+              <TouchableOpacity onPress={() => setShowAllTodaySchedules((prev) => !prev)}>
+                <Text style={{ color: '#dbeafe', fontWeight: '700', marginTop: 8 }}>
+                  {showAllTodaySchedules ? 'Thu gon' : `Xem them (${todaySchedules.length - 3})`}
                 </Text>
-              </View>
-            </View>
-          ))
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </LinearGradient>
     </ScrollView>

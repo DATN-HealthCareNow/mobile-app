@@ -22,9 +22,14 @@ export default function Hydration() {
   const { data: logsData, isLoading: isLogsLoading } = useWaterLogs();
   const { mutate: logWater } = useLogWater();
 
-  const percent = progressData?.progressPercent || 0;
-  const current = progressData?.totalTodayMl || 0;
-  const goal = progressData?.goalMl || 2500;
+  const current = Number(progressData?.total_today_ml ?? progressData?.current_amount ?? 0) || 0;
+  const goal = Number(progressData?.goal_ml ?? progressData?.goal_amount ?? 2500) || 2500;
+  const rawPercent = Number(progressData?.progress_percent ?? progressData?.percentage);
+  const calculatedPercent = goal > 0 ? (current / goal) * 100 : 0;
+  const percent = Math.max(
+    0,
+    Math.min(100, Number.isFinite(rawPercent) ? rawPercent : calculatedPercent),
+  );
   const logs = logsData || [];
 
   const handleQuickAdd = (amount: number) => {
@@ -99,7 +104,7 @@ export default function Hydration() {
               </Svg>
             </View>
             <View style={styles.percentOverlay}>
-                <Text style={styles.percentText}>{percent}<Text style={{fontSize: 24}}>%</Text></Text>
+                <Text style={styles.percentText}>{Math.round(percent)}<Text style={{fontSize: 24}}>%</Text></Text>
             </View>
           </View>
         </View>
@@ -140,20 +145,25 @@ export default function Hydration() {
         </View>
 
         <View style={styles.activityContainer}>
-            {logs.map((item: any, index: number) => (
+            {logs.map((item: any, index: number) => {
+            const reason = item.adjustment_reason ?? item.adjustmentReason ?? "Water";
+            const createdAt = item.created_at ?? item.createdAt ?? item.time;
+            const amount = Number(item.amount_ml ?? item.amountMl ?? 0) || 0;
+
+            return (
             <View key={index} style={styles.activityCard}>
                 <View style={styles.activityLeft}>
                     <View style={styles.activityIcon}>
                         <Ionicons name="water" size={18} color={colors.primary} />
                     </View>
                     <View>
-                        <Text style={styles.activityTitle}>{item.adjustmentReason || "Water"}</Text>
-                        <Text style={styles.activityTime}>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
+                  <Text style={styles.activityTitle}>{reason}</Text>
+                  <Text style={styles.activityTime}>{createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
                     </View>
                 </View>
-                <Text style={styles.activityAmount}>+ {item.amountMl}ml</Text>
+              <Text style={styles.activityAmount}>+ {amount}ml</Text>
             </View>
-            ))}
+            )})}
             {logs.length === 0 && (
                <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>No logs today yet.</Text>
             )}

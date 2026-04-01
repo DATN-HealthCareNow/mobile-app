@@ -18,6 +18,17 @@ interface MusicFile {
   isUploading?: boolean;
 }
 
+const normalizeMusicUrl = (rawUrl: string): string => {
+  if (!rawUrl) return rawUrl;
+
+  let normalized = rawUrl.trim();
+  normalized = normalized.replace(/cnd\./gi, 'cdn.');
+  normalized = normalized.replace(/pixabya/gi, 'pixabay');
+  normalized = normalized.replace(/\.coim/gi, '.com');
+
+  return normalized;
+};
+
 export default function SleepMusicScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
@@ -89,13 +100,14 @@ export default function SleepMusicScreen() {
   const playMusic = async (uri: string) => {
     try {
       setIsLoading(true);
+      const safeUri = normalizeMusicUrl(uri);
 
       if (sound) {
         await sound.unloadAsync();
       }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri },
+        { uri: safeUri },
         { shouldPlay: true, progressUpdateIntervalMillis: 1000 }
       );
 
@@ -103,7 +115,12 @@ export default function SleepMusicScreen() {
       setIsPlaying(true);
     } catch (error) {
       console.error('Error playing music:', error);
-      alert('Lỗi khi phát nhạc');
+      const msg = String((error as any)?.message || error || '');
+      if (msg.toLowerCase().includes('unable to resolve host')) {
+        alert('Link nhac bi sai host (DNS). He thong da tu sua neu la typo pho bien, vui long thu lai.');
+      } else {
+        alert('Lỗi khi phát nhạc');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +166,7 @@ export default function SleepMusicScreen() {
           const updatedMusic: MusicFile = {
             id: uploadResponse.id,
             name: uploadResponse.fileName,
-            uri: uploadResponse.fileUrl,
+            uri: normalizeMusicUrl(uploadResponse.fileUrl),
             duration: 0,
             isUploading: false,
           };
@@ -158,8 +175,8 @@ export default function SleepMusicScreen() {
             prev.map(m => m.id === newMusic.id ? updatedMusic : m)
           );
           setSelectedMusic(updatedMusic);
-          setMusicUrl(uploadResponse.fileUrl);
-          await playMusic(uploadResponse.fileUrl);
+          setMusicUrl(normalizeMusicUrl(uploadResponse.fileUrl));
+          await playMusic(normalizeMusicUrl(uploadResponse.fileUrl));
         } catch (uploadError) {
           console.error('Upload failed, using local file:', uploadError);
           setMusicList(prev =>
