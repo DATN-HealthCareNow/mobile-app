@@ -7,7 +7,6 @@ export interface DailyHealthMetrics {
   active_calories?: number;
   resting_calories?: number;
   sleep_minutes?: number;
-  water_consumed_ml?: number;
   heart_rate?: number;
 }
 

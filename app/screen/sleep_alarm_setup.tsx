@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -26,6 +26,9 @@ export default function SleepAlarmSetupScreen() {
     const [isSmartAlarm, setIsSmartAlarm] = useState(true);
     const [sleepDurationText, setSleepDurationText] = useState('');
     const [soundPreview, setSoundPreview] = useState<Audio.Sound | null>(null);
+    const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
+    const [isSaving, setIsSaving] = useState(false);
+    const isSavingRef = useRef(false);
 
     // Dừng nhạc preview khi unmount màn hình
     useEffect(() => {
@@ -66,14 +69,20 @@ export default function SleepAlarmSetupScreen() {
     }, [alarmTime]);
 
     const handleSave = async () => {
+        if (isSavingRef.current) {
+            return;
+        }
+
+        isSavingRef.current = true;
+        setIsSaving(true);
+
         try {
             if (Notifications.setNotificationChannelAsync) {
-                await Notifications.setNotificationChannelAsync('sleep-alarm', {
+                await Notifications.setNotificationChannelAsync('sleep-alarm-v2', {
                     name: 'Sleep Alarm',
                     importance: Notifications.AndroidImportance.MAX,
                     vibrationPattern: [0, 250, 250, 250],
                     lightColor: '#8b5cf6',
-                    sound: 'default',
                 });
             }
 
@@ -87,9 +96,22 @@ export default function SleepAlarmSetupScreen() {
             // Calculate trigger info
             const now = new Date();
             let triggerTime = new Date(alarmTime);
+            
+            // Copy only time part (hours, minutes, seconds)
+            triggerTime.setDate(now.getDate());
+            triggerTime.setMonth(now.getMonth());
+            triggerTime.setFullYear(now.getFullYear());
+            
+            // If trigger time <= now, set for tomorrow
             if (triggerTime.getTime() <= now.getTime()) {
                 triggerTime.setDate(triggerTime.getDate() + 1);
             }
+            
+            // Debug log
+            console.log('[SLEEP_ALARM] NOW:', now.toISOString());
+            console.log('[SLEEP_ALARM] TRIGGER TIME:', triggerTime.toISOString());
+            const delayMs = triggerTime.getTime() - now.getTime();
+            console.log('[SLEEP_ALARM] DELAY:', Math.floor(delayMs / 1000), 'seconds');
 
             // Optionally, handle smart alarm offset
             if (isSmartAlarm) {
@@ -103,16 +125,28 @@ export default function SleepAlarmSetupScreen() {
             }
 
             // Schedule notification
+            const delaySeconds = Math.floor((triggerTime.getTime() - now.getTime()) / 1000);
+            if (delaySeconds < 0) {
+                alert('Thời gian báo thức phải là trong tương lai!');
+                return;
+            }
+
+            // Clear existing sleep alarms to avoid duplicate triggers.
+            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+            const existingSleepAlarms = scheduled.filter((item) => item.content?.data?.type === 'sleep_alarm');
+            await Promise.all(existingSleepAlarms.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
+            
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: 'Đã đến giờ tính giấc!',
                     body: 'Chào buổi sáng! Hãy thức dậy và bắt đầu một ngày mới.',
-                    sound: true, // we might have to register custom sounds
-                    data: { alarmId: selectedAlarm.id }
+                    data: { alarmId: selectedAlarm.id, type: 'sleep_alarm' }
                 },
                 trigger: {
-                    type: Notifications.SchedulableTriggerInputTypes.DATE,
-                    date: triggerTime,
+                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                    seconds: delaySeconds,
+                    repeats: false,
+                    channelId: 'sleep-alarm-v2',
                 },
             });
 
@@ -120,14 +154,14 @@ export default function SleepAlarmSetupScreen() {
             const timeToSleep = alarmTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             startSleep(timeToSleep, undefined, selectedAlarm.id);
             
-            // Navigate to actual sleep execution/tracking screen
-            router.push({
-                pathname: "/screen/sleep_alarm",
-                params: { alarmId: selectedAlarm.id }
-            } as any);
+            alert('Đã đặt báo thức thành công! Ứng dụng sẽ báo khi đến giờ.');
+            router.back();
         } catch (error) {
             console.error('Failed to schedule alarm', error);
             alert('Không thể cài đặt báo thức');
+        } finally {
+            isSavingRef.current = false;
+            setIsSaving(false);
         }
     };
 
@@ -144,17 +178,36 @@ export default function SleepAlarmSetupScreen() {
 
             {/* Time Picker */}
             <View style={styles.timePickerContainer}>
-                <DateTimePicker
-                    value={alarmTime}
-                    mode="time"
-                    display="spinner"
-                    is24Hour={true}
-                    onChange={(event, date) => {
-                        if (date) setAlarmTime(date);
-                    }}
-                    textColor={isDark ? '#fff' : '#000'}
-                    style={{ height: 200, flex: 1 }}
-                />
+                {Platform.OS === 'android' && (
+                    <TouchableOpacity
+                        style={[styles.timeSelectBtn, { backgroundColor: isDark ? '#1e293b' : '#ffffff' }]}
+                        onPress={() => setShowTimePicker(true)}
+                    >
+                        <Ionicons name="time-outline" size={20} color={isDark ? '#fff' : '#0f172a'} style={{ marginRight: 8 }} />
+                        <Text style={[styles.timeSelectText, { color: isDark ? '#fff' : '#0f172a' }]}>
+                            {alarmTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+                {showTimePicker && (
+                    <DateTimePicker
+                        value={alarmTime}
+                        mode="time"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        is24Hour={true}
+                        onChange={(event, date) => {
+                            if (Platform.OS === 'android') {
+                                setShowTimePicker(false);
+                            }
+                            if (event.type === 'set' && date) {
+                                setAlarmTime(date);
+                            }
+                        }}
+                        textColor={isDark ? '#fff' : '#000'}
+                        style={{ height: 200, flex: 1 }}
+                    />
+                )}
             </View>
 
             {/* AI Prediction */}
@@ -198,9 +251,9 @@ export default function SleepAlarmSetupScreen() {
 
             {/* BẮT ĐẦU NGỦ BUTTON */}
             <View style={styles.bottomAction}>
-                <TouchableOpacity style={styles.startSleepBtn} onPress={handleSave}>
+                <TouchableOpacity style={[styles.startSleepBtn, isSaving && { opacity: 0.7 }]} onPress={handleSave} disabled={isSaving}>
                     <Ionicons name="moon" size={24} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={styles.startSleepText}>Bắt đầu ngủ</Text>
+                    <Text style={styles.startSleepText}>{isSaving ? 'Đang lưu...' : 'Bắt đầu ngủ'}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -214,6 +267,8 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 18, fontWeight: 'bold' },
 
     timePickerContainer: { alignItems: 'center', justifyContent: 'center', marginHorizontal: 20, marginBottom: 15 },
+    timeSelectBtn: { minWidth: 180, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', elevation: 2 },
+    timeSelectText: { fontSize: 22, fontWeight: '700' },
     
     aiPredictionBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3e8ff', alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, marginBottom: 30 },
     aiPredictionText: { marginLeft: 8, fontSize: 13, color: '#6b21a8', fontWeight: 'bold' },

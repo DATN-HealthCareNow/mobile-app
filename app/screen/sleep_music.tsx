@@ -43,10 +43,10 @@ export default function SleepMusicScreen() {
   const [timerTimeout, setTimerTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   
   const PRESET_MUSIC: MusicFile[] = [
-    { id: 'm1', name: 'Tiếng mưa', uri: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_8340d1c7ed.mp3?filename=rain-and-thunder-16705.mp3', duration: 0 },
-    { id: 'm2', name: 'Tiếng suối', uri: 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_3d1efcbf3d.mp3?filename=forest-stream-11756.mp3', duration: 0 },
-    { id: 'm3', name: 'Zen 432Hz', uri: 'https://cdn.pixabay.com/download/audio/2022/10/25/audio_145d5a6a55.mp3?filename=meditation-117627.mp3', duration: 0 },
-    { id: 'm4', name: 'White Noise', uri: 'https://cdn.pixabay.com/download/audio/2021/09/06/audio_0cb346b9a8.mp3?filename=white-noise-8117.mp3', duration: 0 },
+    { id: 'm1', name: 'Tiếng mưa', uri: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', duration: 0 },
+    { id: 'm2', name: 'Tiếng suối', uri: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', duration: 0 },
+    { id: 'm3', name: 'Zen 432Hz', uri: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', duration: 0 },
+    { id: 'm4', name: 'White Noise', uri: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', duration: 0 },
   ];
 
   // Load music list on mount
