@@ -76,10 +76,10 @@ export default function SleepAlarmScreen() {
         return () => {
             clearInterval(interval);
             if (sound) {
-                sound.unloadAsync();
+                sound.unloadAsync().catch(err => console.warn('Unload sound error:', err));
             }
         };
-    }, [alarmId]);
+    }, []); // Empty array = only on mount
 
     useEffect(() => {
         if (isTriggered) return; // Ngừng lắc nghe nếu đã tắt báo thức
@@ -145,8 +145,10 @@ export default function SleepAlarmScreen() {
         alert("Chúc buổi sáng tốt lành! 🌅\nBạn đã tắt báo thức thành công!");
         
         // Điều hướng về trang chủ
+        // Điều hướng về trang chủ
         setTimeout(() => {
-            router.replace("/(tabs)/index" as any);
+            // Clear sleep state trước khi navigate
+            router.replace("/(tabs)" as any);
         }, 500);
     };
 

@@ -13,6 +13,7 @@ GoogleSignin.configure({
     "https://www.googleapis.com/auth/fitness.sleep.read",
   ],
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID || "",
+  offlineAccess: true,
 });
 
 let globalTokenPromise: Promise<any> | null = null;
@@ -35,16 +36,31 @@ export const useGoogleFit = () => {
     const checkLoginStatus = async () => {
       try {
         const hasPlay = await GoogleSignin.hasPlayServices();
-        if (hasPlay) {
-          const hasSignIn = GoogleSignin.hasPreviousSignIn();
-          if (hasSignIn) {
+        if (!hasPlay) {
+          console.warn('[useGoogleFit] ⚠️ Google Play Services not available');
+          return;
+        }
+        
+        const hasSignIn = await GoogleSignin.hasPreviousSignIn();
+        if (hasSignIn) {
+          try {
             const tokens = await safeGetTokens();
-            setAccessToken(tokens.accessToken);
+            if (tokens?.accessToken) {
+              setAccessToken(tokens.accessToken);
+              console.log('[useGoogleFit] ✅ Previous session restored');
+            }
+          } catch (tokenErr) {
+            console.warn('[useGoogleFit] ⚠️ Failed to restore token:', tokenErr);
+            // Token hết hạn - yêu cầu sign in lại
+            Alert.alert(
+              'Google Fit Session Expired',
+              'Please sign in again to sync health data.',
+              [{ text: 'OK', onPress: () => {} }]
+            );
           }
         }
       } catch (err: any) {
-        Alert.alert("Lỗi lúc kiểm tra Status", err?.message || JSON.stringify(err));
-        console.error("Lỗi kiểm tra Google Signin status:", err);
+        console.warn('[useGoogleFit] Check login status failed:', err?.message);
       }
     };
     checkLoginStatus();
@@ -57,34 +73,89 @@ export const useGoogleFit = () => {
       const tokens = await safeGetTokens();
 
       const tokenPreview = tokens?.accessToken ? `${tokens.accessToken.slice(0, 12)}...` : "missing";
+      console.log("[useGoogleFit] User signed in:", userInfo.user?.email);
       console.log("[useGoogleFit] Access token received:", tokenPreview);
+      console.log("[useGoogleFit] Scopes requested: fitness.activity.read, fitness.body.read, fitness.heart_rate.read, fitness.sleep.read");
       setAccessToken(tokens.accessToken);
     } catch (error: any) {
+      console.error("❌ Google Sign-in failed:", error?.message || JSON.stringify(error));
       Alert.alert(
-        "Lỗi Đăng nhập Native \n(Reported for Dev)", 
-        error?.message || JSON.stringify(error)
+        "Google Sign-in Error", 
+        error?.message || "Please try again"
       );
-      console.error("Đăng nhập Google Native bị lỗi:", error);
     }
   };
 
-  const fetchHealthData = useCallback(async () => {
-    if (!accessToken) {
-      throw new Error("Chưa có Access Token Google Fit");
+  const handleTokenExpireAndRetry = useCallback(async (
+    token: string,
+    fetchFn: (token: string) => Promise<Response>,
+    retryCount = 0
+  ): Promise<{ response: Response; updatedToken: string }> => {
+    if (retryCount > 1) {
+      throw new Error("Max retry attempts reached. Please sign in again.");
     }
 
+    let currentToken = token;
+    if (!currentToken) {
+      throw new Error("No access token available");
+    }
+
+    const res = await fetchFn(currentToken);
+    
+    if (res.status === 403) {
+      console.warn('[useGoogleFit] ⚠️ 403 Forbidden detected. Attempt #' + (retryCount + 1));
+      
+      try {
+        if (retryCount === 0) {
+          // First attempt: try token refresh
+          console.log('[useGoogleFit] 🔄 Attempt 1: Attempting token refresh...');
+          const newTokens = await safeGetTokens();
+          if (newTokens?.accessToken) {
+            console.log('[useGoogleFit] ✅ Token auto-refreshed. Retrying...');
+            setAccessToken(newTokens.accessToken);
+            return handleTokenExpireAndRetry(newTokens.accessToken, fetchFn, retryCount + 1);
+          }
+        } else if (retryCount === 1) {
+          // Second attempt: force sign-out and sign-in again to grant scopes
+          console.warn('[useGoogleFit] ⚠️ Attempt 2: Token refresh failed. Forcing re-authentication...');
+          try {
+            await GoogleSignin.signOut();
+          } catch (signOutErr) {
+            console.warn('[useGoogleFit] Sign out error (non-critical):', signOutErr);
+          }
+          
+          // Now request fresh sign-in
+          const userInfo = await GoogleSignin.signIn();
+          const freshTokens = await safeGetTokens();
+          
+          if (freshTokens?.accessToken) {
+            console.log('[useGoogleFit] ✅ Fresh sign-in completed with full scopes. Retrying...');
+            setAccessToken(freshTokens.accessToken);
+            return handleTokenExpireAndRetry(freshTokens.accessToken, fetchFn, retryCount + 1);
+          }
+        }
+      } catch (err) {
+        console.error('[useGoogleFit] ❌ Recovery attempt failed:', err);
+        setAccessToken(null); // Clear invalid token
+        throw new Error(
+          "Unable to access Google Fit. Your session may need to be refreshed. Please sign in again from the app."
+        );
+      }
+    }
+
+    return { response: res, updatedToken: currentToken };
+  }, []);
+
+  const fetchGoogleFitData = useCallback(async (token: string) => {
     const now = Date.now();
     const startOfDay = new Date().setHours(0, 0, 0, 0);
 
-    console.log('[useGoogleFit] Fetching data from Google Fit API...');
-    console.log('[useGoogleFit] Time range: ', new Date(startOfDay).toISOString(), ' - ', new Date(now).toISOString());
-
-    const res = await fetch(
+    return fetch(
       "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -101,9 +172,25 @@ export const useGoogleFit = () => {
         }),
       },
     );
+  }, []);
+
+  const fetchHealthData = useCallback(async () => {
+    if (!accessToken) {
+      throw new Error("Chưa có Access Token. Vui lòng đăng nhập.");
+    }
+
+    console.log('[useGoogleFit] Fetching data from Google Fit API...');
+    const now = Date.now();
+    const startOfDay = new Date().setHours(0, 0, 0, 0);
+    console.log('[useGoogleFit] Time range: ', new Date(startOfDay).toISOString(), ' - ', new Date(now).toISOString());
+
+    // Sử dụng retry logic với auto-refresh
+    const { response: res } = await handleTokenExpireAndRetry(accessToken, fetchGoogleFitData);
 
     if (!res.ok) {
       console.error('[useGoogleFit] API Error:', res.status, res.statusText);
+      const errorData = await res.text();
+      console.error('[useGoogleFit] Error details:', errorData);
       throw new Error(`Google Fit API Error: ${res.status}`);
     }
 
