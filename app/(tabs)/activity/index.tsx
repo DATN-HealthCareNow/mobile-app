@@ -11,23 +11,25 @@ import {
     View,
 } from "react-native";
 import { useTheme } from "../../../context/ThemeContext";
-import { useStepReport } from "../../../hooks/useDailyStep";
+import { useDailyHealthMetric } from "../../../hooks/useDailyHealthMetric";
 import { useHealthScoreToday } from "../../../hooks/useHealthScore";
 
 export default function Activity() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
 
-  const today = new Date().toISOString().split("T")[0];
-  const { data: stepReport, isLoading: stepsLoading } = useStepReport(
-    today,
-    today,
-  );
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const { data: dailyHealth, isLoading: dailyHealthLoading } = useDailyHealthMetric(today);
   const { data: healthData, isLoading: healthLoading } = useHealthScoreToday();
 
   const styles = createStyles(colors, isDark);
 
-  if (stepsLoading || healthLoading) {
+  if (dailyHealthLoading || healthLoading) {
     return (
       <View
         style={[
@@ -40,10 +42,13 @@ export default function Activity() {
     );
   }
 
-  const stepsToday = stepReport?.length ? stepReport[0].steps : 0;
-  const burnedCalories = healthData?.tdee
-    ? Math.round(healthData.tdee * 0.25)
-    : 0; // Override with Server default
+  const metrics = dailyHealth?.metrics;
+  const stepsToday = Number(metrics?.steps ?? 0);
+  const burnedCalories = Number(
+    metrics?.active_calories ??
+      (metrics as any)?.activeCalories ??
+      (healthData?.tdee ? Math.round(healthData.tdee * 0.25) : 0),
+  );
 
   const ActivityItem = ({ icon, title, sub, color, onPress, colors }: any) => {
     return (

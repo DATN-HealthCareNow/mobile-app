@@ -112,6 +112,16 @@ axiosClient.interceptors.response.use(
         `[axiosClient] Request failed: ${requestConfig?.method?.toUpperCase() || 'UNKNOWN'} ${requestConfig?.baseURL || ''}${requestConfig?.url || ''}`,
       );
       console.log(`[axiosClient] Axios error code: ${error.code || 'UNKNOWN'}`);
+      console.log(`[axiosClient] HTTP Status: ${error.response?.status || 'NO_STATUS'}`);
+      if (error.response?.data) {
+        console.log(`[axiosClient] Response data:`, error.response.data);
+      }
+      if (error.response?.status === 401) {
+        console.warn(`[axiosClient] ⚠️ 401 Unauthorized - Token may be expired or invalid. Clearing storage.`);
+      }
+      if (error.response?.status === 500) {
+        console.error(`[axiosClient] ❌ 500 Server Error - Backend service returned error.`);
+      }
     }
 
     return Promise.reject(error);

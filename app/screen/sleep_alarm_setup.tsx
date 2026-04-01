@@ -67,6 +67,16 @@ export default function SleepAlarmSetupScreen() {
 
     const handleSave = async () => {
         try {
+            if (Notifications.setNotificationChannelAsync) {
+                await Notifications.setNotificationChannelAsync('sleep-alarm', {
+                    name: 'Sleep Alarm',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 250, 250],
+                    lightColor: '#8b5cf6',
+                    sound: 'default',
+                });
+            }
+
             // Request permissions
             const { status } = await Notifications.requestPermissionsAsync();
             if (status !== 'granted') {
@@ -100,7 +110,10 @@ export default function SleepAlarmSetupScreen() {
                     sound: true, // we might have to register custom sounds
                     data: { alarmId: selectedAlarm.id }
                 },
-                trigger: triggerTime as any,
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.DATE,
+                    date: triggerTime,
+                },
             });
 
             // Update store

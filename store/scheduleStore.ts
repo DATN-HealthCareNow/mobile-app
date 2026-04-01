@@ -163,11 +163,13 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
       console.log('[scheduleStore] createSchedule payload:', JSON.stringify(createRequest));
       
       // Call backend API
-      await scheduleService.createSchedule(createRequest);
+      const response = await scheduleService.createSchedule(createRequest);
       
-      // Update local state only after successful API call
+      // Update local state only after successful API call with real ID
+      const newSchedule = { ...schedule, id: response.id || schedule.id };
+      
       set((state) => ({
-        schedules: [...state.schedules, schedule],
+        schedules: [...state.schedules, newSchedule],
         isLoading: false
       }));
     } catch (error) {
@@ -187,7 +189,7 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
         id: bs.id,
         type: bs.title.split(' - ')[0] as ActivityType,
         frequency: bs.schedule_type === 'RECURRING' ? 'Custom' as FrequencyType : 'Daily' as FrequencyType,
-        days: bs.recurrence_config?.repeat_days.map(d => dayShortLabels[d]) || [],
+        days: bs.recurrence_config?.repeat_days?.map(d => dayShortLabels[d]) || [],
         time: bs.recurrence_config?.reminder_time || '07:00 AM',
         goal: bs.title.split(' - ')[1] || '',
         isActive: bs.reminder_enabled

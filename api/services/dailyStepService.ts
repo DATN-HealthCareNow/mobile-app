@@ -20,7 +20,7 @@ export const dailyStepService = {
   sync_steps: async (data: DailyStepSyncRequest): Promise<DailyStep> => {
     // Convert to DailyHealth payload for iot-service health-sync
     const payload = {
-      dateString: data.date,
+      date_string: data.date,
       source: data.source,
       metrics: {
         steps: data.steps,
