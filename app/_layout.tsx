@@ -16,6 +16,9 @@ import {
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { useSession } from "../hooks/useAuth";
 import { GlobalUI } from "../components/GlobalUI";
+import { useRealtimeNotifications } from "../hooks/useRealtimeNotifications";
+import { useLocationTracker } from "../hooks/useLocationTracker";
+import * as Notifications from "expo-notifications";
 
 // Cấu hình React Query refetch khi app từ background quay lại foreground
 focusManager.setEventListener((handleFocus) => {
@@ -33,19 +36,19 @@ const queryClient = new QueryClient({
     queries: {
       retry: 2,
       refetchOnWindowFocus: true,
-      refetchOnMount: "always", // Luôn refetch khi component mount
-      refetchOnReconnect: true,
-      staleTime: 0, // Data luôn được coi là stale, cần refetch
-      gcTime: 0, // Không cache data khi query inactive
+      staleTime: 1000 * 60 * 2, // Default stale for 2 minutes
     },
   },
 });
 
 function RootLayoutNav() {
-  const { token, isLoading } = useSession();
+  const { token, userId, isLoading } = useSession();
   const segments = useSegments();
   const router = useRouter();
   const { mode } = useTheme();
+
+  useRealtimeNotifications(token, userId);
+  useLocationTracker(token, userId);
 
   useEffect(() => {
     if (isLoading) return;
@@ -68,6 +71,27 @@ function RootLayoutNav() {
       router.replace("/(tabs)");
     }
   }, [token, isLoading, segments, router]);
+
+  useEffect(() => {
+    const foregroundSub = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data;
+      if (data?.type === "sleep_alarm") {
+        router.push(`/screen/sleep_alarm?alarmId=${data.alarmId}` as any);
+      }
+    });
+    
+    const responseSub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.type === "sleep_alarm") {
+        router.push(`/screen/sleep_alarm?alarmId=${data.alarmId}` as any);
+      }
+    });
+
+    return () => {
+      foregroundSub.remove();
+      responseSub.remove();
+    };
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -98,6 +122,10 @@ function RootLayoutNav() {
         <Stack.Screen name="screen/sleep" options={{ presentation: "modal" }} />
         <Stack.Screen
           name="screen/meal_schedule"
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="screen/notifications"
           options={{ presentation: "modal" }}
         />
       </Stack>

@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { useTheme } from "../../context/ThemeContext";
 import { useLogout, useSession } from "../../hooks/useAuth";
 import { useProfile, useUploadAvatar } from "../../hooks/useUser";
@@ -115,11 +116,11 @@ export default function Settings() {
         {/* ACCOUNT */}
         <Text style={styles.sectionTitle}>ACCOUNT</Text>
         <View style={styles.card}>
-          <SettingItem icon="person-outline" title="Personal Info" colors={colors} styles={styles} isDark={isDark} />
+          <SettingItem icon="person-outline" title="Personal Info" colors={colors} styles={styles} isDark={isDark} onPress={() => router.push('/screen/metric_entry')} />
           <Divider colors={colors} styles={styles} />
-          <SettingItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} isDark={isDark} />
+          <SettingItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} isDark={isDark} onPress={() => router.push('/screen/notifications')} />
           <Divider colors={colors} styles={styles} />
-          <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" colors={colors} styles={styles} isDark={isDark} />
+          <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" colors={colors} styles={styles} isDark={isDark} onPress={() => Alert.alert("Security", "Coming soon")} />
         </View>
 
         {/* PREFERENCES */}
@@ -143,41 +144,23 @@ export default function Settings() {
           <SettingItem icon="globe-outline" title="Language" rightText="English" colors={colors} styles={styles} isDark={isDark} />
         </View>
 
-        {/* DEVICE */}
-        <Text style={styles.sectionTitle}>DEVICE</Text>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.itemText}>Apple iPhone</Text>
-                <Text style={styles.itemSubText}>
-                  <Text style={{ color: colors.success, fontSize: 10 }}>● </Text>
-                  Active - Health Kit
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
-          </View>
-        </View>
-
         {/* LOGOUT */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>v2.4.0 (Healthcare Now)</Text>
+        <Text style={styles.versionText}>
+          v{Constants.expoConfig?.version || '1.0.0'} ({Constants.expoConfig?.name || 'Healthcare Now'})
+        </Text>
         <View style={{ height: 100 }} />
       </ScrollView>
   );
 }
 
-function SettingItem({ icon, title, rightText, colors, styles, isDark }: any) {
+function SettingItem({ icon, title, rightText, colors, styles, isDark, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.row}>
+    <TouchableOpacity style={styles.row} onPress={onPress}>
       <View style={styles.rowLeft}>
         <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]}>
           <Ionicons name={icon} size={18} color={colors.primary} />

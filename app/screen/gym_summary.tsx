@@ -30,8 +30,20 @@ export default function GymSummaryScreen() {
             ex.sets.forEach(s => totalReps += s.reps);
         });
 
-        // Estimate Calories: ~5kcal per minute of weightlifting
-        const calories = Math.round((durationSecs / 60) * 5.5);
+        // Estimate Calories per set based on muscle group inference
+        let calories = 0;
+        exercises.forEach(ex => {
+             const nameLower = ex.name.toLowerCase();
+             let calPerSet = 10; // Chest, default
+             if (nameLower.includes('squat') || nameLower.includes('leg') || nameLower.includes('calf') || nameLower.includes('lunge') || nameLower.includes('deadlift')) {
+                 calPerSet = 15; // Legs burn more
+             } else if (nameLower.includes('pull') || nameLower.includes('row') || nameLower.includes('chin')) {
+                 calPerSet = 12; // Back
+             } else if (nameLower.includes('curl') || nameLower.includes('tricep') || nameLower.includes('crusher') || nameLower.includes('extension')) {
+                 calPerSet = 6; // Arms burn less
+             }
+             calories += ex.sets.length * calPerSet;
+        });
 
         return { totalSets, totalReps, totalExercises, durationSecs, calories };
     }, [exercises, startTime]);
@@ -93,9 +105,9 @@ export default function GymSummaryScreen() {
                 <Text style={styles.title}>Workout Completed!</Text>
                 <Text style={styles.subtitle}>Amazing effort today!</Text>
 
-                <View style={styles.timeBadge}>
+                <View style={[styles.timeBadge, { backgroundColor: colors.card }]}>
                     <Text style={styles.timeLabel}>TOTAL WORKOUT TIME</Text>
-                    <Text style={styles.timeValue}>{formatTime(stats.durationSecs)}</Text>
+                    <Text style={[styles.timeValue, { color: colors.text }]}>{formatTime(stats.durationSecs)}</Text>
                 </View>
             </LinearGradient>
 
@@ -103,22 +115,22 @@ export default function GymSummaryScreen() {
             <View style={styles.statsGrid}>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <MaterialCommunityIcons name="dumbbell" size={24} color="#0ea5e9" />
-                    <Text style={styles.statValue}>{stats.totalExercises}</Text>
+                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalExercises}</Text>
                     <Text style={styles.statLabel}>Exercises</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="layers-outline" size={24} color="#0ea5e9" />
-                    <Text style={styles.statValue}>{stats.totalSets}</Text>
+                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalSets}</Text>
                     <Text style={styles.statLabel}>Total Sets</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="repeat" size={24} color="#0ea5e9" />
-                    <Text style={styles.statValue}>{stats.totalReps}</Text>
+                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalReps}</Text>
                     <Text style={styles.statLabel}>Total Reps</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="flame-outline" size={24} color="#f97316" />
-                    <Text style={styles.statValue}>{stats.calories}</Text>
+                    <Text style={[styles.statValue, { color: colors.text }]}>{stats.calories}</Text>
                     <Text style={styles.statLabel}>Kcal Burned</Text>
                 </View>
             </View>

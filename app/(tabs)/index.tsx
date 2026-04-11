@@ -12,11 +12,14 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { Typography } from "../../constants/typography";
 import { useSession } from "../../hooks/useAuth";
 import { useHealthData } from "../../hooks/useHealthData";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { useProfile } from "../../hooks/useUser";
+import { useUnreadNotificationCount } from "../../hooks/useNotifications";
 import { useScheduleStore, isScheduleToday } from "../../store/scheduleStore";
+import { useSleepStore } from "../../store/sleepStore";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -24,8 +27,10 @@ export default function HomeScreen() {
   const { token } = useSession();
   const { data: profile } = useProfile(token);
   const { data: waterProgress } = useWaterProgress();
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const { isSyncing, syncData, authorize, hasToken } = useHealthData();
   const { schedules, loadSchedules } = useScheduleStore();
+  const { sleepGoal } = useSleepStore();
   const todayCount = schedules.filter(s => s.isActive && isScheduleToday(s)).length;
   const todaySchedules = schedules.filter(s => s.isActive && isScheduleToday(s));
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
@@ -88,7 +93,13 @@ export default function HomeScreen() {
   const styles = createStyles(colors, isDark);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+        style={styles.heroBg}
+      />
+
+      <ScrollView style={styles.scrollSurface} showsVerticalScrollIndicator={false}>
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -98,17 +109,22 @@ export default function HomeScreen() {
             resizeMode="contain"
           />
           <View>
-            <Text style={styles.brandTitle}>HEALTHCARE</Text>
-            <Text style={styles.brandSubtitle}>NOW</Text>
+            <Text style={styles.brandTitle}>
+              <Text style={{ color: "#0f3f67" }}>HealthCare </Text>
+              <Text style={{ color: "#1497dd" }}>Now</Text>
+            </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationBtn}>
+        <TouchableOpacity
+          style={styles.notificationBtn}
+          onPress={() => router.push("/screen/notifications")}
+        >
           <Ionicons
             name="notifications-outline"
             size={24}
             color={colors.text}
           />
-          <View style={styles.dot} />
+          {unreadCount > 0 && <View style={styles.dot} />}
         </TouchableOpacity>
       </View>
 
@@ -119,7 +135,6 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>
               Hello,{" "}
               {(profile?.fullName || profile?.full_name || "User").split(" ")[0]}!
-              👋
             </Text>
             <Text style={styles.statsSummary}>You have {todayCount} workout{todayCount !== 1 ? 's' : ''} for today.</Text>
           </View>
@@ -180,7 +195,7 @@ export default function HomeScreen() {
             <Ionicons name="moon" size={24} color="#8b5cf6" />
           </View>
           <Text style={styles.manageCardTitle}>Sleep</Text>
-          <Text style={styles.manageCardSub}>{profile?.settings?.sleepGoal || "8"}h Goal</Text>
+          <Text style={styles.manageCardSub}>{sleepGoal}h Goal</Text>
         </TouchableOpacity>
 
         {/* HYDRATION MANAGEMENT */}
@@ -222,7 +237,7 @@ export default function HomeScreen() {
 
       {/* REMINDER SECTION */}
       <LinearGradient
-        colors={isDark ? ["#1e3a8a", "#1e40af"] : ["#3b82f6", "#2563eb"]}
+        colors={isDark ? ["#0d7fbe", "#0f97d9"] : ["#0f9adf", "#138bd0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.reminderContainer}
@@ -265,7 +280,8 @@ export default function HomeScreen() {
           </>
         )}
       </LinearGradient>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -274,6 +290,17 @@ const createStyles = (colors: any, isDark: boolean) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scrollSurface: {
+      flex: 1,
+      backgroundColor: "transparent",
+    },
+    heroBg: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      height: 420,
     },
     header: {
       flexDirection: "row",
@@ -288,28 +315,22 @@ const createStyles = (colors: any, isDark: boolean) =>
       alignItems: "center",
     },
     logoImage: {
-      width: 48,
-      height: 48,
-      marginRight: 10,
+      width: 40,
+      height: 40,
+      marginRight: 12,
     },
     brandTitle: {
-      fontSize: 18,
-      fontWeight: "900",
-      color: colors.text,
-      letterSpacing: 2,
-      lineHeight: 20,
-    },
-    brandSubtitle: {
-      fontSize: 9,
-      fontWeight: "700",
-      color: colors.primary,
-      letterSpacing: 1,
+      ...Typography.brandTitle,
+      fontSize: 22,
+      lineHeight: 26,
     },
     notificationBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -330,8 +351,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 24,
     },
     greeting: {
+      ...Typography.heading,
       fontSize: 24,
-      fontWeight: "bold",
+      fontWeight: "700",
       color: colors.text,
     },
     statsSummary: {
@@ -342,7 +364,9 @@ const createStyles = (colors: any, isDark: boolean) =>
     weatherBadge: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#fef3c7",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 16,
@@ -368,8 +392,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       alignItems: "center",
     },
     sectionTitle: {
+      ...Typography.heading,
       fontSize: 16,
-      fontWeight: "bold",
+      fontWeight: "700",
       color: colors.text,
       letterSpacing: 0.5,
     },
@@ -401,9 +426,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       alignItems: "center",
       borderWidth: 1,
       borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.05,
+      shadowColor: "#0b3f64",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.12 : 0.05,
       shadowRadius: 10,
       elevation: 2,
     },
@@ -416,8 +441,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 12,
     },
     manageCardTitle: {
+      ...Typography.heading,
       fontSize: 13,
-      fontWeight: "bold",
+      fontWeight: "700",
       color: colors.text,
       textAlign: "center",
     },
@@ -435,7 +461,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 120,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.2,
+      shadowOpacity: isDark ? 0.3 : 0.22,
       shadowRadius: 20,
       elevation: 10,
     },

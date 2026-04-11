@@ -16,6 +16,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../context/ThemeContext';
 import { useProfile, useUpdateProfile } from '../../hooks/useUser';
 import { useSession } from '../../hooks/useAuth';
+import { useSleepStore } from '../../store/sleepStore';
+import { useGoalStore } from '../../store/goalStore';
 
 export default function MetricEntryScreen() {
   const router = useRouter();
@@ -23,10 +25,17 @@ export default function MetricEntryScreen() {
   const { token } = useSession();
   const { data: profile } = useProfile(token);
   const updateProfileMutation = useUpdateProfile();
+  
+  const { sleepGoal: storeSleepGoal, setSleepGoal: updateStoreSleepGoal } = useSleepStore();
+  const { stepsGoal: storeStepsGoal, caloriesGoal: storeCaloriesGoal, setStepsGoal: updateStoreStepsGoal, setCaloriesGoal: updateStoreCaloriesGoal } = useGoalStore();
 
   const [fullName, setFullName] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
+  const [sleepGoal, setSleepGoal] = useState(storeSleepGoal.toString());
+  const [stepsGoal, setStepsGoal] = useState(storeStepsGoal.toString());
+  const [caloriesGoal, setCaloriesGoal] = useState(storeCaloriesGoal.toString());
+  
   const [dob, setDob] = useState(new Date(2000, 0, 1));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
@@ -55,6 +64,10 @@ export default function MetricEntryScreen() {
     }
 
     try {
+      updateStoreSleepGoal(parseInt(sleepGoal) || 8);
+      updateStoreStepsGoal(parseInt(stepsGoal) || 10000);
+      updateStoreCaloriesGoal(parseInt(caloriesGoal) || 500);
+      
       const dobString = dob.toISOString().split('T')[0];
       const nameToSend = fullName.trim() || profile?.fullName || profile?.full_name;
       const payload = {
@@ -133,6 +146,39 @@ export default function MetricEntryScreen() {
               value={height}
               onChangeText={setHeight}
               icon="ruler"
+              colors={colors}
+              styles={styles}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <MetricInput
+              label="Sleep Goal"
+              unit="hrs"
+              value={sleepGoal}
+              onChangeText={setSleepGoal}
+              icon="moon-waning-crescent"
+              colors={colors}
+              styles={styles}
+            />
+            <MetricInput
+              label="Steps Goal"
+              unit="steps"
+              value={stepsGoal}
+              onChangeText={setStepsGoal}
+              icon="shoe-print"
+              colors={colors}
+              styles={styles}
+            />
+          </View>
+
+          <View style={[styles.row, { justifyContent: 'flex-start' }]}>
+            <MetricInput
+              label="Calories Goal"
+              unit="kcal"
+              value={caloriesGoal}
+              onChangeText={setCaloriesGoal}
+              icon="fire"
               colors={colors}
               styles={styles}
             />

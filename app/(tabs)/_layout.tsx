@@ -1,5 +1,6 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { Platform } from "react-native";
 import { View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -34,17 +35,25 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.tabIconSelected,
         tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
-          height: 80,
-          paddingBottom: 20,
+          position: "absolute",
+          height: 88,
+          paddingBottom: Platform.OS === "ios" ? 24 : 16,
+          paddingTop: 8,
+          marginHorizontal: 12,
+          marginBottom: Platform.OS === "ios" ? 10 : 8,
+          borderRadius: 28,
           backgroundColor: colors.tabBar,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopWidth: 0,
           elevation: 0,
+          shadowColor: "#0b3f64",
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: isDark ? 0.25 : 0.12,
+          shadowRadius: 18,
         },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginTop: -4,
+          marginTop: -2,
         },
       }}
     >
@@ -61,14 +70,14 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ANALYSIS */}
+      {/* ACTIVITY */}
       <Tabs.Screen
-        name="analysis"
+        name="activity"
         options={{
-          title: "Analysis",
+          title: "Activity",
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <MaterialIcons name="description" size={24} color={color} />
+              <Ionicons name={focused ? "pulse" : "pulse-outline"} size={22} color={color} />
             </AnimatedIcon>
           ),
         }}
@@ -83,25 +92,25 @@ export default function TabLayout() {
             <View
               style={{
                 position: "absolute",
-                bottom: 0,
+                bottom: 2,
                 justifyContent: "center",
                 alignItems: "center",
               }}
             >
               <View
                 style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 30,
+                  width: 62,
+                  height: 62,
+                  borderRadius: 31,
                   backgroundColor: colors.primary,
                   justifyContent: "center",
                   alignItems: "center",
                   shadowColor: colors.primary,
-                  shadowOpacity: 0.4,
-                  shadowRadius: 10,
+                  shadowOpacity: 0.5,
+                  shadowRadius: 12,
                   elevation: 8,
-                  borderWidth: 4,
-                  borderColor: colors.background,
+                  borderWidth: 5,
+                  borderColor: colors.tabBar,
                 }}
               >
                 <Ionicons name="chatbubble-ellipses" size={26} color="white" />
@@ -111,14 +120,14 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ACTIVITY */}
+      {/* ANALYSIS */}
       <Tabs.Screen
-        name="activity"
+        name="analysis"
         options={{
-          title: "Activity",
+          title: "Analysis",
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <Ionicons name={focused ? "pulse" : "pulse-outline"} size={22} color={color} />
+              <MaterialIcons name="description" size={24} color={color} />
             </AnimatedIcon>
           ),
         }}

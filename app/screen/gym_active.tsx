@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,7 +10,9 @@ import { useGymStore } from '../../store/gymStore';
 export default function GymActiveScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const exerciseName = (params.exercise as string) || "Unknown Exercise";
+  const exerciseName = Array.isArray(params.exercise) ? params.exercise[0] : params.exercise || "Bench Press";
+  const muscleGroup = Array.isArray(params.muscle) ? params.muscle[0] : params.muscle || "chest";
+
   const { colors, isDark } = useTheme();
   const { startTime, addExerciseSets } = useGymStore();
 
@@ -101,8 +103,8 @@ export default function GymActiveScreen() {
           {/* EXERCISE CARD */}
           <View style={[styles.exerciseCard, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
             <View style={styles.exerciseHeader}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="dumbbell" size={32} color="#fff" />
+              <View style={[styles.iconCircle, isDark && { backgroundColor: 'rgba(14, 165, 233, 0.2)' }]}>
+                <MaterialCommunityIcons name="dumbbell" size={30} color={isDark ? '#38bdf8' : '#fff'} />
               </View>
               <View style={{ flex: 1, marginLeft: 15 }}>
                 <Text style={[styles.exerciseTitle, { color: colors.text }]}>{exerciseName}</Text>
@@ -116,7 +118,7 @@ export default function GymActiveScreen() {
                 <Text style={styles.restLabel}>RESTING</Text>
                 <Text style={styles.restTime}>{restSeconds}s</Text>
                 <TouchableOpacity 
-                    style={styles.skipBtn} 
+                    style={[styles.skipBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} 
                     onPress={() => setIsResting(false)}
                 >
                   <Text style={styles.skipBtnText}>SKIP REST</Text>
@@ -175,10 +177,10 @@ export default function GymActiveScreen() {
             </TouchableOpacity>
 
             <View style={styles.secondaryActions}>
-                <TouchableOpacity style={styles.finishTargetBtn} onPress={handleFinishExercise}>
+                <TouchableOpacity style={[styles.finishTargetBtn, isDark && { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={handleFinishExercise}>
                     <Text style={styles.finishTargetText}>Finish Exercise</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.finishWorkoutBtn} onPress={handleFinishWorkout}>
+                <TouchableOpacity style={[styles.finishWorkoutBtn, isDark && { backgroundColor: 'rgba(239,68,68,0.2)' }]} onPress={handleFinishWorkout}>
                     <Text style={styles.finishWorkoutText}>End Session</Text>
                 </TouchableOpacity>
             </View>

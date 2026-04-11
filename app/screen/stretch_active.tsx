@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, cancelAnimation, Easing } from 'react-native-reanimated';
+import { useTheme } from '../../context/ThemeContext';
 import { useStretchStore } from '../../store/stretchStore';
 import { activityService } from '../../api/services/activityService';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ const { width, height } = Dimensions.get('window');
 export default function StretchActiveScreen() {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const { colors, isDark } = useTheme();
     const { activeWorkout, currentPoseIndex, isPaused, setPaused, nextPose, endWorkout, workoutStartTime } = useStretchStore();
 
     const pose = activeWorkout ? activeWorkout.poses[currentPoseIndex] : { durationSec: 0, id: 'dump', voiceStart: '', voiceHold: '', voiceEnd: '', name: '', warning: '' };
@@ -134,11 +136,24 @@ export default function StretchActiveScreen() {
 
     const s = (timeLeft % 60).toString().padStart(2, '0');
 
+    const getStretchImage = (workoutId: string, poseIndex: number) => {
+        const key = `${workoutId}_buoc${poseIndex + 1}`;
+        switch (key) {
+            case 's1_buoc1': return require('../../assets/images/stretch/s1_buoc1.jpg');
+            case 's1_buoc2': return require('../../assets/images/stretch/s1_buoc2.jpg');
+            case 's1_buoc3': return require('../../assets/images/stretch/s1_buoc3.jpg');
+            case 's2_buoc1': return require('../../assets/images/stretch/s2_buoc1.jpg');
+            case 's2_buoc2': return require('../../assets/images/stretch/s2_buoc2.jpg');
+            case 's3_buoc1': return require('../../assets/images/stretch/s3_buoc1.jpg');
+            default: return require('../../assets/images/stretch/s1_buoc1.jpg');
+        }
+    };
+
     return (
-        <LinearGradient colors={['#ede9fe', '#f5f3ff']} style={styles.container}>
+        <LinearGradient colors={isDark ? ['#0f172a', '#1e293b'] : ['#ede9fe', '#f5f3ff']} style={styles.container}>
             {/* PROGRESS HEADER */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>{activeWorkout.title}</Text>
+                <Text style={[styles.headerTitle, isDark && {color: colors.text}]}>{activeWorkout.title}</Text>
                 <View style={styles.progressPill}>
                     <Text style={styles.progressText}>Bài {currentPoseIndex + 1}/{activeWorkout.poses.length}</Text>
                 </View>
@@ -149,13 +164,15 @@ export default function StretchActiveScreen() {
                 {pose.hasBreathingSync && (
                     <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
                 )}
-                <View style={[styles.avatarCard, styles.shadow]}>
-                    <Image 
-                        source={{ uri: `https://picsum.photos/seed/${pose.id}/800/800` }}
-                        style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
-                    />
+                <View style={[styles.avatarCard, styles.shadow, isDark && {backgroundColor: colors.card}]}>
+                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
+                        <Image 
+                            source={getStretchImage(activeWorkout.id, currentPoseIndex)}
+                            style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                        />
+                    </View>
                     <LinearGradient
-                        colors={['rgba(124, 58, 237, 0.2)', 'rgba(139, 92, 246, 0.4)']}
+                        colors={['rgba(124, 58, 237, 0.1)', 'rgba(139, 92, 246, 0.2)']}
                         style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
                     />
 
@@ -177,7 +194,7 @@ export default function StretchActiveScreen() {
 
             {/* POSE NAME */}
             <View style={styles.poseInfo}>
-                <Text style={styles.poseName}>{pose.name}</Text>
+                <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
                 <View style={{ height: 60, marginTop: 10 }}>
                     {/* Fake subtitle based on timing */}
                     <Text style={styles.voiceSubtitle}>

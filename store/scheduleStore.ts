@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { scheduleService, ScheduleCreateRequest, ExerciseSchedule } from '../api/services/scheduleService';
 
-export type ActivityType = 'Running' | 'Gym' | 'Calisthenics' | 'Yoga' | 'Stretching' | 'Cycling' | 'Walking' | 'Pool Laps' | 'HIIT Training';
+export type ActivityType = 'Running' | 'Gym' | 'Stretching' | 'Yoga' | 'Stretching' | 'Pool Laps' | 'HIIT Training';
 export type FrequencyType = 'Daily' | 'Weekly' | 'Custom';
 
 export interface ISchedule {
@@ -197,7 +197,7 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
       
       set({ schedules: mappedSchedules, isLoading: false });
     } catch (error) {
-      console.error('Failed to load schedules:', error);
+      console.warn('Failed to load schedules:', (error as Error).message);
       set({ isLoading: false });
       // Keep local schedules as fallback
     }

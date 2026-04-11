@@ -13,13 +13,15 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useLogin } from '../../hooks/useAuth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useLogin, useGoogleLogin } from '../../hooks/useAuth';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const loginMutation = useLogin();
+  const googleLoginMutation = useGoogleLogin();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +44,29 @@ export default function LoginScreen() {
         },
       }
     );
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      await GoogleSignin.getTokens(); // Ensure tokens are retrieved
+      
+      const idToken = (userInfo as any).data?.idToken || (userInfo as any).idToken;
+      if (idToken) {
+          googleLoginMutation.mutate({ id_token: idToken }, {
+             onSuccess: () => router.replace('/(tabs)'),
+             onError: (err: any) => Alert.alert('Google Login Failed', err?.response?.data?.message || err?.message || 'Please try again.'),
+          });
+      } else {
+          Alert.alert('Error', 'Could not get Google ID Token');
+      }
+    } catch (error: any) {
+        if (error.code !== 'SIGN_IN_CANCELLED') {
+           console.error("Google login error", error);
+           Alert.alert("Google Login Error", error.message);
+        }
+    }
   };
 
   const styles = createStyles(colors, isDark);
@@ -116,6 +141,23 @@ export default function LoginScreen() {
 
           <TouchableOpacity style={styles.forgotBtn}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin} disabled={googleLoginMutation.isPending}>
+            {googleLoginMutation.isPending ? (
+              <ActivityIndicator color={colors.text} />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={20} color="#DB4437" style={{marginRight: 10}} />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -215,6 +257,43 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '500',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  googleButtonText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
