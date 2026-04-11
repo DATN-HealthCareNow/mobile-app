@@ -11,6 +11,30 @@ import {
   subscribeToSessionChanges,
 } from "../utils/sessionEvents";
 
+export const useGoogleLogin = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id_token: string }) => authService.googleLogin(data),
+    onSuccess: async (data) => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
+      if (data.token) {
+        await SecureStore.setItemAsync("accessToken", data.token);
+      }
+      if (data.user_id) {
+        await SecureStore.setItemAsync("userId", data.user_id);
+      }
+
+      notifySessionChange();
+      console.log("[useGoogleLogin] Success, session updated");
+    },
+    onError: (error) => {
+      console.error("Google Login failed", error);
+    },
+  });
+};
+
 export const useLogin = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -8,6 +8,16 @@ import { Audio } from 'expo-av';
 import { useTheme } from '../../context/ThemeContext';
 import { useSleepStore } from '../../store/sleepStore';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 const ALARMS = [
   { id: 'casio', name: 'Casio Digital', requirePath: require('../../assets/audio/bao-thuc-dong-ho-casio-nhacchuongwow.com.mp3') },
   { id: 'chongTrom', name: 'Tiếng còi hú', requirePath: require('../../assets/audio/bao-thuc-tieng-coi-chong-trom-nhacchuongwow.com.mp3') },
@@ -19,7 +29,7 @@ const ALARMS = [
 export default function SleepAlarmSetupScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
-    const { startSleep } = useSleepStore();
+    const { startSleep, addAlarm } = useSleepStore();
 
     const [alarmTime, setAlarmTime] = useState(new Date());
     const [selectedAlarm, setSelectedAlarm] = useState(ALARMS[0]);
@@ -28,7 +38,18 @@ export default function SleepAlarmSetupScreen() {
     const [soundPreview, setSoundPreview] = useState<Audio.Sound | null>(null);
     const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // T2-T6
     const isSavingRef = useRef(false);
+
+    const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+    const formatDays = (days: number[]) => {
+        if (days.length === 7) return 'Mỗi ngày';
+        if (days.length === 0) return 'Chỉ 1 lần';
+        if (days.length === 5 && days.every(d => d < 5)) return 'Ngày thường';
+        if (days.length === 2 && days.includes(5) && days.includes(6)) return 'Cuối tuần';
+        return days.sort().map(d => DAYS[d]).join(', ');
+    };
 
     // Dừng nhạc preview khi unmount màn hình
     useEffect(() => {
@@ -47,6 +68,15 @@ export default function SleepAlarmSetupScreen() {
             }
             const { sound } = await Audio.Sound.createAsync(alarmItem.requirePath, { shouldPlay: true });
             setSoundPreview(sound);
+
+            // Tự động tắt âm thanh nghe thử sau 3 giây
+            setTimeout(async () => {
+                const status = await sound.getStatusAsync();
+                if (status.isLoaded && status.isPlaying) {
+                     await sound.stopAsync();
+                     await sound.unloadAsync();
+                }
+            }, 3000);
         } catch (error) {
             console.error('Lỗi khi phát nhạc chuông', error);
         }
@@ -131,11 +161,7 @@ export default function SleepAlarmSetupScreen() {
                 return;
             }
 
-            // Clear existing sleep alarms to avoid duplicate triggers.
-            const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-            const existingSleepAlarms = scheduled.filter((item) => item.content?.data?.type === 'sleep_alarm');
-            await Promise.all(existingSleepAlarms.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
-            
+            // SCHEDULE NOTIFICATION WITHOUT CLEARING OTHERS
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: 'Đã đến giờ tính giấc!',
@@ -150,8 +176,17 @@ export default function SleepAlarmSetupScreen() {
                 },
             });
 
-            // Update store
+            // Update store array
             const timeToSleep = alarmTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            addAlarm({
+                id: Date.now().toString(),
+                time: timeToSleep,
+                enabled: true,
+                soundId: selectedAlarm.id,
+                days: formatDays(selectedDays)
+            });
+
             startSleep(timeToSleep, undefined, selectedAlarm.id);
             
             alert('Đã đặt báo thức thành công! Ứng dụng sẽ báo khi đến giờ.');
@@ -226,6 +261,27 @@ export default function SleepAlarmSetupScreen() {
                         </View>
                         <Switch trackColor={{ false: '#cbd5e1', true: '#8b5cf6' }} value={isSmartAlarm} onValueChange={setIsSmartAlarm} />
                     </View>
+                </View>
+
+                {/* Day Selection */}
+                <Text style={styles.sectionTitle}>LẶP LẠI</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginBottom: 10 }}>
+                    {DAYS.map((day, idx) => {
+                        const isSelected = selectedDays.includes(idx);
+                        return (
+                            <TouchableOpacity 
+                                key={day}
+                                onPress={() => setSelectedDays(prev => prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx])}
+                                style={{
+                                    width: 42, height: 42, borderRadius: 21,
+                                    backgroundColor: isSelected ? '#8b5cf6' : (isDark ? '#1e293b' : '#fff'),
+                                    justifyContent: 'center', alignItems: 'center',
+                                    borderWidth: isSelected ? 0 : 1, borderColor: isDark ? '#334155' : '#cbd5e1'
+                                }}>
+                                <Text style={{ color: isSelected ? '#fff' : (isDark ? '#94a3b8' : '#64748b'), fontWeight: 'bold' }}>{day}</Text>
+                            </TouchableOpacity>
+                        )
+                    })}
                 </View>
 
                 {/* Sounds List */}

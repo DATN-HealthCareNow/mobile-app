@@ -59,6 +59,12 @@
         }
       ],
       "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow HealthCareNow to use your location for activity tracking."
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-image-picker",

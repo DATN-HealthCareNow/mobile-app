@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -11,25 +12,23 @@ import {
     View,
 } from "react-native";
 import { useTheme } from "../../../context/ThemeContext";
+import { Typography } from "../../../constants/typography";
 import { useDailyHealthMetric } from "../../../hooks/useDailyHealthMetric";
-import { useHealthScoreToday } from "../../../hooks/useHealthScore";
+
+import { useGoalStore } from "../../../store/goalStore";
 
 export default function Activity() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { stepsGoal, caloriesGoal } = useGoalStore();
 
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  const offset = new Date().getTimezoneOffset() * 60000;
+  const today = new Date(Date.now() - offset).toISOString().split("T")[0];
   const { data: dailyHealth, isLoading: dailyHealthLoading } = useDailyHealthMetric(today);
-  const { data: healthData, isLoading: healthLoading } = useHealthScoreToday();
 
   const styles = createStyles(colors, isDark);
 
-  if (dailyHealthLoading || healthLoading) {
+  if (dailyHealthLoading) {
     return (
       <View
         style={[
@@ -47,7 +46,7 @@ export default function Activity() {
   const burnedCalories = Number(
     metrics?.active_calories ??
       (metrics as any)?.activeCalories ??
-      (healthData?.tdee ? Math.round(healthData.tdee * 0.25) : 0),
+      0,
   );
 
   const ActivityItem = ({ icon, title, sub, color, onPress, colors }: any) => {
@@ -64,7 +63,12 @@ export default function Activity() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <LinearGradient
+        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+        style={styles.heroBg}
+      />
+
+      <ScrollView style={styles.scrollSurface} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
@@ -73,8 +77,14 @@ export default function Activity() {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Activity Hub</Text>
+            <Text style={styles.title}>
+              <Text style={{ color: "#0f3f67" }}>Activity </Text>
+              <Text style={{ color: "#1497dd" }}>Hub</Text>
+            </Text>
           </View>
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/screen/settings" as any)}>
+            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {/* STATS */}
@@ -82,7 +92,7 @@ export default function Activity() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>STEPS</Text>
             <Text style={styles.cardValue}>{stepsToday.toLocaleString()}</Text>
-            <Text style={styles.greenText}>Goal: 10,000</Text>
+            <Text style={styles.greenText}>Goal: {stepsGoal.toLocaleString()}</Text>
           </View>
 
           <View style={styles.card}>
@@ -90,7 +100,7 @@ export default function Activity() {
             <Text style={styles.cardValue}>
               {burnedCalories.toLocaleString()}
             </Text>
-            <Text style={styles.grayText}>kcal burned</Text>
+            <Text style={styles.greenText}>Goal: {caloriesGoal.toLocaleString()} kcal</Text>
           </View>
         </View>
 
@@ -113,8 +123,8 @@ export default function Activity() {
                     {
                       height: index === 4 ? 100 : 40 + index * 8,
                       backgroundColor:
-                        index === 4 ? colors.primary : colors.accent,
-                      opacity: index === 4 ? 1 : 0.6,
+                        index === 4 ? colors.primary : isDark ? "#3f6d95" : "#93c5ea",
+                      opacity: index === 4 ? 1 : 0.75,
                     },
                   ]}
                 />
@@ -161,33 +171,7 @@ export default function Activity() {
             colors={colors}
           />
 
-          <ActivityItem
-            icon="bike"
-            title="Cycling"
-            sub="Outdoor"
-            color="#22c55e"
-            onPress={() =>
-              router.push({
-                pathname: "/activity/[type]",
-                params: { type: "cycling" },
-              })
-            }
-            colors={colors}
-          />
 
-          <ActivityItem
-            icon="foot-print"
-            title="Walking"
-            sub="Outdoor"
-            color="#10b981"
-            onPress={() =>
-              router.push({
-                pathname: "/activity/[type]",
-                params: { type: "walking" },
-              })
-            }
-            colors={colors}
-          />
 
           <ActivityItem
             icon="human-handsup"
@@ -237,27 +221,49 @@ const createStyles = (colors: any, isDark: boolean) =>
       flex: 1,
       backgroundColor: colors.background,
     },
+    scrollSurface: {
+      flex: 1,
+      backgroundColor: "transparent",
+    },
+    heroBg: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      height: 420,
+    },
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 20,
-      marginTop: 60,
-      marginBottom: 24,
+      paddingTop: 60,
+      paddingBottom: 20,
     },
     logoRow: {
       flexDirection: "row",
       alignItems: "center",
     },
     logoImage: {
-      width: 36,
-      height: 36,
-      marginRight: 10,
+      width: 40,
+      height: 40,
+      marginRight: 12,
     },
     title: {
+      ...Typography.brandTitle,
       fontSize: 22,
-      fontWeight: "800",
+      fontWeight: "700",
       color: colors.text,
+    },
+    settingsBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
     },
     statsRow: {
       flexDirection: "row",
@@ -272,11 +278,11 @@ const createStyles = (colors: any, isDark: boolean) =>
       borderRadius: 24,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: "#000",
+      shadowColor: "#0b3f64",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0 : 0.05,
-      shadowRadius: 10,
-      elevation: 2,
+      shadowOpacity: isDark ? 0.18 : 0.08,
+      shadowRadius: 12,
+      elevation: 3,
     },
     cardLabel: {
       fontSize: 12,
@@ -307,6 +313,11 @@ const createStyles = (colors: any, isDark: boolean) =>
       borderWidth: 1,
       borderColor: colors.border,
       marginBottom: 32,
+      shadowColor: "#0b3f64",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.16 : 0.06,
+      shadowRadius: 12,
+      elevation: 3,
     },
     weekHeader: {
       flexDirection: "row",
@@ -314,8 +325,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 24,
     },
     weekTitle: {
+      ...Typography.heading,
       fontSize: 18,
-      fontWeight: "bold",
+      fontWeight: "700",
       color: colors.text,
     },
     weekSub: {
@@ -355,8 +367,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       alignItems: "center",
     },
     startTitle: {
+      ...Typography.heading,
       fontSize: 18,
-      fontWeight: "bold",
+      fontWeight: "700",
       color: colors.text,
     },
     edit: {
@@ -377,6 +390,10 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      shadowColor: "#0b3f64",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: isDark ? 0.12 : 0.05,
+      shadowRadius: 8,
       elevation: 2,
     },
     iconCircle: {
@@ -388,6 +405,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginBottom: 12,
     },
     activityTitle: {
+      ...Typography.heading,
       fontSize: 16,
       fontWeight: "700",
       color: colors.text,
@@ -404,12 +422,14 @@ const createStyles = (colors: any, isDark: boolean) =>
       width: 64,
       height: 64,
       borderRadius: 32,
-      backgroundColor: '#0ea5e9',
+      backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#0ea5e9',
+      borderWidth: 4,
+      borderColor: colors.tabBar,
+      shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.34,
       shadowRadius: 10,
       elevation: 5,
     }

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from "../../context/ThemeContext";
+import { Typography } from "../../constants/typography";
 import { useLogout, useSession } from "../../hooks/useAuth";
 import { useProfile, useUploadAvatar } from "../../hooks/useUser";
 
@@ -99,6 +100,11 @@ export default function Profile() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
     >
+      <LinearGradient
+        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+        style={styles.heroBg}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.circleBtn} onPress={toggleTheme}>
@@ -191,9 +197,9 @@ export default function Profile() {
       {/* ACCOUNT */}
       <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
 
-      <AccountItem icon="person-outline" title="Personal Data" colors={colors} styles={styles} />
-      <AccountItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} />
-      <AccountItem icon="card-outline" title="Subscription Plan" colors={colors} styles={styles} />
+      <AccountItem icon="person-outline" title="Personal Data" colors={colors} styles={styles} onPress={() => router.push('/screen/personal_data')} />
+      <AccountItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} onPress={() => router.push('/screen/notifications')} />
+      <AccountItem icon="card-outline" title="Subscription Plan" colors={colors} styles={styles} onPress={() => router.push('/screen/subscription')} />
       <AccountItem icon="log-out-outline" title="Logout" danger onPress={handleLogout} colors={colors} styles={styles} />
       
       <View style={{height: 120}} />
@@ -243,6 +249,14 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 120,
+  },
+  heroBg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 420,
   },
   header: {
     marginTop: 60,
@@ -294,9 +308,10 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderColor: colors.background,
   },
   name: {
+    ...Typography.heading,
     textAlign: "center",
     fontSize: 24,
-    fontWeight: "800",
+    fontWeight: "700",
     marginTop: 16,
     color: colors.text,
   },
@@ -322,8 +337,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: "center",
   },
   sectionTitle: {
+    ...Typography.heading,
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: "700",
     color: colors.text,
   },
   updateText: {
@@ -342,7 +358,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    elevation: 2,
+    shadowColor: "#0b3f64",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.12 : 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   iconBox: {
     width: 48,
@@ -358,8 +378,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginBottom: 6,
   },
   cardValue: {
+    ...Typography.heading,
     fontSize: 26,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   cardUnit: {
     fontSize: 14,
@@ -375,6 +396,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
+    shadowColor: "#0b3f64",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.1 : 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   accountText: {
     flex: 1,

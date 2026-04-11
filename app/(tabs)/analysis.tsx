@@ -1,13 +1,18 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
+import { useRouter } from "expo-router";
+import { TouchableOpacity } from "react-native";
 import { useHealthScoreToday } from "../../hooks/useHealthScore";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { useSleepAnalysis } from "../../hooks/useSleepSession";
 import { useTheme } from "../../context/ThemeContext";
+import { Typography } from "../../constants/typography";
 
 export default function AnalysisScreen() {
+  const router = useRouter();
   const { colors, isDark } = useTheme();
   const { data: healthData, isLoading: hnLoad } = useHealthScoreToday();
   const { data: waterData, isLoading: wLoad } = useWaterProgress();
@@ -54,17 +59,30 @@ export default function AnalysisScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <LinearGradient
+        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+        style={styles.heroBg}
+      />
+
       {/* HEADER */}
       <View style={styles.header}>
-        <Image
-          source={require("../../assets/images/logo.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-        <View>
-          <Text style={styles.title}>Health Analysis</Text>
-          <Text style={styles.subtitle}>Detailed insights & reports</Text>
+        <View style={styles.logoWrap}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={styles.title}>
+              <Text style={{ color: "#0f3f67" }}>HealthCare </Text>
+              <Text style={{ color: "#1497dd" }}>Now</Text>
+            </Text>
+            <Text style={styles.subtitle}>AI insights</Text>
+          </View>
         </View>
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push("/screen/settings" as any)}>
+          <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* AI CARD */}
@@ -153,27 +171,50 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  heroBg: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 420,
+  },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
   },
+  logoWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   logoImage: {
-    width: 48,
-    height: 48,
-    marginRight: 16,
+    width: 40,
+    height: 40,
+    marginRight: 12,
   },
   title: {
+    ...Typography.brandTitle,
     fontSize: 22,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: colors.text,
   },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
     backgroundColor: colors.card,
@@ -182,11 +223,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: "#000",
+    shadowColor: "#0b3f64",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: isDark ? 0.25 : 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   cardTop: {
     flexDirection: "row",
@@ -203,8 +244,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 11,
   },
   cardTitle: {
+    ...Typography.heading,
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginTop: 12,
     color: colors.text,
   },
@@ -220,8 +262,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginTop: 24,
   },
   sectionTitle: {
+    ...Typography.heading,
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: colors.text,
   },
   barRow: {
@@ -267,6 +310,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: "#0b3f64",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.16 : 0.05,
+    shadowRadius: 12,
+    elevation: 3,
   },
   metricHeader: {
     flexDirection: "row",
@@ -274,8 +322,9 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginBottom: 24,
   },
   metricTitle: {
+    ...Typography.heading,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   metricSub: {
     fontSize: 12,

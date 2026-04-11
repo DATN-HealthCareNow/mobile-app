@@ -21,6 +21,16 @@ const exercisesData: Record<string, string[]> = {
   legs: ["Squat", "Leg Press", "Leg Extension", "Leg Curl", "Lunges", "Calf Raise", "Romanian Deadlift", "Hack Squat"],
 };
 
+const getGymImage = (muscleId: string) => {
+  switch (muscleId) {
+    case 'chest': return require('../../assets/images/gym/chest.png');
+    case 'back': return require('../../assets/images/gym/back.png');
+    case 'arms': return require('../../assets/images/gym/arms.png');
+    case 'legs': return require('../../assets/images/gym/legs.png');
+    default: return require('../../assets/images/gym/chest.png');
+  }
+};
+
 export default function GymSelectionScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
@@ -109,8 +119,8 @@ export default function GymSelectionScreen() {
               ]}
             >
               <View style={styles.exerciseInfo}>
-                <View style={styles.exerciseImagePlaceholder}>
-                  <MaterialCommunityIcons name="dumbbell" size={24} color="#0ea5e9" />
+                <View style={[styles.exerciseImagePlaceholder, isDark && { backgroundColor: '#334155' }]}>
+                  <Image source={getGymImage(selectedMuscle)} style={{ width: '100%', height: '100%', borderRadius: 12, resizeMode: 'cover' }} />
                 </View>
                 <View>
                   <Text style={[styles.exerciseNameText, { color: colors.text }]}>{exercise}</Text>

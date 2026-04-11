@@ -221,7 +221,7 @@ export default function RunningScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDark && { backgroundColor: colors.background }]}>
       {/* 1. MAP VIEW OVERLAY (Nửa trên) */}
       <View style={styles.mapContainer}>
         {currentLocation ? (
@@ -255,16 +255,16 @@ export default function RunningScreen() {
             </Marker>
           </MapView>
         ) : (
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#e2e8f0' }]} />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? colors.background : '#e2e8f0' }]} />
         )}
 
         {/* 2. FLOATING HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#334155" />
+          <TouchableOpacity style={[styles.circleBtn, isDark && { backgroundColor: colors.card }]} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color={isDark ? colors.text : "#334155"} />
           </TouchableOpacity>
 
-          <View style={styles.gpsPill}>
+          <View style={[styles.gpsPill, isDark && { backgroundColor: colors.card }]}>
              <View style={styles.gpsDot} />
              <Text style={styles.gpsText}>GPS ACTIVE</Text>
           </View>
@@ -277,7 +277,7 @@ export default function RunningScreen() {
       <View style={[styles.bottomCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
         <View style={styles.dragIndicator} />
 
-        <Text style={styles.elapsedLabel}>ELAPSED TIME</Text>
+        <Text style={[styles.elapsedLabel, isDark && { color: '#94a3b8' }]}>ELAPSED TIME</Text>
         <View style={styles.timeContainer}>
           <Text style={[styles.timeMain, { color: isDark ? colors.text : '#0369a1' }]}>
             {hrsPart(formattedTime.mainPart)}

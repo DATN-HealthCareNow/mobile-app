@@ -4,10 +4,14 @@ export interface DailyHealthMetrics {
   steps?: number;
   exercise_minutes?: number;
   google_exercise_minutes?: number;
+  active_minutes?: number;
+  distance_meters?: number;
+  total_calories?: number;
   active_calories?: number;
   resting_calories?: number;
   sleep_minutes?: number;
   heart_rate?: number;
+  resting_heart_rate?: number;
 }
 
 export interface HealthSyncPayload {

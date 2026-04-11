@@ -68,6 +68,13 @@ class ScheduleService {
         }
         return [];
       }
+      
+      // Xử lý riêng Network Error để không văng màn hình đỏ
+      if (axiosError.message === 'Network Error') {
+         console.warn('[scheduleService] getUpcomingSchedules: Network Error. Server may be down or unreachable.');
+         throw error;
+      }
+
       // Các error khác thì log error bình thường
       console.error('Error fetching upcoming schedules:', error);
       if (axiosError.response) {

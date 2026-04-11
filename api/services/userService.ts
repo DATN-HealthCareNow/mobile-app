@@ -25,6 +25,12 @@ export interface DeviceTokenRequest {
   device_token: string;
 }
 
+export interface TrackingRequest {
+  lat?: number;
+  lng?: number;
+  status?: string;
+}
+
 export const userService = {
   get_profile: async (): Promise<UserProfileResponse> => {
     const response = await axiosClient.get("/api/v1/users/profile") as UserProfileResponse;
@@ -56,5 +62,13 @@ export const userService = {
       },
     ) as unknown as string;
     return response;
+  },
+
+  update_tracking: async (data: TrackingRequest): Promise<void> => {
+    try {
+      await axiosClient.post("/api/v1/users/tracking", data);
+    } catch (e) {
+      console.warn("Failed to update tracking:", e);
+    }
   },
 };

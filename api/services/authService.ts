@@ -24,6 +24,10 @@ export interface RegisterResponse {
   [key: string]: any;
 }
 
+export interface GoogleLoginRequest {
+  id_token: string;
+}
+
 export const authService = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     return axiosClient.post('/api/v1/auth/login', data);
@@ -31,6 +35,10 @@ export const authService = {
 
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     return axiosClient.post('/api/v1/auth/register', data);
+  },
+
+  googleLogin: async (data: GoogleLoginRequest): Promise<LoginResponse> => {
+    return axiosClient.post('/api/v1/auth/google', data);
   },
 
   // validate: async () => {

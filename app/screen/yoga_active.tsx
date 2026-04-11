@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, cancelAnimation, Easing } from 'react-native-reanimated';
+import { useTheme } from '../../context/ThemeContext';
 import { useYogaStore } from '../../store/yogaStore';
 
 
@@ -14,6 +15,7 @@ const { height } = Dimensions.get('window');
 
 export default function YogaActiveScreen() {
     const router = useRouter();
+    const { colors, isDark } = useTheme();
     const { activeFlow, currentPoseIndex, isPaused, setPaused, nextPose, prevPose } = useYogaStore();
 
     const pose = activeFlow ? activeFlow.poses[currentPoseIndex] : { durationSec: 0, description: '', id: 'dump', hasBreathingSync: false, voiceLines: [], name: '', sanskritName: '', warnings: [] as string[] };
@@ -125,22 +127,34 @@ export default function YogaActiveScreen() {
     const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
     const s = (timeLeft % 60).toString().padStart(2, '0');
 
+    const getYogaImage = (poseName: string) => {
+        switch (poseName) {
+            case 'Cat-Cow Pose': return require('../../assets/images/yoga/Cat-Cow-Pose.jpg');
+            case "Child's Pose": return require('../../assets/images/yoga/Child\'s-Pose.jpg');
+            case 'Forward Fold': return require('../../assets/images/yoga/Forward-Fold.jpg');
+            case 'Mountain Pose': return require('../../assets/images/yoga/Mountain-Pose.jpg');
+            case 'Plank Pose': return require('../../assets/images/yoga/Plank-Pose.jpg');
+            case 'Tree Pose': return require('../../assets/images/yoga/Tree-Pose.jpg');
+            default: return require('../../assets/images/yoga/Mountain-Pose.jpg');
+        }
+    };
+
     return (
         <LinearGradient
-            colors={['#e0f2fe', '#f8fafc']}
+            colors={isDark ? ['#0f172a', '#1e293b'] : ['#e0f2fe', '#f8fafc']}
             style={styles.container}
         >
             {/* HEADER */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#0369a1" />
+                <TouchableOpacity onPress={() => router.back()} style={[styles.iconBtn, isDark && {backgroundColor: colors.card}]}>
+                    <Ionicons name="arrow-back" size={24} color={isDark ? colors.text : "#0369a1"} />
                 </TouchableOpacity>
                 <View style={styles.headerTitles}>
-                    <Text style={styles.flowTitle}>{activeFlow.title.toUpperCase()}</Text>
+                    <Text style={[styles.flowTitle, isDark && {color: colors.text}]}>{activeFlow.title.toUpperCase()}</Text>
                     <Text style={styles.flowSubtitle}>DAILY FLOW</Text>
                 </View>
-                <TouchableOpacity style={styles.iconBtn}>
-                    <Ionicons name="ellipsis-horizontal" size={24} color="#0369a1" />
+                <TouchableOpacity style={[styles.iconBtn, isDark && {backgroundColor: colors.card}]}>
+                    <Ionicons name="ellipsis-horizontal" size={24} color={isDark ? colors.text : "#0369a1"} />
                 </TouchableOpacity>
             </View>
 
@@ -168,17 +182,18 @@ export default function YogaActiveScreen() {
                     <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
                 )}
                 
-                <View style={[styles.imageCard, styles.shadow]}>
-                    <Image 
-                        source={{ uri: `https://picsum.photos/seed/${pose.id}/800/800` }}
-                        style={StyleSheet.absoluteFillObject}
-                        borderRadius={40}
-                    />
+                <View style={[styles.imageCard, styles.shadow, isDark && {backgroundColor: '#1e293b'}]}>
+                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
+                        <Image 
+                            source={getYogaImage(pose.name)}
+                            style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                        />
+                    </View>
                     <LinearGradient
-                        colors={['rgba(2, 132, 199, 0.2)', 'rgba(56, 189, 248, 0.4)']}
+                        colors={['rgba(2, 132, 199, 0.1)', 'rgba(56, 189, 248, 0.2)']}
                         style={styles.cardGradient}
                     >
-                        <MaterialCommunityIcons name="yoga" size={64} color="rgba(255,255,255,0.9)" />
+                        <MaterialCommunityIcons name="yoga" size={64} color="rgba(255,255,255,0.6)" />
                         
                         {/* WARNING CHIP */}
                         {pose.warnings && pose.warnings.length > 0 && (
@@ -201,8 +216,8 @@ export default function YogaActiveScreen() {
 
             {/* POSE INFO */}
             <View style={styles.poseInfoContainer}>
-                <Text style={styles.poseName}>{pose.name}</Text>
-                <Text style={styles.poseSanskrit}>{pose.sanskritName}</Text>
+                <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
+                <Text style={[styles.poseSanskrit, isDark && {color: '#94a3b8'}]}>{pose.sanskritName}</Text>
             </View>
 
             {/* CONTROLS */}

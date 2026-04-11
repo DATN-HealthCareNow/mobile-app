@@ -11,6 +11,7 @@ GoogleSignin.configure({
     "https://www.googleapis.com/auth/fitness.body.read",
     "https://www.googleapis.com/auth/fitness.heart_rate.read",
     "https://www.googleapis.com/auth/fitness.sleep.read",
+    "https://www.googleapis.com/auth/fitness.location.read",
   ],
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID || "",
   offlineAccess: true,
@@ -71,9 +72,13 @@ export const useGoogleFit = () => {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const tokens = await safeGetTokens();
+      const signedInEmail =
+        (userInfo as any)?.data?.user?.email ??
+        (userInfo as any)?.user?.email ??
+        "unknown";
 
       const tokenPreview = tokens?.accessToken ? `${tokens.accessToken.slice(0, 12)}...` : "missing";
-      console.log("[useGoogleFit] User signed in:", userInfo.user?.email);
+      console.log("[useGoogleFit] User signed in:", signedInEmail);
       console.log("[useGoogleFit] Access token received:", tokenPreview);
       console.log("[useGoogleFit] Scopes requested: fitness.activity.read, fitness.body.read, fitness.heart_rate.read, fitness.sleep.read");
       setAccessToken(tokens.accessToken);
@@ -149,29 +154,105 @@ export const useGoogleFit = () => {
   const fetchGoogleFitData = useCallback(async (token: string) => {
     const now = Date.now();
     const startOfDay = new Date().setHours(0, 0, 0, 0);
+    // Tính thời gian bắt đầu lấy giấc ngủ: thường từ 18:00 chiều hôm trước
+    const startOfSleepTime = new Date(startOfDay).setHours(-6, 0, 0, 0);
 
-    return fetch(
-      "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+    const [dailyDataRes, sleepDataRes] = await Promise.all([
+      fetch(
+        "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            aggregateBy: [
+              { dataTypeName: "com.google.step_count.delta" },
+              { dataTypeName: "com.google.distance.delta" },
+              { dataTypeName: "com.google.calories.expended" },
+              { dataTypeName: "com.google.active_minutes" },
+              { dataTypeName: "com.google.heart_rate.bpm" },
+            ],
+            bucketByTime: { durationMillis: 86400000 },
+            startTimeMillis: startOfDay,
+            endTimeMillis: now,
+          }),
         },
-        body: JSON.stringify({
-          aggregateBy: [
-            { dataTypeName: "com.google.step_count.delta" },
-            { dataTypeName: "com.google.calories.expended" },
-            { dataTypeName: "com.google.active_minutes" },
-            { dataTypeName: "com.google.heart_rate.bpm" },
-            { dataTypeName: "com.google.sleep.segment" },
-          ],
-          bucketByTime: { durationMillis: 86400000 },
-          startTimeMillis: startOfDay,
-          endTimeMillis: now,
-        }),
-      },
-    );
+      ),
+      fetch(
+        `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${new Date(startOfSleepTime).toISOString()}&endTime=${new Date(now).toISOString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+    ]);
+
+    if (!dailyDataRes.ok) {
+      return dailyDataRes;
+    }
+
+    // Lấy dailyData object
+    const dailyData = await dailyDataRes.json();
+    
+    // Đọc Sessions cho giấc ngủ
+    let sleepMinutesFromSessions = 0;
+    if (sleepDataRes.ok) {
+      const sessionsData = await sleepDataRes.json();
+      if (sessionsData.session && Array.isArray(sessionsData.session)) {
+        let sleepIntervals: { start: number; end: number }[] = [];
+        
+        sessionsData.session.forEach((s: any) => {
+          // Lọc chính xác các session loại 72 (Sleep) 
+          if (s.activityType === 72) {
+            const start = Number(s.startTimeMillis);
+            const end = Number(s.endTimeMillis);
+            if (!isNaN(start) && !isNaN(end) && end > start) {
+              sleepIntervals.push({ start, end });
+            }
+          }
+        });
+
+        // Hợp nhất (merge) các phiên ngủ bị trùng lặp thời gian
+        sleepIntervals.sort((a, b) => a.start - b.start);
+        let mergedIntervals: { start: number; end: number }[] = [];
+        
+        for (const interval of sleepIntervals) {
+          if (mergedIntervals.length === 0) {
+            mergedIntervals.push(interval);
+          } else {
+            const last = mergedIntervals[mergedIntervals.length - 1];
+            // Nếu phiên này đè hoặc chạm phiên trước, gộp lại
+            if (interval.start <= last.end) {
+              last.end = Math.max(last.end, interval.end);
+            } else {
+              mergedIntervals.push(interval);
+            }
+          }
+        }
+
+        // Tính tổng thời gian đã gộp
+        sleepMinutesFromSessions = mergedIntervals.reduce((total, interval) => {
+          return total + Math.round((interval.end - interval.start) / 60000);
+        }, 0);
+      }
+    }
+
+    // Lưu lượng thời gian ngủ vào một trường trong bucket để dễ trích xuất
+    if (dailyData.bucket && dailyData.bucket.length > 0) {
+      dailyData.bucket[0]._customSleepMinutes = sleepMinutesFromSessions;
+    }
+    
+    // Create a mock response object resolving to our merged data
+    return {
+      ok: true,
+      status: 200,
+      json: async () => dailyData,
+      text: async () => JSON.stringify(dailyData)
+    } as any;
   }, []);
 
   const fetchHealthData = useCallback(async () => {
@@ -198,11 +279,14 @@ export const useGoogleFit = () => {
     console.log('[useGoogleFit] Raw API response:', JSON.stringify(data, null, 2));
 
     let steps = 0;
-    let calories = 0;
+    let totalCalories = 0;
+    let restingCaloriesFromBmr = 0;
     let googleExerciseMinutes = 0;
+    let distanceMeters = 0;
     let sleepMinutes = 0;
     let heartRateSum = 0;
     let heartRateCount = 0;
+    let minHeartRateForResting = 0;
 
     if (data.bucket && data.bucket.length > 0) {
       const dataset = data.bucket[0].dataset;
@@ -216,12 +300,22 @@ export const useGoogleFit = () => {
             }
           });
         }
+        if (ds.dataSourceId.includes("distance")) {
+          ds.point.forEach((p: any) => {
+            if (p.value && p.value.length > 0) {
+              const distanceVal = p.value[0].fpVal ?? p.value[0].intVal ?? 0;
+              if (typeof distanceVal === "number" && Number.isFinite(distanceVal)) {
+                distanceMeters += distanceVal;
+              }
+            }
+          });
+        }
         if (ds.dataSourceId.includes("calories.expended")) {
           ds.point.forEach((p: any) => {
             if (p.value && p.value.length > 0) {
               const calVal = p.value[0].fpVal || 0;
-              console.log('[useGoogleFit] Found calories:', calVal);
-              calories += calVal;
+              console.log('[useGoogleFit] Found total calories:', calVal);
+              totalCalories += calVal;
             }
           });
         }
@@ -238,10 +332,23 @@ export const useGoogleFit = () => {
         if (ds.dataSourceId.includes("heart_rate")) {
           ds.point.forEach((p: any) => {
             if (p.value && p.value.length > 0) {
-              const bpm = p.value[0].fpVal ?? p.value[0].intVal;
-              if (typeof bpm === "number" && Number.isFinite(bpm) && bpm > 0) {
-                heartRateSum += bpm;
+              const avgBpm = p.value[0]?.fpVal ?? p.value[0]?.intVal;
+              const minBpm = p.value[2]?.fpVal ?? p.value[2]?.intVal; // Index 2 is min in summary
+              
+              if (typeof avgBpm === "number" && Number.isFinite(avgBpm) && avgBpm > 0) {
+                heartRateSum += avgBpm;
                 heartRateCount += 1;
+              }
+              
+              if (typeof minBpm === "number" && Number.isFinite(minBpm) && minBpm > 0) {
+                 if (minHeartRateForResting === 0 || minBpm < minHeartRateForResting) {
+                     minHeartRateForResting = minBpm;
+                 }
+              } else if (typeof avgBpm === "number") {
+                 // Fallback if min is not available
+                 if (minHeartRateForResting === 0 || avgBpm < minHeartRateForResting) {
+                     minHeartRateForResting = avgBpm;
+                 }
               }
             }
           });
@@ -261,21 +368,43 @@ export const useGoogleFit = () => {
               }
             }
 
-            sleepMinutes += mins;
+            // Optional: You could add segment-based minutes here if needed, 
+            // but we're tracking via _customSleepMinutes now.
+            // sleepMinutes += mins;
           });
         }
       });
+
+      // Lấy thời gian ngủ từ custom field vừa thêm
+      if (typeof data.bucket[0]._customSleepMinutes === "number") {
+        sleepMinutes = data.bucket[0]._customSleepMinutes;
+        console.log('[useGoogleFit] Found sleep from Sessions API:', sleepMinutes);
+      }
     } else {
       console.warn('[useGoogleFit] ⚠️ No bucket data returned! Empty day or API issue.');
     }
 
     const heartRate = heartRateCount > 0 ? Math.round(heartRateSum / heartRateCount) : 0;
+    const restingHeartRate = Math.round(minHeartRateForResting);
+
+    // Nếu không fetch BMR, ta ước tính resting là khoảng 70% tổng (tuỳ cá nhân, mặc định) 
+    // hoặc gán tạm 0 nếu bạn muốn. Dưới đây gán tạm resting ~1500/ngày theo tỷ lệ thời gian.
+    const hoursElapsed = (now - startOfDay) / 3600000;
+    const estimatedResting = 1500 * (hoursElapsed / 24);
+    
+    const restingCalories = restingCaloriesFromBmr > 0 ? Math.round(restingCaloriesFromBmr) : Math.round(estimatedResting);
+    const activeCalories = Math.max(0, Math.round(totalCalories - restingCalories));
+
     const result = {
       steps,
-      calories: Math.round(calories),
+      distanceMeters: Math.round(distanceMeters),
+      totalCalories: Math.round(totalCalories),
+      restingCalories,
+      activeCalories,
       googleExerciseMinutes,
       sleepMinutes,
       heartRate,
+      restingHeartRate,
     };
     console.log('[useGoogleFit] ✅ Final parsed result:', result);
     return result;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Accelerometer } from 'expo-sensors';
@@ -15,15 +15,14 @@ const ALARMS = [
   { id: 'swedish', requirePath: require('../../assets/audio/swedish-army-2-nhacchuongwow.com.mp3') },
 ];
 
-const { width } = Dimensions.get('window');
 const SHAKE_THRESHOLD = 15; // Độ nhạy lắc - tăng lên để yêu cầu lắc mạnh hơn
 const SHAKE_DEBOUNCE_TIME = 300; // ms giữa các lần phát hiện lắc
 
 export default function SleepAlarmScreen() {
     const router = useRouter();
     const { alarmId } = useLocalSearchParams();
-    const { colors, isDark } = useTheme();
-    const { startSleep, stopSleep } = useSleepStore();
+    const { isDark } = useTheme();
+    const { stopSleep } = useSleepStore();
 
     // Lắc thiết bị logic
     const [shakeCount, setShakeCount] = useState(0);
@@ -34,8 +33,7 @@ export default function SleepAlarmScreen() {
 
     // Mock thời gian cho màn hình
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [alarmPlaying, setAlarmPlaying] = useState(false);
+    const soundRef = React.useRef<Audio.Sound | null>(null);
 
     useEffect(() => {
         const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -60,8 +58,7 @@ export default function SleepAlarmScreen() {
                     }
                 );
                 
-                setSound(newSound);
-                setAlarmPlaying(true);
+                soundRef.current = newSound;
 
                 // Log để debug
                 console.log('Alarm started playing:', alarmItem.id);
@@ -75,8 +72,9 @@ export default function SleepAlarmScreen() {
 
         return () => {
             clearInterval(interval);
-            if (sound) {
-                sound.unloadAsync().catch(err => console.warn('Unload sound error:', err));
+            if (soundRef.current) {
+                soundRef.current.unloadAsync().catch(err => console.warn('Unload sound error:', err));
+                soundRef.current = null;
             }
         };
     }, []); // Empty array = only on mount
@@ -128,14 +126,14 @@ export default function SleepAlarmScreen() {
         return () => subscription.remove();
     }, [isTriggered]);
 
-    const handleWakeUp = () => {
+    const handleWakeUp = async () => {
         setIsTriggered(true);
         
         // Tắt âm thanh báo thức
-        if (sound && alarmPlaying) {
-            sound.stopAsync();
-            sound.unloadAsync().catch(err => console.error('Error unloading sound:', err));
-            setAlarmPlaying(false);
+        if (soundRef.current) {
+            await soundRef.current.stopAsync();
+            await soundRef.current.unloadAsync().catch(err => console.error('Error unloading sound:', err));
+            soundRef.current = null;
         }
         
         // Lưu thông tin log dữ liệu giấc ngủ
@@ -208,9 +206,8 @@ export default function SleepAlarmScreen() {
                     style={styles.snoozeBtn}
                     onPress={() => {
                         // Tạm dừng báo thức trong 5 phút
-                        if (sound && alarmPlaying) {
-                            sound.pauseAsync();
-                            setAlarmPlaying(false);
+                        if (soundRef.current) {
+                            soundRef.current.pauseAsync();
                         }
                         
                         // Đặt lại bộ đếm lắc
@@ -218,9 +215,8 @@ export default function SleepAlarmScreen() {
                         
                         // Resume sau 5 phút
                         setTimeout(() => {
-                            if (sound && !isTriggered) {
-                                sound.playAsync();
-                                setAlarmPlaying(true);
+                            if (soundRef.current && !isTriggered) {
+                                soundRef.current.playAsync();
                             }
                         }, 5 * 60 * 1000);
                         

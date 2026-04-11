@@ -42,7 +42,7 @@ export default function ScheduleNewScreen() {
     const activityTypes = [
         { type: 'Running', icon: 'run' },
         { type: 'Gym', icon: 'dumbbell' },
-        { type: 'Calisthenics', icon: 'human-handsup' },
+        { type: 'Stretching', icon: 'human-handsup' },
         { type: 'Yoga', icon: 'yoga' },
     ];
 

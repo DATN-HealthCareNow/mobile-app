@@ -48,6 +48,12 @@ export default function Hydration() {
 
   return (
     <View style={styles.container}>
+      {!isDark && (
+        <LinearGradient
+          colors={["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+          style={styles.heroBg}
+        />
+      )}
       <ScrollView showsVerticalScrollIndicator={false}>
         
         {/* HEADER */}
@@ -180,6 +186,13 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
+  heroBg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -214,7 +227,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   },
   datePill: {
     alignSelf: "center",
-    backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "rgba(59, 130, 246, 0.1)",
+    backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "#e6f3ff",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
@@ -251,7 +264,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
     overflow: "hidden",
     borderWidth: 2,
-    borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+    borderColor: isDark ? "rgba(255,255,255,0.14)" : "#c9dcec",
     justifyContent: "flex-end",
   },
   waterFill: {
@@ -314,6 +327,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     marginHorizontal: 5,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: "#0b3f64",
+    shadowOpacity: isDark ? 0.12 : 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   quickCardPrimary: {
     flex: 1,
@@ -354,6 +372,11 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginTop: 12,
+    shadowColor: "#0b3f64",
+    shadowOpacity: isDark ? 0.12 : 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   activityCard: {
     padding: 16,

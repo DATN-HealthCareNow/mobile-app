@@ -19,9 +19,8 @@ export const useProfile = (token?: string | null) => {
       return result;
     },
     enabled: !!token,
-    staleTime: 0, // Force fresh data
-    gcTime: 0,    // Do not cache
-    refetchOnMount: "always",
+    staleTime: 5 * 60 * 1000, // Look for fresh data every 5 minutes
+    refetchOnWindowFocus: true,
   });
 };
 

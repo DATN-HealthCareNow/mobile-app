@@ -12,12 +12,8 @@ export const useHealthData = () => {
   const { fetchHealthData, authorize, accessToken } = useGoogleFit();
 
   const getDateInVietnam = () => {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Ho_Chi_Minh",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
+    const offset = new Date().getTimezoneOffset() * 60000;
+    return new Date(Date.now() - offset).toISOString().split("T")[0];
   };
 
   // Hook push dữ liệu lên server
@@ -47,10 +43,14 @@ export const useHealthData = () => {
         source: "GOOGLE_FIT", // Source chính thức
         metrics: {
           steps: healthData?.steps,
-          active_calories: healthData?.calories,
+          distance_meters: healthData?.distanceMeters,
+          active_minutes: healthData?.googleExerciseMinutes,
+          active_calories: healthData?.activeCalories,
+          resting_calories: healthData?.restingCalories,
           google_exercise_minutes: healthData?.googleExerciseMinutes,
           sleep_minutes: healthData?.sleepMinutes,
           heart_rate: healthData?.heartRate,
+          resting_heart_rate: healthData?.restingHeartRate,
         },
       };
 
