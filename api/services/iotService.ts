@@ -8,7 +8,6 @@ export interface DailyHealthMetrics {
   distance_meters?: number;
   total_calories?: number;
   active_calories?: number;
-  resting_calories?: number;
   sleep_minutes?: number;
   heart_rate?: number;
   resting_heart_rate?: number;

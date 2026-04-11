@@ -28,7 +28,7 @@ export default function PersonalDataScreen() {
   const steps = Number(metrics.steps ?? 0);
   const distanceMeters = Number(metrics.distance_meters ?? (metrics as any).distanceMeters ?? 0);
   const activeCalories = Number(metrics.active_calories ?? (metrics as any).activeCalories ?? 0);
-  const restingCalories = Number(metrics.resting_calories ?? (metrics as any).restingCalories ?? 0);
+  const totalCalories = Number(metrics.total_calories ?? (metrics as any).totalCalories ?? 0);
   const sleepMinutes = Number(metrics.sleep_minutes ?? (metrics as any).sleepMinutes ?? 0);
   const heartRate = Number(metrics.heart_rate ?? (metrics as any).heartRate ?? 0);
   const restingHeartRate = Number(metrics.resting_heart_rate ?? (metrics as any).restingHeartRate ?? 0);
@@ -144,11 +144,11 @@ export default function PersonalDataScreen() {
               styles={styles}
             />
 
-            {/* RESTING CALORIES */}
+            {/* TOTAL CALORIES */}
             <MetricCard
               icon={<MaterialCommunityIcons name="fire-off" size={24} color="#8b5cf6" />}
-              label="Resting Calories"
-              value={restingCalories > 0 ? restingCalories.toString() : '--'}
+              label="Total Energy"
+              value={totalCalories > 0 ? totalCalories.toString() : '--'}
               unit="kcal"
               colors={colors}
               styles={styles}

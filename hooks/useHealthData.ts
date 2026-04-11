@@ -46,7 +46,7 @@ export const useHealthData = () => {
           distance_meters: healthData?.distanceMeters,
           active_minutes: healthData?.googleExerciseMinutes,
           active_calories: healthData?.activeCalories,
-          resting_calories: healthData?.restingCalories,
+          total_calories: healthData?.totalCalories,
           google_exercise_minutes: healthData?.googleExerciseMinutes,
           sleep_minutes: healthData?.sleepMinutes,
           heart_rate: healthData?.heartRate,

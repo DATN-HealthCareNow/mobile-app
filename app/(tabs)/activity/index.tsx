@@ -22,8 +22,12 @@ export default function Activity() {
   const { colors, isDark } = useTheme();
   const { stepsGoal, caloriesGoal } = useGoalStore();
 
-  const offset = new Date().getTimezoneOffset() * 60000;
-  const today = new Date(Date.now() - offset).toISOString().split("T")[0];
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const { data: dailyHealth, isLoading: dailyHealthLoading } = useDailyHealthMetric(today);
 
   const styles = createStyles(colors, isDark);
@@ -43,9 +47,14 @@ export default function Activity() {
 
   const metrics = dailyHealth?.metrics;
   const stepsToday = Number(metrics?.steps ?? 0);
-  const burnedCalories = Number(
+  const activeCalories = Number(
     metrics?.active_calories ??
       (metrics as any)?.activeCalories ??
+      0,
+  );
+  const totalCalories = Number(
+    metrics?.total_calories ??
+      (metrics as any)?.totalCalories ??
       0,
   );
 
@@ -98,8 +107,9 @@ export default function Activity() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>CALORIES</Text>
             <Text style={styles.cardValue}>
-              {burnedCalories.toLocaleString()}
+              {activeCalories.toLocaleString()}
             </Text>
+            <Text style={styles.greenText}>Total: {totalCalories.toLocaleString()} kcal</Text>
             <Text style={styles.greenText}>Goal: {caloriesGoal.toLocaleString()} kcal</Text>
           </View>
         </View>
@@ -171,7 +181,7 @@ export default function Activity() {
             colors={colors}
           />
 
-
+     
 
           <ActivityItem
             icon="human-handsup"
