@@ -34,7 +34,12 @@ export default function SleepDashboardScreen() {
     
     // Lấy dữ liệu 100% từ IoT Service (Daily Health Metric)
     const metrics = dailyHealth?.metrics as any;
-    const sleepMinutes = Number(metrics?.sleep ?? 0);
+    const sleepMinutes = Number(
+        metrics?.sleep_minutes ??
+        metrics?.sleepMinutes ??
+        metrics?.sleep ??
+        0
+    );
     const sleepHours = Math.floor(sleepMinutes / 60);
     const sleepMins = sleepMinutes % 60;
     

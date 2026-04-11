@@ -1,6 +1,9 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import { useSession } from "./useAuth";
+import { useProfile } from "./useUser";
+import { userService } from "../api/services/userService";
 
 // Cấu hình Google Sign-In một lần duy nhất.
 // Đối với Android Native, bạn CHỈ CẦN truyền Web Client ID,
@@ -31,6 +34,50 @@ const safeGetTokens = () => {
 export const useGoogleFit = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(true);
+  const { token: sessionToken } = useSession();
+  const { data: profile } = useProfile(sessionToken);
+
+  const estimateRestingCalories = (userProfile: any) => {
+    if (!userProfile) {
+      return 0;
+    }
+
+    const rawWeight = userProfile.weight ?? userProfile.weight_kg;
+    const rawHeight = userProfile.height ?? userProfile.height_cm;
+    const rawDob = userProfile.dateOfBirth ?? userProfile.date_of_birth;
+    const rawGender = String(userProfile.gender ?? "").toUpperCase();
+
+    const weightKg = Number(rawWeight);
+    const heightCm = Number(rawHeight);
+
+    if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm) || !rawDob) {
+      return 0;
+    }
+
+    const birthDate = new Date(rawDob);
+    if (Number.isNaN(birthDate.getTime())) {
+      return 0;
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    const baseCalories = 10 * weightKg + 6.25 * heightCm - 5 * age;
+
+    if (rawGender === "MALE" || rawGender === "M") {
+      return Math.max(0, Math.round(baseCalories + 5));
+    }
+
+    if (rawGender === "FEMALE" || rawGender === "F") {
+      return Math.max(0, Math.round(baseCalories - 161));
+    }
+
+    return Math.max(0, Math.round(baseCalories - 78));
+  };
 
   // Khôi phục token nếu user đã từng đăng nhập
   useEffect(() => {
@@ -280,7 +327,6 @@ export const useGoogleFit = () => {
 
     let steps = 0;
     let totalCalories = 0;
-    let restingCaloriesFromBmr = 0;
     let googleExerciseMinutes = 0;
     let distanceMeters = 0;
     let sleepMinutes = 0;
@@ -313,7 +359,7 @@ export const useGoogleFit = () => {
         if (ds.dataSourceId.includes("calories.expended")) {
           ds.point.forEach((p: any) => {
             if (p.value && p.value.length > 0) {
-              const calVal = p.value[0].fpVal || 0;
+              const calVal = p.value[0].fpVal ?? p.value[0].intVal ?? 0;
               console.log('[useGoogleFit] Found total calories:', calVal);
               totalCalories += calVal;
             }
@@ -387,13 +433,34 @@ export const useGoogleFit = () => {
     const heartRate = heartRateCount > 0 ? Math.round(heartRateSum / heartRateCount) : 0;
     const restingHeartRate = Math.round(minHeartRateForResting);
 
-    // Nếu không fetch BMR, ta ước tính resting là khoảng 70% tổng (tuỳ cá nhân, mặc định) 
-    // hoặc gán tạm 0 nếu bạn muốn. Dưới đây gán tạm resting ~1500/ngày theo tỷ lệ thời gian.
-    const hoursElapsed = (now - startOfDay) / 3600000;
-    const estimatedResting = 1500 * (hoursElapsed / 24);
-    
-    const restingCalories = restingCaloriesFromBmr > 0 ? Math.round(restingCaloriesFromBmr) : Math.round(estimatedResting);
-    const activeCalories = Math.max(0, Math.round(totalCalories - restingCalories));
+    let restingCaloriesEstimate = estimateRestingCalories(profile);
+    if (restingCaloriesEstimate <= 0) {
+      try {
+        const freshProfile = await userService.get_profile();
+        restingCaloriesEstimate = estimateRestingCalories(freshProfile);
+      } catch (profileErr) {
+        console.warn('[useGoogleFit] Failed to fetch profile for resting calorie estimate:', profileErr);
+      }
+    }
+
+    if (restingCaloriesEstimate > 0) {
+      console.log('[useGoogleFit] Estimated resting calories from profile:', restingCaloriesEstimate);
+    } else {
+      console.log('[useGoogleFit] Resting calorie estimate unavailable, using 0');
+    }
+
+    const restingCalories = 0;
+    let activeCalories = Math.max(0, Math.round(totalCalories - restingCaloriesEstimate));
+
+    if (activeCalories === 0 && googleExerciseMinutes > 0) {
+      activeCalories = Math.max(1, Math.round(googleExerciseMinutes * 2.8));
+      console.log('[useGoogleFit] Active calorie fallback from active minutes:', activeCalories);
+    }
+
+    if (activeCalories === 0 && steps > 0) {
+      activeCalories = Math.max(1, Math.round(steps * 0.03));
+      console.log('[useGoogleFit] Active calorie fallback from steps:', activeCalories);
+    }
 
     const result = {
       steps,
@@ -408,7 +475,7 @@ export const useGoogleFit = () => {
     };
     console.log('[useGoogleFit] ✅ Final parsed result:', result);
     return result;
-  }, [accessToken]);
+  }, [accessToken, profile]);
 
   return {
     isReady,

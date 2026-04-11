@@ -1,11 +1,4 @@
 import { axiosClient } from '../axiosClient';
-import * as FileSystem from 'expo-file-system';
-
-export interface MusicUploadRequest {
-  fileName: string;
-  fileData: string; // Base64 encoded
-  contentType: string;
-}
 
 export interface MusicUploadResponse {
   id: string;
@@ -25,28 +18,29 @@ export interface MusicFile {
 
 export const musicService = {
   // Upload music file to backend (which then uploads to S3)
-  uploadMusic: async (fileUri: string, fileName: string): Promise<MusicUploadResponse> => {
+  uploadMusic: async (
+    fileUri: string,
+    fileName: string,
+    mimeType: string = 'audio/mpeg',
+  ): Promise<MusicUploadResponse> => {
     try {
-      // Read file as base64
-      const fileData = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: 'base64',
-      });
-
-      // Get file size from URI info
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      const fileSize = (fileInfo as any)?.size || 0;
-
-      const uploadRequest: MusicUploadRequest = {
-        fileName,
-        fileData,
-        contentType: 'audio/mpeg',
-      };
+      const formData = new FormData();
+      formData.append('file', {
+        uri: fileUri,
+        name: fileName,
+        type: mimeType,
+      } as any);
+      formData.append('fileName', fileName);
+      formData.append('contentType', mimeType);
 
       // Upload to backend API endpoint
       const response = await axiosClient.post<MusicUploadResponse>(
         '/api/v1/music/upload',
-        uploadRequest,
+        formData,
         {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
           timeout: 30000, // 30 seconds timeout for large files
         }
       );

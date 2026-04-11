@@ -60,7 +60,8 @@ export default function MusicUploadModal({
       // Upload to server
       const uploadResponse = await musicService.uploadMusic(
         selectedFile.uri,
-        selectedFile.name
+        selectedFile.name,
+        selectedFile.mimeType || 'audio/mpeg'
       );
 
       setUploadProgress(100);
