@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -50,6 +50,41 @@ function RootLayoutNav() {
   useRealtimeNotifications(token, userId);
   useLocationTracker(token, userId);
 
+  const handleNotificationNavigation = useCallback(
+    (rawData: Record<string, unknown> | null | undefined) => {
+      if (!rawData) {
+        return;
+      }
+
+      const data = rawData as {
+        type?: string;
+        alarmId?: string;
+        screen?: string;
+        eventType?: string;
+      };
+
+      if (data.type === "sleep_alarm" && data.alarmId) {
+        router.push(`/screen/sleep_alarm?alarmId=${data.alarmId}` as any);
+        return;
+      }
+
+      if (data.screen === "hydration" || data.eventType === "WATER_REMINDER") {
+        router.push("/screen/hydration" as any);
+        return;
+      }
+
+      if (data.screen === "activity" || data.eventType === "LOW_EXERCISE_REMINDER" || data.eventType === "ACTIVITY_REMINDER") {
+        router.push("/(tabs)/activity" as any);
+        return;
+      }
+
+      if (data.screen === "notifications") {
+        router.push("/screen/notifications" as any);
+      }
+    },
+    [router],
+  );
+
   useEffect(() => {
     if (isLoading) return;
 
@@ -74,24 +109,18 @@ function RootLayoutNav() {
 
   useEffect(() => {
     const foregroundSub = Notifications.addNotificationReceivedListener(notification => {
-      const data = notification.request.content.data;
-      if (data?.type === "sleep_alarm") {
-        router.push(`/screen/sleep_alarm?alarmId=${data.alarmId}` as any);
-      }
+      handleNotificationNavigation(notification.request.content.data as Record<string, unknown>);
     });
     
     const responseSub = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      if (data?.type === "sleep_alarm") {
-        router.push(`/screen/sleep_alarm?alarmId=${data.alarmId}` as any);
-      }
+      handleNotificationNavigation(response.notification.request.content.data as Record<string, unknown>);
     });
 
     return () => {
       foregroundSub.remove();
       responseSub.remove();
     };
-  }, [router]);
+  }, [handleNotificationNavigation]);
 
   if (isLoading) {
     return (
