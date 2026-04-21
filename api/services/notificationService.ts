@@ -99,4 +99,8 @@ export const notificationService = {
     const payload = response?.data ?? response;
     return payload as NotificationPreferences;
   },
+
+  testExercise: async (): Promise<void> => {
+    await axiosClient.post("/api/v1/bff/mobile/notifications/test-exercise");
+  },
 };

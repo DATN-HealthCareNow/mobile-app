@@ -9,8 +9,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
+import { useState } from "react";
 import { useTheme } from "../../context/ThemeContext";
+import { notificationService } from "../../api/services/notificationService";
 import {
   useMarkAllNotificationsAsRead,
   useMarkNotificationAsRead,
@@ -25,8 +28,20 @@ export default function NotificationsScreen() {
   const { data, isLoading, refetch, isRefetching } = useNotifications(0, 30);
   const markAsReadMutation = useMarkNotificationAsRead();
   const markAllAsReadMutation = useMarkAllNotificationsAsRead();
+  
+  const [activeTab, setActiveTab] = useState<"UNREAD" | "READ">("UNREAD");
 
   const items = data?.content ?? [];
+  const filteredItems = items.filter((item) => activeTab === "UNREAD" ? !item.isRead : item.isRead);
+
+  const handleTestExercise = async () => {
+    try {
+      await notificationService.testExercise();
+      Alert.alert("Thành công", "Đã gửi thông báo nhắc nhở luyện tập đến điện thoại!");
+    } catch (e) {
+      Alert.alert("Lỗi", "Không thể gửi thông báo thử nghiệm.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -42,6 +57,14 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
         <TouchableOpacity
+          style={styles.testBtn}
+          onPress={handleTestExercise}
+        >
+          <Text style={styles.testBtnText}>
+            Test
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.markAllBtn}
           disabled={markAllAsReadMutation.isPending}
           onPress={() => markAllAsReadMutation.mutate()}
@@ -52,15 +75,30 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "UNREAD" && styles.activeTab]}
+          onPress={() => setActiveTab("UNREAD")}
+        >
+          <Text style={[styles.tabText, activeTab === "UNREAD" && styles.activeTabText]}>Chưa đọc</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "READ" && styles.activeTab]}
+          onPress={() => setActiveTab("READ")}
+        >
+          <Text style={[styles.tabText, activeTab === "READ" && styles.activeTabText]}>Đã đọc</Text>
+        </TouchableOpacity>
+      </View>
+
       {isLoading ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={filteredItems}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={items.length === 0 ? styles.centerBox : styles.listContent}
+          contentContainerStyle={filteredItems.length === 0 ? styles.centerBox : styles.listContent}
           refreshing={isRefetching}
           onRefresh={refetch}
           renderItem={({ item }) => {
@@ -143,6 +181,41 @@ const createStyles = (colors: any, isDark: boolean) =>
       color: colors.primary,
       fontWeight: "700",
       fontSize: 12,
+    },
+    testBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: "#ef4444",
+      marginRight: 6,
+    },
+    testBtnText: {
+      color: "#fff",
+      fontWeight: "700",
+      fontSize: 12,
+    },
+    tabContainer: {
+      flexDirection: "row",
+      marginBottom: 16,
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      padding: 4,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 10,
+      alignItems: "center",
+      borderRadius: 8,
+    },
+    activeTab: {
+      backgroundColor: isDark ? "rgba(59,130,246,0.2)" : "#e6f3ff",
+    },
+    tabText: {
+      color: colors.textSecondary,
+      fontWeight: "600",
+    },
+    activeTabText: {
+      color: colors.primary,
     },
     listContent: {
       paddingBottom: 24,

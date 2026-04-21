@@ -43,7 +43,11 @@ const normalizeProgress = (raw: any) => {
 const normalizeLog = (raw: any): WaterLogDTO => {
   const amount = toNumber(raw?.amount_ml ?? raw?.amountMl, 0);
   const reason = String(raw?.adjustment_reason ?? raw?.adjustmentReason ?? 'Water');
-  const timestamp = String(raw?.created_at ?? raw?.createdAt ?? raw?.time ?? new Date().toISOString());
+  let rawTime = String(raw?.created_at ?? raw?.createdAt ?? raw?.time ?? new Date().toISOString());
+  if (rawTime.length > 5 && !rawTime.endsWith('Z') && !rawTime.includes('+') && !rawTime.includes(' ')) {
+    rawTime += 'Z';
+  }
+  const timestamp = rawTime;
 
   return {
     ...raw,
