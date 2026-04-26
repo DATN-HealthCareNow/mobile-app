@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Image,
 } from "react-native";
 import { useState } from "react";
 import { useTheme } from "../../context/ThemeContext";
@@ -19,6 +20,24 @@ import {
   useMarkNotificationAsRead,
   useNotifications,
 } from "../../hooks/useNotifications";
+
+const getNotificationIcon = (eventId?: string) => {
+  switch (eventId) {
+    case "WATER_REMINDER":
+      return { type: 'icon', name: "water", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.15)" }; // Blue
+    case "LOW_EXERCISE_REMINDER":
+    case "ACTIVITY_REMINDER":
+      return { type: 'icon', name: "walk", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)" }; // Orange
+    case "MEDICATION_TIME":
+      return { type: 'icon', name: "medkit", color: "#10b981", bg: "rgba(16, 185, 129, 0.15)" }; // Green
+    case "SLEEP_REMINDER":
+      return { type: 'icon', name: "moon", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.15)" }; // Purple
+    case "HEALTH_REPORT":
+      return { type: 'icon', name: "document-text", color: "#6366f1", bg: "rgba(99, 102, 241, 0.15)" }; // Indigo
+    default:
+      return { type: 'image', bg: "rgba(100, 116, 139, 0.1)" }; // App Logo
+  }
+};
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -43,6 +62,20 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleMarkAllRead = () => {
+    markAllAsReadMutation.mutate(undefined, {
+      onSuccess: () => {
+        // Explicitly refetch to get updated list
+        refetch();
+        // Automatically switch to READ tab after marking all
+        setActiveTab("READ");
+      },
+      onError: () => {
+        Alert.alert("Lỗi", "Không thể đánh dấu đã đọc tất cả.");
+      }
+    });
+  };
+
   return (
     <View style={styles.container}>
       {!isDark && (
@@ -56,23 +89,27 @@ export default function NotificationsScreen() {
           <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
-        <TouchableOpacity
-          style={styles.testBtn}
-          onPress={handleTestExercise}
-        >
-          <Text style={styles.testBtnText}>
-            Test
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.markAllBtn}
-          disabled={markAllAsReadMutation.isPending}
-          onPress={() => markAllAsReadMutation.mutate()}
-        >
-          <Text style={styles.markAllText}>
-            {markAllAsReadMutation.isPending ? "..." : "Read all"}
-          </Text>
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <TouchableOpacity
+            style={styles.testBtn}
+            onPress={handleTestExercise}
+          >
+            <Text style={styles.testBtnText}>
+              Test
+            </Text>
+          </TouchableOpacity>
+          {activeTab === "UNREAD" && filteredItems.length > 0 && (
+            <TouchableOpacity
+              style={styles.markAllBtn}
+              disabled={markAllAsReadMutation.isPending}
+              onPress={handleMarkAllRead}
+            >
+              <Text style={styles.markAllText}>
+                {markAllAsReadMutation.isPending ? "Đang xử lý..." : "Đọc tất cả"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.tabContainer}>
@@ -103,6 +140,7 @@ export default function NotificationsScreen() {
           onRefresh={refetch}
           renderItem={({ item }) => {
             const unread = !item.isRead;
+            const iconConfig = getNotificationIcon(item.eventId);
             return (
               <TouchableOpacity
                 style={[styles.card, unread && styles.cardUnread]}
@@ -113,14 +151,27 @@ export default function NotificationsScreen() {
                   }
                 }}
               >
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  {unread && <View style={styles.unreadDot} />}
+                <View style={styles.cardInner}>
+                  <View style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}>
+                    {iconConfig.type === 'image' ? (
+                        <Image source={require("../../assets/images/logo.png")} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                    ) : (
+                        <Ionicons name={iconConfig.name as any} size={22} color={iconConfig.color} />
+                    )}
+                  </View>
+                  <View style={styles.cardContentWrapper}>
+                    <View style={styles.cardTop}>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      {unread && <View style={styles.unreadDot} />}
+                    </View>
+                    <Text style={styles.cardContent}>
+                      {(item.content || "").replace(/{execiseMintues}/g, "30").replace(/{exerciseMinutes}/g, "30")}
+                    </Text>
+                    <Text style={styles.cardTime}>
+                      {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.cardContent}>{item.content}</Text>
-                <Text style={styles.cardTime}>
-                  {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
-                </Text>
               </TouchableOpacity>
             );
           }}
@@ -236,11 +287,27 @@ const createStyles = (colors: any, isDark: boolean) =>
     cardUnread: {
       borderColor: colors.primary,
     },
+    cardInner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    iconBox: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+      marginTop: 2,
+    },
+    cardContentWrapper: {
+      flex: 1,
+    },
     cardTop: {
       flexDirection: "row",
       justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 8,
+      alignItems: "flex-start",
+      marginBottom: 6,
     },
     cardTitle: {
       flex: 1,
@@ -248,6 +315,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       fontWeight: "700",
       fontSize: 15,
       paddingRight: 10,
+      lineHeight: 20,
     },
     cardContent: {
       color: colors.textSecondary,

@@ -1,415 +1,390 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
+    Platform,
+    Alert,
 } from "react-native";
-import { SAMPLE_AI_MEAL_PLAN } from "../../constants/meals";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../context/ThemeContext";
+import { useProfile } from "../../hooks/useUser";
+import { useSession } from "../../hooks/useAuth";
+import { useDailyHealthMetric } from "../../hooks/useDailyHealthMetric";
+import { useHealthScoreToday } from "../../hooks/useHealthScore";
+import { axiosClient } from "../../api/axiosClient";
+import { Typography } from "../../constants/typography";
+
+const { width } = Dimensions.get("window");
+
+const ACTIVITIES = [
+    { id: "RUN", label: "Running", icon: "run" },
+    { id: "WALK", label: "Walking", icon: "walk" },
+    { id: "YOGA", label: "Yoga", icon: "yoga" },
+    { id: "GYM", label: "Gym/Weights", icon: "weight-lifter" },
+    { id: "CYCLING", label: "Cycling", icon: "bicycle" },
+];
 
 export default function MealScheduleScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>([
-    {
-      id: "1",
-      sender: "ai",
-      type: "text",
-      text: "Hello! I am your AI Dietitian 🥗. To design your meals, tell me your goal, current weight, and any food allergies.",
-    },
-  ]);
+  const { token } = useSession();
+  const { data: profile } = useProfile(token);
+  
+  const vietnamDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
+  const { data: healthData } = useDailyHealthMetric(vietnamDate);
+  const { data: healthSummary } = useHealthScoreToday();
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg = {
-      id: Date.now().toString(),
-      sender: "user",
-      type: "text",
-      text: input,
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
+  const [weight, setWeight] = useState("");
+  const [height, setHeight] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState(1);
+  const [activity, setActivity] = useState("RUN");
+  const [stepCount, setStepCount] = useState("0");
+  const [distance, setDistance] = useState("0");
 
-    // Simulate AI thinking and generating a meal plan
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: "ai",
-          type: "text",
-          text: "Analyzing your metrics... Here is a personalized meal schedule designed just for you!",
-        },
-        {
-          id: (Date.now() + 2).toString(),
-          sender: "ai",
-          type: "plan",
-          plan: SAMPLE_AI_MEAL_PLAN,
-        },
-      ]);
-    }, 1500);
-  };
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [mealPlan, setMealPlan] = useState<any>(null);
+  
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const styles = createStyles(colors, isDark);
 
-  const renderMessage = (msg: any) => {
-    if (msg.sender === "user") {
-      return (
-        <View key={msg.id} style={styles.userMsgBlock}>
-          <View style={styles.userMsgBubble}>
-            <Text style={styles.userMsgText}>{msg.text}</Text>
-          </View>
-        </View>
-      );
+  useEffect(() => {
+    if (profile) {
+      setWeight(profile.weight?.toString() || "70");
+      setHeight(profile.height?.toString() || "170");
+      setAge(profile.age?.toString() || "25");
+      setGender(profile.gender === "FEMALE" ? 0 : 1);
     }
+  }, [profile]);
 
-    if (msg.type === "text") {
-      return (
-        <View key={msg.id} style={styles.aiMsgBlock}>
-          <View style={styles.aiIconWrapper}>
-            <Ionicons name="nutrition" size={20} color="#fff" />
-          </View>
-          <View style={styles.aiMsgBubble}>
-            <Text style={styles.aiMsgText}>{msg.text}</Text>
-          </View>
-        </View>
-      );
+  useEffect(() => {
+    if (healthData?.metrics) {
+        setStepCount(healthData.metrics.steps?.toString() || "0");
+        setDistance(((healthData.metrics.distance_meters || 0) / 1000).toFixed(1));
     }
+  }, [healthData]);
 
-    if (msg.type === "plan") {
-      const p = msg.plan;
-      return (
-        <View key={msg.id} style={styles.planCard}>
-          <Text style={styles.planTitle}>✨ Personalized Plan</Text>
-          <View style={styles.macrosRow}>
-            <MacroBox val={p.target_calories} lbl="Kcal" colors={colors} styles={styles} />
-            <MacroBox val={`${p.target_protein}g`} lbl="Protein" colors={colors} styles={styles} />
-            <MacroBox val={`${p.target_carbs}g`} lbl="Carbs" colors={colors} styles={styles} />
-          </View>
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: mealPlan ? 1 : 0,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, [mealPlan]);
 
-          {p.meals.map((meal: any, idx: number) => (
-            <View key={idx} style={styles.mealItem}>
-              <View style={styles.mealHeaderRow}>
-                <Text style={styles.mealType}>{meal.type}</Text>
-                <Text style={styles.mealTime}>{meal.time}</Text>
-              </View>
-              <Text style={styles.mealName}>
-                {meal.name}{" "}
-                <Text style={[styles.mealKcal, { color: colors.secondary }]}>({meal.calories} kcal)</Text>
-              </Text>
-              <Text style={styles.mealDesc}>{meal.description}</Text>
-            </View>
-          ))}
-          <View style={styles.planNoteBox}>
-            <Text style={styles.planNoteText}>💡 {p.ai_note}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.applyBtn}
-            onPress={() => {
-              router.back();
-            }}
-          >
-            <Text style={styles.applyBtnText}>Apply to Schedule</Text>
-          </TouchableOpacity>
-        </View>
-      );
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    try {
+        const forbiddenFoods = profile?.forbidden_foods || [];
+        const payload = {
+            steps: parseFloat(stepCount) || 0,
+            age: parseInt(age) || 25,
+            weight: parseFloat(weight) || 70,
+            height: parseFloat(height) || 170,
+            gender: gender,
+            distance: parseFloat(distance) || 0,
+            activity: activity,
+            forbidden_foods: forbiddenFoods
+        };
+
+        const response: any = await axiosClient.post("/ai/predict", payload);
+        setMealPlan(response);
+    } catch (error) {
+        console.error("Meal Generation Failed", error);
+        Alert.alert("Error", "Could not connect to AI service. Please try again.");
+    } finally {
+        setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      {/* HEADER */}
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.circleBtn}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ alignItems: "center" }}>
-          <Text style={styles.title}>AI Meal Planner</Text>
-          <Text style={styles.subtitle}>Powered by Healthcare AI</Text>
+          <Text style={styles.headerTitle}>AI Nutritionist</Text>
+          <Text style={styles.headerSubtitle}>Scientific Diet Planning</Text>
         </View>
-        <TouchableOpacity style={styles.circleBtn}>
-          <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
-        </TouchableOpacity>
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView
-        style={styles.chatArea}
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {messages.map(renderMessage)}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        {!mealPlan ? (
+          <View style={styles.inputPhase}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Physical Metrics</Text>
+              <Text style={styles.sectionDesc}>Update your stats for precision</Text>
+            </View>
+
+            <View style={styles.gridRow}>
+              <MetricInput label="Weight (kg)" value={weight} onChange={setWeight} icon="weight-kilogram" colors={colors} isDark={isDark} styles={styles} />
+              <MetricInput label="Height (cm)" value={height} onChange={setHeight} icon="human-male-height" colors={colors} isDark={isDark} styles={styles} />
+            </View>
+
+            <View style={styles.gridRow}>
+              <MetricInput label="Age" value={age} onChange={setAge} icon="calendar-account" colors={colors} isDark={isDark} styles={styles} />
+              <View style={styles.genderToggle}>
+                <Text style={styles.inputLabel}>Gender</Text>
+                <View style={styles.genderRow}>
+                  <TouchableOpacity 
+                    style={[styles.genderBtn, gender === 1 && styles.genderBtnActive]} 
+                    onPress={() => setGender(1)}
+                  >
+                    <Ionicons name="male" size={18} color={gender === 1 ? "#fff" : colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.genderBtn, gender === 0 && styles.genderBtnActiveFemale]} 
+                    onPress={() => setGender(0)}
+                  >
+                    <Ionicons name="female" size={18} color={gender === 0 ? "#fff" : colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>Today&apos;s Activity</Text>
+            <View style={styles.activityScroll}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {ACTIVITIES.map((act) => (
+                        <TouchableOpacity 
+                            key={act.id} 
+                            style={[styles.activityChip, activity === act.id && styles.activityChipActive]}
+                            onPress={() => setActivity(act.id)}
+                        >
+                            <MaterialCommunityIcons 
+                                name={act.icon as any} 
+                                size={24} 
+                                color={activity === act.id ? "#fff" : colors.primary} 
+                            />
+                            <Text style={[styles.activityLabel, activity === act.id && { color: "#fff" }]}>{act.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
+            <View style={styles.gridRow}>
+                <MetricInput label="Steps" value={stepCount} onChange={setStepCount} icon="shoe-print" colors={colors} isDark={isDark} styles={styles} />
+                <MetricInput label="Distance (km)" value={distance} onChange={setDistance} icon="map-marker-distance" colors={colors} isDark={isDark} styles={styles} />
+            </View>
+
+            {profile?.forbidden_foods && profile.forbidden_foods.length > 0 && (
+                <View style={styles.warningCard}>
+                    <Ionicons name="warning" size={20} color="#f59e0b" />
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={styles.warningTitle}>Restricted Ingredients</Text>
+                        <Text style={styles.warningText}>
+                            AI will exclude: {profile.forbidden_foods.join(", ")}
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            <TouchableOpacity 
+                style={[styles.generateBtn, isLoading && { opacity: 0.8 }]} 
+                onPress={handleGenerate}
+                disabled={isLoading}
+            >
+                {isLoading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <>
+                        <Text style={styles.generateBtnText}>Generate Meal Plan</Text>
+                        <Ionicons name="sparkles" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                    </>
+                )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Animated.View style={[styles.resultPhase, { opacity: fadeAnim }]}>
+            <LinearGradient
+                colors={isDark ? ["#1e293b", "#0f172a"] : ["#0ea5e9", "#0284c7"]}
+                style={styles.summaryCard}
+            >
+                <View style={styles.summaryHeader}>
+                    <View>
+                        <Text style={styles.summaryLabel}>Total Daily Energy (TDEE)</Text>
+                        <Text style={styles.summaryValue}>{mealPlan.summary.total_tdee} <Text style={{ fontSize: 16 }}>kcal</Text></Text>
+                    </View>
+                    <View style={styles.bmrBadge}>
+                        <Text style={styles.bmrText}>BMR: {mealPlan.summary.bmr}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.macroGrid}>
+                    <MacroStat label="Protein" val={`${mealPlan.summary.macros_target.protein_g}g`} color="#f87171" styles={styles} />
+                    <MacroStat label="Carbs" val={`${mealPlan.summary.macros_target.carb_g}g`} color="#60a5fa" styles={styles} />
+                    <MacroStat label="Fat" val={`${mealPlan.summary.macros_target.fat_g}g`} color="#fbbf24" styles={styles} />
+                </View>
+            </LinearGradient>
+
+            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+                <Text style={styles.sectionTitle}>Quantified Meals</Text>
+                {mealPlan.meals.map((meal: any, idx: number) => (
+                    <MealCard key={idx} meal={meal} colors={colors} isDark={isDark} styles={styles} />
+                ))}
+            </View>
+
+            <TouchableOpacity style={styles.resetBtn} onPress={() => setMealPlan(null)}>
+                <Text style={styles.resetBtnText}>Recalculate Metrics</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
       </ScrollView>
-
-      {/* INPUT */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.inputField}
-          placeholder="I weigh 70kg, want to build muscle..."
-          placeholderTextColor={colors.textSecondary}
-          value={input}
-          onChangeText={setInput}
-          selectionColor={colors.secondary}
-        />
-        <TouchableOpacity
-          style={[styles.sendBtn, !input.trim() && { opacity: 0.6 }]}
-          onPress={handleSend}
-          disabled={!input.trim()}
-        >
-          <Ionicons name="send" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
-const MacroBox = ({ val, lbl, colors, styles }: any) => (
-  <View style={[styles.macroBox, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-    <Text style={[styles.macroVal, { color: colors.secondary }]}>{val}</Text>
-    <Text style={[styles.macroLbl, { color: colors.secondary }]}>{lbl}</Text>
-  </View>
+const MetricInput = ({ label, value, onChange, icon, colors, isDark, styles }: any) => (
+    <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>{label}</Text>
+        <View style={[styles.inputBox, { backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f8fafc" }]}>
+            <MaterialCommunityIcons name={icon} size={20} color={colors.primary} />
+            <TextInput
+                style={[styles.field, { color: colors.text }]}
+                value={value}
+                onChangeText={onChange}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor="#94a3b8"
+            />
+        </View>
+    </View>
 );
 
+const MacroStat = ({ label, val, color, styles }: any) => (
+    <View style={styles.macroStatItem}>
+        <View style={[styles.macroDot, { backgroundColor: color }]} />
+        <View>
+            <Text style={styles.macroStatLabel}>{label}</Text>
+            <Text style={styles.macroStatVal}>{val}</Text>
+        </View>
+    </View>
+);
+
+const MealCard = ({ meal, colors, isDark, styles }: any) => {
+    const getIcon = (type: string) => {
+        switch(type) {
+            case 'BREAKFAST': return 'coffee';
+            case 'LUNCH': return 'food-apple';
+            case 'DINNER': return 'weather-night';
+            default: return 'food';
+        }
+    };
+
+    const getBg = (type: string) => {
+        if (isDark) return 'rgba(255,255,255,0.03)';
+        switch(type) {
+            case 'BREAKFAST': return '#fff7ed';
+            case 'LUNCH': return '#f0fdf4';
+            case 'DINNER': return '#eff6ff';
+            default: return '#fff';
+        }
+    };
+
+    return (
+        <View style={[styles.mealCard, { backgroundColor: getBg(meal.meal_type) }]}>
+            <View style={styles.mealCardHeader}>
+                <View style={styles.mealTypeBadge}>
+                    <MaterialCommunityIcons name={getIcon(meal.meal_type)} size={18} color={colors.primary} />
+                    <Text style={styles.mealTypeText}>{meal.meal_type}</Text>
+                </View>
+                <Text style={styles.mealTotalCals}>{meal.total_meal_calories} kcal</Text>
+            </View>
+
+            {meal.foods.map((food: any, i: number) => (
+                <View key={i} style={styles.foodItem}>
+                    <View style={styles.foodInfo}>
+                        <Text style={[styles.foodName, { color: colors.text }]}>{food.name}</Text>
+                        <Text style={styles.foodQuantity}>{food.quantity_g}{food.unit} • {food.total_metrics.calories} kcal</Text>
+                    </View>
+                    <View style={styles.foodMacros}>
+                        <Text style={styles.macroTag}>P: {food.total_metrics.protein}g</Text>
+                        <Text style={styles.macroTag}>C: {food.total_metrics.carb}g</Text>
+                    </View>
+                </View>
+            ))}
+        </View>
+    );
+};
+
 const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 60,
-    marginBottom: 10,
-  },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: colors.secondary,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-  chatArea: {
-    flex: 1,
-  },
-  userMsgBlock: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 16,
-  },
-  userMsgBubble: {
-    backgroundColor: colors.secondary,
-    padding: 14,
-    borderRadius: 20,
-    borderBottomRightRadius: 5,
-    maxWidth: "80%",
-    shadowColor: colors.secondary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  userMsgText: {
-    color: "#fff",
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  aiMsgBlock: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: 16,
-  },
-  aiIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
-  },
-  aiMsgBubble: {
-    backgroundColor: colors.card,
-    padding: 14,
-    borderRadius: 20,
-    borderBottomLeftRadius: 5,
-    maxWidth: "75%",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  aiMsgText: {
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  planCard: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    marginLeft: 46,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  planTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.secondary,
-    marginBottom: 16,
-  },
-  macrosRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  macroBox: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  macroVal: {
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  macroLbl: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  mealItem: {
-    borderLeftWidth: 3,
-    borderLeftColor: colors.secondary,
-    paddingLeft: 16,
-    marginBottom: 20,
-  },
-  mealHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  mealType: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  mealTime: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  mealName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  mealKcal: {
-    fontSize: 13,
-    fontWeight: "bold",
-  },
-  mealDesc: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  planNoteBox: {
-    backgroundColor: isDark ? "rgba(16, 185, 129, 0.1)" : "rgba(16, 185, 129, 0.05)",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.2)",
-  },
-  planNoteText: {
-    fontSize: 13,
-    color: colors.success,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  applyBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 18,
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  applyBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 16,
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    alignItems: "center",
-  },
-  inputField: {
-    flex: 1,
-    height: 52,
-    backgroundColor: colors.card,
-    borderRadius: 26,
-    paddingHorizontal: 20,
-    fontSize: 15,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sendBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 12,
-  },
+    container: { flex: 1, backgroundColor: colors.background },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginTop: 60, marginBottom: 20 },
+    circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.card, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    headerTitle: { fontSize: 20, fontWeight: "900", color: colors.text },
+    headerSubtitle: { fontSize: 12, color: colors.textSecondary, fontWeight: "600" },
+    
+    inputPhase: { paddingHorizontal: 20 },
+    sectionHeader: { marginBottom: 20 },
+    sectionTitle: { fontSize: 18, fontWeight: "800", color: colors.text, marginBottom: 4 },
+    sectionDesc: { fontSize: 13, color: colors.textSecondary },
+
+    gridRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
+    inputGroup: { flex: 1, marginHorizontal: 4 },
+    inputLabel: { fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 8, marginLeft: 4 },
+    inputBox: { flexDirection: "row", alignItems: "center", height: 52, borderRadius: 16, paddingHorizontal: 16, borderWidth: 1, borderColor: colors.border },
+    field: { flex: 1, marginLeft: 10, fontSize: 16, fontWeight: "600" },
+
+    genderToggle: { width: 100, marginLeft: 12 },
+    genderRow: { flexDirection: "row", backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#f1f5f9", borderRadius: 12, padding: 4 },
+    genderBtn: { flex: 1, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+    genderBtnActive: { backgroundColor: "#3b82f6" },
+    genderBtnActiveFemale: { backgroundColor: "#ec4899" },
+
+    activityScroll: { marginBottom: 20 },
+    activityChip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, backgroundColor: colors.card, marginRight: 12, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    activityChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    activityLabel: { fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginTop: 4 },
+
+    warningCard: { flexDirection: "row", backgroundColor: isDark ? "rgba(245, 158, 11, 0.1)" : "#fffbeb", padding: 16, borderRadius: 16, marginBottom: 25, borderWidth: 1, borderColor: isDark ? "rgba(245, 158, 11, 0.2)" : "#fef3c7" },
+    warningTitle: { fontSize: 14, fontWeight: "800", color: isDark ? "#fbbf24" : "#92400e" },
+    warningText: { fontSize: 12, color: isDark ? "#fcd34d" : "#b45309", marginTop: 2 },
+
+    generateBtn: { backgroundColor: colors.primary, height: 60, borderRadius: 20, flexDirection: "row", justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 5 },
+    generateBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+
+    // RESULT PHASE
+    resultPhase: { flex: 1 },
+    summaryCard: { marginHorizontal: 20, borderRadius: 30, padding: 24, shadowColor: "#0284c7", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
+    summaryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 },
+    summaryLabel: { color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: "600" },
+    summaryValue: { color: "#fff", fontSize: 36, fontWeight: "900", marginTop: 4 },
+    bmrBadge: { backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+    bmrText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+    
+    macroGrid: { flexDirection: "row", justifyContent: "space-between" },
+    macroStatItem: { flexDirection: "row", alignItems: "center" },
+    macroDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+    macroStatLabel: { color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: "600" },
+    macroStatVal: { color: "#fff", fontSize: 14, fontWeight: "800" },
+
+    mealCard: { marginHorizontal: 20, borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+    mealCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 12 },
+    mealTypeBadge: { flexDirection: "row", alignItems: "center" },
+    mealTypeText: { fontSize: 14, fontWeight: "900", color: colors.text, marginLeft: 8 },
+    mealTotalCals: { fontSize: 16, fontWeight: "800", color: "#0284c7" },
+    
+    foodItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    foodInfo: { flex: 1 },
+    foodName: { fontSize: 15, fontWeight: "700" },
+    foodQuantity: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    foodMacros: { alignItems: "flex-end" },
+    macroTag: { fontSize: 10, fontWeight: "700", color: colors.textSecondary },
+
+    resetBtn: { marginHorizontal: 20, paddingVertical: 16, alignItems: "center" },
+    resetBtnText: { color: colors.textSecondary, fontWeight: "700", textDecorationLine: "underline" },
+
+    macroStatLabelDark: { color: "#fff" },
+    macroStatValDark: { color: "#fff" },
 });

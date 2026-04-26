@@ -198,7 +198,7 @@ export default function Profile() {
       <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Account</Text>
 
       <AccountItem icon="person-outline" title="Personal Data" colors={colors} styles={styles} onPress={() => router.push('/screen/personal_data')} />
-      <AccountItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} onPress={() => router.push('/screen/notifications')} />
+      <AccountItem icon="document-text-outline" title="Scan Medical Record" colors={colors} styles={styles} onPress={() => router.push('/screen/medical_scan')} />
       <AccountItem icon="card-outline" title="Subscription Plan" colors={colors} styles={styles} onPress={() => router.push('/screen/subscription')} />
       <AccountItem icon="log-out-outline" title="Logout" danger onPress={handleLogout} colors={colors} styles={styles} />
       

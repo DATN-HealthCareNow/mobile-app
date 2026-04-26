@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { scheduleService, ScheduleCreateRequest, ExerciseSchedule } from '../api/services/scheduleService';
 
-export type ActivityType = 'Running' | 'Gym' | 'Stretching' | 'Yoga' | 'Stretching' | 'Pool Laps' | 'HIIT Training';
+export type ActivityType = 'Running' | 'Gym' | 'Stretching' | 'Yoga' | 'Pool Laps' | 'HIIT Training' | 'Medical';
 export type FrequencyType = 'Daily' | 'Weekly' | 'Custom';
 
 export interface ISchedule {
@@ -12,6 +12,9 @@ export interface ISchedule {
   time: string; // e.g. "07:30 AM"
   goal: string;
   isActive: boolean;
+  sourceId?: string;
+  diagnosis?: string;
+  medications?: any[];
 }
 
 // Utility functions
@@ -84,6 +87,7 @@ interface ScheduleStore {
   loadSchedules: () => Promise<void>;
   toggleSchedule: (id: string) => void;
   deleteSchedule: (id: string) => void;
+  deleteSchedules: (ids: string[]) => void;
 }
 
 // Dummy initial data to populate the UI (similar to user's mockup)
@@ -149,11 +153,12 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
 
       const normalizedTime = to24HourTime(schedule.time);
       
-      const createRequest: ScheduleCreateRequest = {
+      const createRequest = {
         title: `${schedule.type} - ${schedule.goal}`,
-        schedule_type: schedule.frequency === 'Daily' || repeatDays.length > 0 ? 'RECURRING' : 'ONE_TIME',
+        schedule_type: schedule.frequency === 'Daily' || repeatDays.length > 0 ? 'RECURRING' as const : 'ONE_TIME' as const,
         start_date: now.toISOString(),
         reminder_enabled: schedule.isActive,
+        sourceId: schedule.sourceId,
         recurrence_config: {
           repeat_days: repeatDays,
           reminder_time: normalizedTime
@@ -185,15 +190,52 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
       const backendSchedules = await scheduleService.getUpcomingSchedules();
       
       // Convert backend ExerciseSchedule format to ISchedule format
-      const mappedSchedules = backendSchedules.map(bs => ({
-        id: bs.id,
-        type: bs.title.split(' - ')[0] as ActivityType,
-        frequency: bs.schedule_type === 'RECURRING' ? 'Custom' as FrequencyType : 'Daily' as FrequencyType,
-        days: bs.recurrence_config?.repeat_days?.map(d => dayShortLabels[d]) || [],
-        time: bs.recurrence_config?.reminder_time || '07:00 AM',
-        goal: bs.title.split(' - ')[1] || '',
-        isActive: bs.reminder_enabled
-      })) as ISchedule[];
+      const mappedSchedules: ISchedule[] = [];
+      backendSchedules.forEach(bs => {
+        const isMedication = bs.title.startsWith('Uống thuốc') || bs.title.startsWith('Medication');
+        let type = bs.title.split(' - ')[0] as ActivityType;
+        let goal = bs.title.split(' - ')[1] || '';
+        
+        if (isMedication) {
+            type = 'Medical' as any;
+            goal = bs.title.replace('Uống thuốc: ', '').replace('Medication: ', '');
+        }
+        
+        let times: string[] = [];
+        
+        if (isMedication && bs.medications && bs.medications.length > 0) {
+            const timeSet = new Set<string>();
+            bs.medications.forEach((med: any) => {
+                if (med.schedules && Array.isArray(med.schedules)) {
+                    med.schedules.forEach((s: any) => {
+                        if (s.time) timeSet.add(s.time);
+                    });
+                }
+            });
+            times = Array.from(timeSet);
+        }
+
+        if (times.length === 0) {
+            times = bs.recurrence_config?.reminder_times && bs.recurrence_config.reminder_times.length > 0
+                ? bs.recurrence_config.reminder_times 
+                : [bs.recurrence_config?.reminder_time || '07:00'];
+        }
+
+        times.forEach(t => {
+            mappedSchedules.push({
+              id: isMedication ? `${bs.id}_${t}` : bs.id, // virtual ID for medications with multiple times
+              type,
+              frequency: bs.schedule_type === 'RECURRING' ? 'Custom' as FrequencyType : 'Daily' as FrequencyType,
+              days: bs.recurrence_config?.repeat_days?.map(d => dayShortLabels[d]) || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+              time: t,
+              goal,
+              isActive: bs.reminder_enabled,
+              sourceId: bs.source_id || bs.id,
+              diagnosis: bs.diagnosis,
+              medications: bs.medications
+            });
+        });
+      });
       
       set({ schedules: mappedSchedules, isLoading: false });
     } catch (error) {
@@ -208,7 +250,11 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
       set((state) => ({
         schedules: state.schedules.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s)
       }));
-      await scheduleService.toggleSchedule(id);
+      // Call API after optimistic update
+      // Only call API if it's likely a backend ID
+      if (id.length > 3) {
+        await scheduleService.toggleSchedule(id);
+      }
     } catch (error) {
       console.error('Failed to toggle schedule:', error);
       // Revert on error
@@ -220,18 +266,32 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
   
   deleteSchedule: async (id: string) => {
     try {
-      const scheduleToDelete = useScheduleStore.getState().schedules.find(s => s.id === id);
+      const realId = id.split('_')[0]; // Extract original ID
       set((state) => ({
-        schedules: state.schedules.filter(s => s.id !== id)
+        schedules: state.schedules.filter(s => s.id.split('_')[0] !== realId)
       }));
-      // Only delete from API if it's likely a backend ID (e.g., > 3 length or specific pattern)
-      // Since it's MongoDB, local dummy IDs like '1', '2' shouldn't be deleted via API
-      if (id.length > 3) {
-        await scheduleService.deleteSchedule(id);
+      if (realId.length > 3) {
+        await scheduleService.deleteSchedule(realId);
       }
     } catch (error) {
       console.error('Failed to delete schedule:', error);
-      // We could revert here, omitted for brevity
     }
   },
+
+  deleteSchedules: async (ids: string[]) => {
+    try {
+      const realIds = Array.from(new Set(ids.map(id => id.split('_')[0])));
+      
+      set((state) => ({
+        schedules: state.schedules.filter(s => !realIds.includes(s.id.split('_')[0]))
+      }));
+      
+      const backendIds = realIds.filter(id => id.length > 3);
+      if (backendIds.length > 0) {
+         await scheduleService.deleteSchedules(backendIds);
+      }
+    } catch (error) {
+       console.error('Failed to delete schedules:', error);
+    }
+  }
 }));
