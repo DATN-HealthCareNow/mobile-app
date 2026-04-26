@@ -4,7 +4,8 @@ import { AxiosError } from 'axios';
 
 export interface RecurrenceConfig {
   repeat_days: number[];
-  reminder_time: string; // HH:MM format
+  reminder_time?: string; // HH:MM format
+  reminder_times?: string[]; // Multiple HH:MM format
 }
 
 export interface ScheduleCreateRequest {
@@ -12,6 +13,9 @@ export interface ScheduleCreateRequest {
   schedule_type: 'ONE_TIME' | 'RECURRING';
   start_date: string; // ISO 8601 format
   reminder_enabled: boolean;
+  source_id?: string;
+  diagnosis?: string;
+  medications?: any[];
   recurrence_config?: RecurrenceConfig;
 }
 
@@ -23,6 +27,9 @@ export interface ExerciseSchedule {
   start_date: string;
   reminder_enabled: boolean;
   recurrence_config?: RecurrenceConfig;
+  source_id?: string;
+  diagnosis?: string;
+  medications?: any[];
 }
 
 class ScheduleService {
@@ -120,6 +127,18 @@ class ScheduleService {
       );
     } catch (error) {
       console.error('Error deleting schedule:', error);
+      throw error;
+    }
+  }
+
+  async deleteSchedules(scheduleIds: string[]): Promise<void> {
+    try {
+      await axiosClient.delete(
+        `/api/v1/schedules/batch`,
+        { data: scheduleIds }
+      );
+    } catch (error) {
+      console.error('Error deleting schedules in batch:', error);
       throw error;
     }
   }

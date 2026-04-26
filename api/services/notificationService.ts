@@ -4,6 +4,7 @@ export interface NotificationItem {
   id: string;
   userId: string;
   type: string;
+  eventId?: string;
   title: string;
   content: string;
   status: string;
@@ -46,6 +47,7 @@ const normalizeItem = (raw: any): NotificationItem => ({
   id: String(raw?.id ?? ""),
   userId: String(raw?.userId ?? raw?.user_id ?? ""),
   type: String(raw?.type ?? "IN_APP"),
+  eventId: raw?.eventId ?? raw?.event_id,
   title: String(raw?.title ?? "Thông báo"),
   content: String(raw?.content ?? ""),
   status: String(raw?.status ?? "SENT"),

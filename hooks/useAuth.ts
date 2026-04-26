@@ -3,7 +3,10 @@ import * as SecureStore from "expo-secure-store";
 import React from "react";
 import {
   authService,
+  ChangePasswordConfirmRequest,
+  ForgotPasswordConfirmRequest,
   LoginRequest,
+  OtpRequest,
   RegisterRequest,
 } from "../api/services/authService";
 import {
@@ -24,6 +27,12 @@ export const useGoogleLogin = () => {
       }
       if (data.user_id) {
         await SecureStore.setItemAsync("userId", data.user_id);
+        if (data?.is_new_user || data?.isNewUser) {
+          await SecureStore.setItemAsync(
+            `fitTutorialPending:${data.user_id}`,
+            "true",
+          );
+        }
       }
 
       notifySessionChange();
@@ -78,6 +87,10 @@ export const useRegister = () => {
       }
       if (data.user_id) {
         await SecureStore.setItemAsync("userId", data.user_id);
+        await SecureStore.setItemAsync(
+          `fitTutorialPending:${data.user_id}`,
+          "true",
+        );
       }
       notifySessionChange();
       console.log("[useRegister] Success, session updated");
@@ -85,6 +98,40 @@ export const useRegister = () => {
     onError: (error) => {
       console.error("Register failed", error);
     },
+  });
+};
+
+export const useRequestRegisterOtp = () => {
+  return useMutation({
+    mutationFn: (data: OtpRequest) => authService.requestRegisterOtp(data),
+  });
+};
+
+export const useRequestChangePasswordOtp = () => {
+  return useMutation({
+    mutationFn: (data: OtpRequest) =>
+      authService.requestChangePasswordOtp(data),
+  });
+};
+
+export const useConfirmChangePassword = () => {
+  return useMutation({
+    mutationFn: (data: ChangePasswordConfirmRequest) =>
+      authService.confirmChangePassword(data),
+  });
+};
+
+export const useRequestForgotPasswordOtp = () => {
+  return useMutation({
+    mutationFn: (data: OtpRequest) =>
+      authService.requestForgotPasswordOtp(data),
+  });
+};
+
+export const useConfirmForgotPassword = () => {
+  return useMutation({
+    mutationFn: (data: ForgotPasswordConfirmRequest) =>
+      authService.confirmForgotPassword(data),
   });
 };
 

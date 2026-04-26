@@ -120,6 +120,8 @@ export default function Settings() {
           <Divider colors={colors} styles={styles} />
           <SettingItem icon="notifications-outline" title="Notifications" colors={colors} styles={styles} isDark={isDark} onPress={() => router.push('/screen/notifications')} />
           <Divider colors={colors} styles={styles} />
+          <SettingItem icon="key-outline" title="Change Password" colors={colors} styles={styles} isDark={isDark} onPress={() => router.push('/screen/change_password')} />
+          <Divider colors={colors} styles={styles} />
           <SettingItem icon="shield-checkmark-outline" title="Security & Privacy" colors={colors} styles={styles} isDark={isDark} onPress={() => Alert.alert("Security", "Coming soon")} />
         </View>
 

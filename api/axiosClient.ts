@@ -29,7 +29,9 @@ const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim()
 
 const hostApiUrl = resolveHostApiUrl();
 const API_URL = envApiUrl || hostApiUrl || undefined;
-const API_FALLBACK_URL = hostApiUrl && hostApiUrl !== API_URL ? hostApiUrl : null;
+
+// Chỉ sử dụng fallback nếu không cấu hình EXPO_PUBLIC_API_URL (để tránh confu khi dev server chạy LAN)
+const API_FALLBACK_URL = !envApiUrl && hostApiUrl && hostApiUrl !== API_URL ? hostApiUrl : null;
 
 export const axiosClient = axios.create({
   baseURL: API_URL,

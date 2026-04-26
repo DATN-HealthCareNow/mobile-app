@@ -61,6 +61,7 @@ function RootLayoutNav() {
         alarmId?: string;
         screen?: string;
         eventType?: string;
+        recordId?: string;
       };
 
       if (data.type === "sleep_alarm" && data.alarmId) {
@@ -80,6 +81,17 @@ function RootLayoutNav() {
 
       if (data.screen === "notifications") {
         router.push("/screen/notifications" as any);
+        return;
+      }
+
+      if (data.screen === "articles" || data.eventType === "NEW_ARTICLE_PUBLISHED") {
+        router.push("/screen/article_list" as any);
+        return;
+      }
+
+      if (data.screen === "medication_schedule" && data.recordId) {
+        router.push({ pathname: '/screen/medication_schedule', params: { recordId: data.recordId } } as any);
+        return;
       }
     },
     [router],
