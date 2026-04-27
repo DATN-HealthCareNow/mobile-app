@@ -34,6 +34,7 @@ export const useGoogleLogin = () => {
           );
         }
       }
+      await SecureStore.setItemAsync("authProvider", "google");
 
       notifySessionChange();
       console.log("[useGoogleLogin] Success, session updated");
@@ -60,6 +61,7 @@ export const useLogin = () => {
       if (data.user_id) {
         await SecureStore.setItemAsync("userId", data.user_id);
       }
+      await SecureStore.setItemAsync("authProvider", "password");
 
       // Notify session change - this triggers useSession update and forces refetch
       notifySessionChange();
@@ -92,6 +94,7 @@ export const useRegister = () => {
           "true",
         );
       }
+      await SecureStore.setItemAsync("authProvider", "password");
       notifySessionChange();
       console.log("[useRegister] Success, session updated");
     },
@@ -141,6 +144,7 @@ export const useLogout = () => {
   return async () => {
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("userId");
+    await SecureStore.deleteItemAsync("authProvider");
     queryClient.clear(); // Xóa toàn bộ dữ liệu cũ khi logout
     notifySessionChange();
     console.log("Logged out");

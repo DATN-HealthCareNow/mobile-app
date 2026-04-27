@@ -293,15 +293,9 @@ export default function HomeScreen() {
 
         {/* WELCOME SECTION */}
         <View style={styles.welcomeSection}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-            }}
-          >
-            <View>
-              <Text style={styles.greeting}>
+          <View style={styles.welcomeRow}>
+            <View style={styles.welcomeTextWrap}>
+              <Text style={styles.greeting} numberOfLines={1} ellipsizeMode="tail">
                 Hello,{" "}
                 {
                   (profile?.fullName || profile?.full_name || "User").split(
@@ -310,7 +304,7 @@ export default function HomeScreen() {
                 }
                 !
               </Text>
-              <Text style={styles.statsSummary}>
+              <Text style={styles.statsSummary} numberOfLines={2}>
                 You have {todayCount} workout{todayCount !== 1 ? "s" : ""} for
                 today.
               </Text>
@@ -322,11 +316,13 @@ export default function HomeScreen() {
                 size={22}
                 color={isDark ? "#fbbf24" : "#d97706"}
               />
-              <View style={{ marginLeft: 6 }}>
+              <View style={styles.weatherTextWrap}>
                 <Text style={styles.weatherTemp}>
                   {weatherTemp !== null ? `${weatherTemp}°C` : "--°C"}
                 </Text>
-                <Text style={styles.weatherDesc}>HCMC, {weatherText}</Text>
+                <Text style={styles.weatherDesc} numberOfLines={1} ellipsizeMode="tail">
+                  HCMC, {weatherText}
+                </Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -822,6 +818,16 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginTop: 20,
       marginBottom: 24,
     },
+    welcomeRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    welcomeTextWrap: {
+      flex: 1,
+      minWidth: 0,
+      paddingRight: 10,
+    },
     greeting: {
       ...Typography.heading,
       fontSize: 24,
@@ -842,7 +848,10 @@ const createStyles = (colors: any, isDark: boolean) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 16,
+      maxWidth: "45%",
+      flexShrink: 1,
     },
+    weatherTextWrap: { marginLeft: 6, minWidth: 0, flexShrink: 1 },
     weatherTemp: {
       fontSize: 14,
       fontWeight: "800",

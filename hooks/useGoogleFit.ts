@@ -1,13 +1,12 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
+import * as SecureStore from "expo-secure-store";
 import { useSession } from "./useAuth";
 import { useProfile } from "./useUser";
 import { userService } from "../api/services/userService";
 
 // Cấu hình Google Sign-In một lần duy nhất.
-// Đối với Android Native, bạn CHỈ CẦN truyền Web Client ID,
-// Google Play Services sẽ tự động nhận diện Android Client ID qua Mã SHA-1 của file cài đặt.
 GoogleSignin.configure({
   scopes: [
     "https://www.googleapis.com/auth/fitness.activity.read",
@@ -31,10 +30,15 @@ const safeGetTokens = () => {
   return globalTokenPromise;
 };
 
+// ── SecureStore keys ──────────────────────────────────────────────────────────
+// Lưu Gmail đã được user liên kết, phân tách theo từng HealthCareNow userId
+// để tránh nhầm lẫn khi nhiều account dùng chung thiết bị.
+const googleLinkedEmailKey = (userId: string) => `googleLinkedEmail_${userId}`;
+
 export const useGoogleFit = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(true);
-  const { token: sessionToken } = useSession();
+  const { token: sessionToken, userId } = useSession();
   const { data: profile } = useProfile(sessionToken);
 
   const estimateRestingCalories = (userProfile: any) => {
@@ -79,8 +83,14 @@ export const useGoogleFit = () => {
     return Math.max(0, Math.round(baseCalories - 78));
   };
 
-  // Khôi phục token nếu user đã từng đăng nhập
+  // Khôi phục token nếu user đã từng kết nối Google Fit VÀ Gmail vẫn khớp
   useEffect(() => {
+    if (!userId) {
+      // Khi logout/chưa có session, luôn xóa token khỏi state để tránh giữ token user trước.
+      setAccessToken(null);
+      return;
+    }
+
     const checkLoginStatus = async () => {
       try {
         const hasPlay = await GoogleSignin.hasPlayServices();
@@ -88,35 +98,90 @@ export const useGoogleFit = () => {
           console.warn('[useGoogleFit] ⚠️ Google Play Services not available');
           return;
         }
-        
+
+        // Chỉ auto-restore cho phiên đăng nhập app bằng Google.
+        // Với tài khoản đăng nhập bằng mật khẩu, user cần bấm Connect Fit để chọn Gmail.
+        const authProvider = await SecureStore.getItemAsync('authProvider');
+        if (authProvider && authProvider !== 'google') {
+          console.log('[useGoogleFit] Password session detected, skip auto-restore Google Fit.');
+          setAccessToken(null);
+          return;
+        }
+
+        // Bước 1: Kiểm tra Gmail nào đã được liên kết với userId này
+        const linkedEmail = await SecureStore.getItemAsync(googleLinkedEmailKey(userId));
+        if (!linkedEmail) {
+          console.log('[useGoogleFit] No linked Gmail found for userId:', userId, '— skipping restore.');
+          setAccessToken(null);
+          return;
+        }
+
+        // Bước 2: Kiểm tra OS có Google account nào đang active không
         const hasSignIn = await GoogleSignin.hasPreviousSignIn();
-        if (hasSignIn) {
-          try {
-            const tokens = await safeGetTokens();
-            if (tokens?.accessToken) {
-              setAccessToken(tokens.accessToken);
-              console.log('[useGoogleFit] ✅ Previous session restored');
-            }
-          } catch (tokenErr) {
-            console.warn('[useGoogleFit] ⚠️ Failed to restore token:', tokenErr);
-            // Token hết hạn - yêu cầu sign in lại
-            Alert.alert(
-              'Google Fit Session Expired',
-              'Please sign in again to sync health data.',
-              [{ text: 'OK', onPress: () => {} }]
-            );
+        if (!hasSignIn) {
+          console.log('[useGoogleFit] No previous Google sign-in on device.');
+          setAccessToken(null);
+          return;
+        }
+
+        // Bước 3: Lấy email của Google account hiện tại trên thiết bị
+        const currentUser = GoogleSignin.getCurrentUser();
+        const currentEmail = (currentUser as any)?.user?.email ?? (currentUser as any)?.email;
+
+        if (!currentEmail) {
+          console.warn('[useGoogleFit] Could not determine current Google account email.');
+          setAccessToken(null);
+          return;
+        }
+
+        // Bước 4: So sánh — chỉ restore nếu đúng Gmail đã liên kết
+        if (currentEmail.toLowerCase() !== linkedEmail.toLowerCase()) {
+          console.warn(
+            `[useGoogleFit] ⚠️ Gmail mismatch! Linked: ${linkedEmail}, Current: ${currentEmail}. Skipping restore for userId: ${userId}`
+          );
+          // Xóa accessToken cũ để tránh dùng nhầm
+          setAccessToken(null);
+          return;
+        }
+
+        // Bước 5: Đúng Gmail → restore token
+        try {
+          const tokens = await safeGetTokens();
+          if (tokens?.accessToken) {
+            setAccessToken(tokens.accessToken);
+            console.log('[useGoogleFit] ✅ Previous session restored for', linkedEmail);
+          } else {
+            setAccessToken(null);
           }
+        } catch (tokenErr) {
+          console.warn('[useGoogleFit] ⚠️ Failed to restore token:', tokenErr);
+          setAccessToken(null);
+          Alert.alert(
+            'Google Fit Session Expired',
+            'Please sign in again to sync health data.',
+            [{ text: 'OK', onPress: () => {} }]
+          );
         }
       } catch (err: any) {
         console.warn('[useGoogleFit] Check login status failed:', err?.message);
+        setAccessToken(null);
       }
     };
     checkLoginStatus();
-  }, []);
+  }, [userId]);
 
   const authorize = async () => {
     try {
       await GoogleSignin.hasPlayServices();
+
+      // Ép buộc đăng xuất khỏi SDK trước để hiển thị bảng chọn tài khoản (Account Picker)
+      // Điều này ngăn việc tự động lấy lại session của người dùng trước đó trên thiết bị.
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutErr) {
+        // Bỏ qua nếu người dùng hiện chưa đăng nhập Google
+      }
+
       const userInfo = await GoogleSignin.signIn();
       const tokens = await safeGetTokens();
       const signedInEmail =
@@ -127,12 +192,17 @@ export const useGoogleFit = () => {
       const tokenPreview = tokens?.accessToken ? `${tokens.accessToken.slice(0, 12)}...` : "missing";
       console.log("[useGoogleFit] User signed in:", signedInEmail);
       console.log("[useGoogleFit] Access token received:", tokenPreview);
-      console.log("[useGoogleFit] Scopes requested: fitness.activity.read, fitness.body.read, fitness.heart_rate.read, fitness.sleep.read");
       setAccessToken(tokens.accessToken);
+
+      // Lưu Gmail đã liên kết vào SecureStore theo userId hiện tại
+      if (userId && signedInEmail !== "unknown") {
+        await SecureStore.setItemAsync(googleLinkedEmailKey(userId), signedInEmail);
+        console.log(`[useGoogleFit] ✅ Linked Gmail "${signedInEmail}" saved for userId: ${userId}`);
+      }
     } catch (error: any) {
       console.error("❌ Google Sign-in failed:", error?.message || JSON.stringify(error));
       Alert.alert(
-        "Google Sign-in Error", 
+        "Google Sign-in Error",
         error?.message || "Please try again"
       );
     }
@@ -477,10 +547,33 @@ export const useGoogleFit = () => {
     return result;
   }, [accessToken, profile]);
 
+  /**
+   * Hủy liên kết Google Fit của user hiện tại:
+   * - Xóa Gmail đã lưu khỏi SecureStore (theo userId)
+   * - Sign out khỏi Google SDK trên thiết bị
+   * - Clear accessToken state
+   */
+  const disconnectGoogleFit = async () => {
+    try {
+      if (userId) {
+        await SecureStore.deleteItemAsync(googleLinkedEmailKey(userId));
+        console.log(`[useGoogleFit] Cleared linked Gmail for userId: ${userId}`);
+      }
+      await GoogleSignin.signOut();
+      setAccessToken(null);
+      console.log('[useGoogleFit] ✅ Google Fit disconnected.');
+    } catch (err: any) {
+      console.warn('[useGoogleFit] Disconnect error (non-critical):', err?.message);
+      // Vẫn clear state dù có lỗi
+      setAccessToken(null);
+    }
+  };
+
   return {
     isReady,
     accessToken,
     authorize,
+    disconnectGoogleFit,
     fetchHealthData,
   };
 };

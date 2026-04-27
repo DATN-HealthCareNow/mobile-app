@@ -106,6 +106,7 @@ axiosClient.interceptors.response.use(
       console.log('Token expired or unauthorized');
       await SecureStore.deleteItemAsync('accessToken');
       await SecureStore.deleteItemAsync('userId');
+      await SecureStore.deleteItemAsync('authProvider');
       notifySessionChange();
     }
 
