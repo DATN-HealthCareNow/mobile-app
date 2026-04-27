@@ -124,11 +124,31 @@ export default function MedicalScanScreen() {
             }
 
             if (!fetchResponse.ok || data.error) {
-                // Lấy message lỗi (ví dụ như 429 Quota Exceeded)
                 const errorMsg = data.error_message || data.error || data.message || `Server error: ${fetchResponse.status}`;
-                Alert.alert("AI Error", errorMsg);
+                Alert.alert("AI Error", errorMsg, [
+                    { text: "Chụp lại", onPress: () => { setImageUri(null); } },
+                    { text: "Đóng", style: "cancel" }
+                ]);
             } else {
-                setResult(data);
+                // Kiểm tra kết quả có hợp lệ không
+                const diagnosis = data?.diagnosis;
+                const isUnknown =
+                    !diagnosis ||
+                    diagnosis.trim() === "" ||
+                    /unknown|không xác định|không rõ|n\/a/i.test(diagnosis);
+
+                if (isUnknown) {
+                    Alert.alert(
+                        "Không thể nhận dạng",
+                        "AI không thể phân tích được hình ảnh này. Vui lòng chụp lại ảnh rõ hơn (đủ ánh sáng, không bị mờ, đúng góc chụp đơn thuốc).",
+                        [
+                            { text: "Chụp lại", onPress: () => { setImageUri(null); } },
+                            { text: "Đóng", style: "cancel" },
+                        ]
+                    );
+                } else {
+                    setResult(data);
+                }
             }
         } catch (error: any) {
             console.error("Upload error:", error);
@@ -145,14 +165,10 @@ export default function MedicalScanScreen() {
         if (existingSchedules.length > 0) {
             setSavingRecordId(targetRecordId);
             try {
-                // 1. Delete from backend
                 const idsToDelete = existingSchedules.map(s => s.id);
                 await deleteSchedules(idsToDelete);
-                
-                // 2. Cancel local notifications
-                await Notifications.cancelAllScheduledNotificationsAsync(); 
+                await Notifications.cancelAllScheduledNotificationsAsync();
                 await loadSchedules();
-                
                 Alert.alert("Success", "All reminders for this record have been disabled.");
             } catch (e) {
                 Alert.alert("Error", "Could not disable reminders.");
@@ -170,21 +186,22 @@ export default function MedicalScanScreen() {
         setSavingRecordId(targetRecordId);
         try {
             let actualRecordId = targetRecordId;
-            
-            // Only create a new medical record if this is a NEW scan
+
+            // Chỉ tạo record MỚI nếu đây là scan chưa được lưu
+            // (targetRecordId bắt đầu bằng "scan_" nghĩa là chưa có trong DB)
             if (targetRecordId.startsWith("scan_")) {
                 const recordPayload = {
                     title: diagnosisTitle || "Medical Record",
                     diagnosis: diagnosisTitle || "Medical Record",
                     medications: medications || [],
                     forbiddenFoods: result?.forbidden_foods || [],
-                    aiAnalysis: JSON.stringify(result) 
+                    aiAnalysis: JSON.stringify(result),
                 };
-
                 const recordResponse = await axiosClient.post('/api/v1/medical-records', recordPayload);
-                const savedRecord = recordResponse.data || recordResponse;
+                const savedRecord = (recordResponse as any).data || recordResponse;
                 actualRecordId = savedRecord.id || targetRecordId;
             }
+            // Nếu targetRecordId là ID thực từ DB (từ history records) → dùng trực tiếp, không tạo mới
 
             // 2. Request permissions
             const { status } = await Notifications.requestPermissionsAsync();
@@ -317,12 +334,9 @@ export default function MedicalScanScreen() {
                     <View style={styles.historySection}>
                         <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 16 }]}>Medical History</Text>
                         {history.map((record, index) => {
-                            let status = "Expired";
-                            let statusColor = "#94a3b8"; 
-                            if (index === 0 || index === 1) {
-                                status = "Active Medication";
-                                statusColor = "#10b981"; 
-                            }
+                            const isExpired = record.status === "EXPIRED";
+                            const statusColor = isExpired ? "#94a3b8" : "#10b981";
+                            const statusLabel = isExpired ? "Expired" : "Active Medication";
                             
                             let diagnosis = record.diagnosis || record.title || "Medical Record";
                             let medicationsList: MedicationInfo[] = [];
@@ -337,20 +351,81 @@ export default function MedicalScanScreen() {
                             } catch(e){}
 
                             return (
-                                <View key={record.id || index} style={styles.historyCard}>
+                                <View key={record.id || index} style={[styles.historyCard, isExpired && { opacity: 0.75 }]}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <View style={{ flex: 1, paddingRight: 10 }}>
                                             <Text style={[styles.historyTitle, { color: colors.text }]}>{diagnosis}</Text>
                                             <View style={styles.statusRow}>
                                                 <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                                                <Text style={[styles.statusText, { color: statusColor }]}>{status}</Text>
+                                                <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+                                                {record.expiryDate && (
+                                                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginLeft: 8 }}>
+                                                        Exp: {new Date(record.expiryDate).toLocaleDateString()}
+                                                    </Text>
+                                                )}
                                             </View>
                                         </View>
                                         <TouchableOpacity 
-                                            style={[styles.historyIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}
+                                            style={[styles.historyIconBox, { backgroundColor: isExpired ? 'rgba(148, 163, 184, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}
                                             onPress={() => setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}
                                         >
-                                            <Ionicons name="time" size={22} color="#10b981" />
+                                            <Ionicons name={isExpired ? "lock-closed" : "time"} size={22} color={isExpired ? "#94a3b8" : "#10b981"} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, paddingHorizontal: 4}}>
+                                        {(() => {
+                                            const hasActiveSchedules = allSchedules.some(s => s.sourceId === record.id || s.id.includes(record.id));
+                                            const isProcessing = savingRecordId === record.id;
+                                            
+                                            return (
+                                                <TouchableOpacity 
+                                                    style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: hasActiveSchedules ? '#f43f5e' : '#10b981', paddingVertical: 8, borderRadius: 8}}
+                                                    onPress={() => handleSaveScheduleForRecord(record.id, medicationsList, diagnosis)}
+                                                    disabled={isProcessing}
+                                                >
+                                                    {isProcessing ? (
+                                                        <ActivityIndicator size="small" color="#fff" style={{marginRight: 6}} />
+                                                    ) : (
+                                                        <Ionicons name={hasActiveSchedules ? "notifications-off" : "notifications"} size={16} color="#fff" style={{marginRight: 6}} />
+                                                    )}
+                                                    <Text style={{color: '#fff', fontWeight: '700', fontSize: 12}}>
+                                                        {isProcessing ? "Wait..." : (hasActiveSchedules ? "Disable" : "Enable")}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })()}
+
+                                        {!isExpired && (
+                                            <TouchableOpacity 
+                                                style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#64748b', paddingVertical: 8, borderRadius: 8}}
+                                                onPress={() => {
+                                                    Alert.alert("Confirm", "Mark this record as expired/recovered?", [
+                                                        { text: "Cancel", style: "cancel" },
+                                                        { 
+                                                            text: "Confirm", 
+                                                            style: "destructive",
+                                                            onPress: async () => {
+                                                                try {
+                                                                    await axiosClient.post(`/api/v1/medical-records/${record.id}/status`, { status: "EXPIRED" });
+                                                                    fetchHistory();
+                                                                } catch(e) { Alert.alert("Error", "Could not update status."); }
+                                                            }
+                                                        }
+                                                    ]);
+                                                }}
+                                            >
+                                                <Ionicons name="checkmark-done-circle" size={16} color="#fff" style={{marginRight: 6}} />
+                                                <Text style={{color: '#fff', fontWeight: '700', fontSize: 12}}>Expire</Text>
+                                            </TouchableOpacity>
+                                        )}
+
+                                        <TouchableOpacity 
+                                            style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: '#10b981', paddingVertical: 8, borderRadius: 8}}
+                                            onPress={() => router.push({ pathname: '/screen/medication_schedule', params: { recordId: record.id } })}
+                                        >
+                                            <Ionicons name="calendar" size={16} color="#10b981" style={{marginRight: 6}} />
+                                            <Text style={{color: '#10b981', fontWeight: '700', fontSize: 12}}>Details</Text>
                                         </TouchableOpacity>
                                     </View>
 
@@ -375,37 +450,6 @@ export default function MedicalScanScreen() {
                                             ) : (
                                                 <Text style={{fontSize: 12, color: colors.textSecondary}}>No medication info found.</Text>
                                             )}
-                                            
-                                            <View style={{flexDirection: 'row', gap: 10, marginTop: 10}}>
-                                                {(() => {
-                                                    const hasActiveSchedules = allSchedules.some(s => s.sourceId === record.id || s.id.includes(record.id));
-                                                    const isProcessing = savingRecordId === record.id;
-                                                    
-                                                    return (
-                                                        <TouchableOpacity 
-                                                            style={{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: hasActiveSchedules ? '#f43f5e' : '#10b981', paddingVertical: 10, borderRadius: 10}}
-                                                            onPress={() => handleSaveScheduleForRecord(record.id, medicationsList, diagnosis)}
-                                                            disabled={isProcessing}
-                                                        >
-                                                            {isProcessing ? (
-                                                                <ActivityIndicator size="small" color="#fff" style={{marginRight: 6}} />
-                                                            ) : (
-                                                                <Ionicons name={hasActiveSchedules ? "notifications-off" : "notifications"} size={16} color="#fff" style={{marginRight: 6}} />
-                                                            )}
-                                                            <Text style={{color: '#fff', fontWeight: '700', fontSize: 13}}>
-                                                                {isProcessing ? "Wait..." : (hasActiveSchedules ? "Disable" : "Enable")}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })()}
-                                                <TouchableOpacity 
-                                                    style={{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: '#10b981', paddingVertical: 10, borderRadius: 10}}
-                                                    onPress={() => router.push({ pathname: '/screen/medication_schedule', params: { recordId: record.id } })}
-                                                >
-                                                    <Ionicons name="calendar" size={16} color="#10b981" style={{marginRight: 6}} />
-                                                    <Text style={{color: '#10b981', fontWeight: '700', fontSize: 13}}>Details</Text>
-                                                </TouchableOpacity>
-                                            </View>
                                         </View>
                                     )}
                                     
