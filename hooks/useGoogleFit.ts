@@ -146,6 +146,13 @@ export const useGoogleFit = () => {
 
         // Bước 5: Đúng Gmail → restore token
         try {
+          // Gọi signInSilently để tự động làm mới token nếu bị hết hạn (expired)
+          try {
+            await GoogleSignin.signInSilently();
+          } catch (silentErr) {
+            console.log('[useGoogleFit] signInSilently failed (might need full auth):', silentErr);
+          }
+
           const tokens = await safeGetTokens();
           if (tokens?.accessToken) {
             setAccessToken(tokens.accessToken);
@@ -231,6 +238,11 @@ export const useGoogleFit = () => {
         if (retryCount === 0) {
           // First attempt: try token refresh
           console.log('[useGoogleFit] 🔄 Attempt 1: Attempting token refresh...');
+          try {
+            await GoogleSignin.signInSilently();
+          } catch (silentErr) {
+            console.log('[useGoogleFit] signInSilently failed during retry:', silentErr);
+          }
           const newTokens = await safeGetTokens();
           if (newTokens?.accessToken) {
             console.log('[useGoogleFit] ✅ Token auto-refreshed. Retrying...');
@@ -520,23 +532,30 @@ export const useGoogleFit = () => {
     }
 
     const restingCalories = 0;
-    let activeCalories = Math.max(0, Math.round(totalCalories - restingCaloriesEstimate));
+    let activeCalories = 0;
 
-    if (activeCalories === 0 && googleExerciseMinutes > 0) {
-      activeCalories = Math.max(1, Math.round(googleExerciseMinutes * 2.8));
-      console.log('[useGoogleFit] Active calorie fallback from active minutes:', activeCalories);
+    // Chỉ tính toán bằng cách trừ BMR nếu chúng ta có ước tính BMR tin cậy (> 500 kcal)
+    if (restingCaloriesEstimate > 500) {
+      activeCalories = Math.max(0, Math.round(totalCalories - restingCaloriesEstimate));
     }
 
-    if (activeCalories === 0 && steps > 0) {
-      activeCalories = Math.max(1, Math.round(steps * 0.03));
-      console.log('[useGoogleFit] Active calorie fallback from steps:', activeCalories);
+    // Nếu activeCalories vẫn bằng 0 hoặc estimate không tin cậy, dùng fallback dựa trên vận động thực tế
+    if (activeCalories <= 5) {
+      if (googleExerciseMinutes > 0) {
+        activeCalories = Math.max(activeCalories, Math.round(googleExerciseMinutes * 3.5));
+      }
+      if (steps > 0) {
+        // 1000 bước ~ 30-40 kcal
+        const stepCalories = Math.round(steps * 0.035);
+        activeCalories = Math.max(activeCalories, stepCalories);
+      }
     }
 
     const result = {
       steps,
       distanceMeters: Math.round(distanceMeters),
-      totalCalories: Math.round(totalCalories),
-      restingCalories,
+      totalCalories: Math.round((restingCaloriesEstimate > 0 ? restingCaloriesEstimate : 1500) + activeCalories),
+      restingCalories: restingCaloriesEstimate > 0 ? restingCaloriesEstimate : 0,
       activeCalories,
       googleExerciseMinutes,
       sleepMinutes,

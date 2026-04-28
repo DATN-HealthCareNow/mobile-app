@@ -40,7 +40,7 @@ export default function RunSummaryScreen() {
                     distance_meter: distance * 1000,
                     calories_burned: calories,
                 });
-                queryClient.invalidateQueries({ queryKey: ['activities'] });
+                queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             } else {
                 // Đề phòng API start lúc đầu failed nên ID null, ta đâm bù
                 const act = await activityService.start({ type: "RUN", mode: "OUTDOOR" });
@@ -49,7 +49,7 @@ export default function RunSummaryScreen() {
                         distance_meter: distance * 1000,
                         calories_burned: calories,
                     });
-                    queryClient.invalidateQueries({ queryKey: ['activities'] });
+                    queryClient.invalidateQueries({ queryKey: ['daily-health'] });
                 }
             }
             router.replace("/(tabs)/activity"); // Quay về màn chính

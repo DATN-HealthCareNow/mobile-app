@@ -23,22 +23,20 @@ export default function PersonalDataScreen() {
 
   const styles = createStyles(colors, isDark);
 
-  const metrics = healthData?.metrics || {};
+  const m: any = healthData?.metrics || {};
 
-  const steps = Number(metrics.steps ?? 0);
-  const distanceMeters = Number(metrics.distance_meters ?? (metrics as any).distanceMeters ?? 0);
-  const activeCalories = Number(metrics.active_calories ?? (metrics as any).activeCalories ?? 0);
-  const totalCalories = Number(metrics.total_calories ?? (metrics as any).totalCalories ?? 0);
-  const sleepMinutes = Number(metrics.sleep_minutes ?? (metrics as any).sleepMinutes ?? 0);
-  const heartRate = Number(metrics.heart_rate ?? (metrics as any).heartRate ?? 0);
-  const restingHeartRate = Number(metrics.resting_heart_rate ?? (metrics as any).restingHeartRate ?? 0);
+  const steps = Number(m.steps ?? 0);
+  const distanceMeters = Number(m.distance_meters ?? m.distanceMeters ?? 0) + Number(m.google_distance_meters ?? m.googleDistanceMeters ?? 0);
+  const activeCalories = Number(m.active_calories ?? m.activeCalories ?? 0) + Number(m.google_active_calories ?? m.googleActiveCalories ?? 0);
+  const totalCalories = Number(m.total_calories ?? m.totalCalories ?? 0);
+  const sleepMinutes = Number(m.sleep_minutes ?? m.sleepMinutes ?? 0);
+  const heartRate = Number(m.heart_rate ?? m.heartRate ?? 0);
+  const restingHeartRate = Number(m.resting_heart_rate ?? m.restingHeartRate ?? 0);
   const movementMinutes = Number(
-    metrics.google_exercise_minutes ??
-      (metrics as any).googleExerciseMinutes ??
-      metrics.active_minutes ??
-      (metrics as any).activeMinutes ??
+    m.google_exercise_minutes ??
+      m.googleExerciseMinutes ??
       0,
-  );
+  ) + Number(m.exercise_minutes ?? m.exerciseMinutes ?? 0);
 
   // Formatter thời gian ngủ
   const formatSleepMinutes = (minutes = 0) => {
@@ -58,8 +56,8 @@ export default function PersonalDataScreen() {
     <View style={styles.container}>
       {!isDark && (
         <LinearGradient
-          colors={["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
-          style={styles.heroBg}
+          colors={["#b9dbf5", "#e7f2fb", colors.background]}
+          style={StyleSheet.absoluteFill}
         />
       )}
       {/* HEADER */}
@@ -205,7 +203,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 240,
+    bottom: 0,
   },
   header: {
     paddingTop: 60,

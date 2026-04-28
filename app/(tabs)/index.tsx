@@ -768,7 +768,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       left: 0,
       right: 0,
       top: 0,
-      height: 420,
+      bottom: 0,
     },
     header: {
       flexDirection: "row",

@@ -256,7 +256,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 420,
+    bottom: 0,
   },
   header: {
     marginTop: 60,

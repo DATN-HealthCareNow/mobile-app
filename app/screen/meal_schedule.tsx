@@ -73,7 +73,9 @@ export default function MealScheduleScreen() {
   useEffect(() => {
     if (healthData?.metrics) {
         setStepCount(healthData.metrics.steps?.toString() || "0");
-        setDistance(((healthData.metrics.distance_meters || 0) / 1000).toFixed(1));
+        const m = healthData.metrics as any;
+        const dist = Number(m.distance_meters ?? m.distanceMeters ?? 0) + Number(m.google_distance_meters ?? m.googleDistanceMeters ?? 0);
+        setDistance((dist / 1000).toFixed(1));
     }
   }, [healthData]);
 
@@ -258,8 +260,9 @@ export default function MealScheduleScreen() {
                     createdAt: new Date().toISOString(),
                     activities: selectedActivities,
                     plan: response,
+                    totalCalories: response?.summary?.total_tdee ?? 0,
                 };
-                const nextHistory = [historyItem, ...mealHistory].slice(0, 12);
+                const nextHistory = [historyItem, ...mealHistory].slice(0, 15);
                 await saveHistory(nextHistory);
     } catch (error) {
         console.error("Meal Generation Failed", error);
@@ -276,6 +279,13 @@ export default function MealScheduleScreen() {
       {/* ── HISTORY MODAL ──────────────────────────────────────────── */}
       {showHistory && (
         <View style={styles.historyModal}>
+          {/* Backdrop - Move to first to be behind content */}
+          <TouchableOpacity
+            style={styles.historyBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowHistory(false)}
+          />
+
           <View style={styles.historyModalContent}>
             {/* Handle bar */}
             <View style={styles.historyHandle} />
@@ -320,62 +330,82 @@ export default function MealScheduleScreen() {
                 </Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-                {mealHistory.map((entry) => (
-                  <View key={entry.id} style={styles.historyModalItem}>
-                    {/* Left: info */}
-                    <View style={styles.historyModalItemLeft}>
-                      <MaterialCommunityIcons
-                        name="silverware-fork-knife"
-                        size={20}
-                        color={colors.primary}
-                        style={{ marginRight: 12 }}
-                      />
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.historyTitle} numberOfLines={1}>
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </Text>
-                        <Text style={styles.historySubtitle} numberOfLines={1}>
-                          {(entry.activities || []).join(", ")} •{" "}
-                          {entry.plan?.summary?.total_tdee ?? 0} kcal •{" "}
-                          {entry.plan?.meals?.length ?? 0} meals
-                        </Text>
+              <View style={{ flex: 1, minHeight: 300 }}>
+                <ScrollView 
+                  showsVerticalScrollIndicator={false} 
+                  contentContainerStyle={{ paddingBottom: 40 }}
+                >
+                  {mealHistory.map((entry, index) => {
+                    const dateObj = entry.createdAt ? new Date(entry.createdAt) : new Date();
+                    const displayDate = isNaN(dateObj.getTime()) ? "Past Plan" : dateObj.toLocaleDateString(undefined, { 
+                      weekday: 'short', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    });
+                    const displayTime = isNaN(dateObj.getTime()) ? "" : dateObj.toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    });
+
+                    return (
+                      <View key={entry.id || index} style={styles.historyModalItem}>
+                        <View style={styles.historyModalItemLeft}>
+                          <View style={{ 
+                            width: 44, 
+                            height: 44, 
+                            borderRadius: 12, 
+                            backgroundColor: isDark ? 'rgba(2, 132, 199, 0.15)' : '#e0f2fe', 
+                            justifyContent: 'center', 
+                            alignItems: 'center',
+                            marginRight: 14
+                          }}>
+                            <MaterialCommunityIcons
+                              name="calendar-clock"
+                              size={22}
+                              color="#0284c7"
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.historyTitle, { fontSize: 15 }]} numberOfLines={1}>
+                              {displayDate} {displayTime ? `• ${displayTime}` : ""}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                              <Ionicons name="flame" size={12} color="#f59e0b" style={{ marginRight: 4 }} />
+                              <Text style={styles.historySubtitle}>
+                                {entry.totalCalories || entry.plan?.summary?.total_tdee || 0} kcal
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        <View style={styles.historyModalActions}>
+                          <TouchableOpacity
+                            style={[styles.historyViewBtn, { height: 36, paddingHorizontal: 12 }]}
+                            onPress={async () => {
+                              setShowHistory(false);
+                              setTimeout(() => {
+                                applyAndCachePlan(entry.plan);
+                              }, 300);
+                            }}
+                          >
+                            <Ionicons name="eye" size={16} color={colors.primary} />
+                            <Text style={[styles.historyViewText, { marginLeft: 6 }]}>View</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.historyDeleteBtn, { width: 36, height: 36 }]}
+                            onPress={() => handleDeleteHistoryItem(entry.id)}
+                          >
+                            <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-
-                    {/* Right: actions */}
-                    <View style={styles.historyModalActions}>
-                      {/* View button */}
-                      <TouchableOpacity
-                        style={styles.historyViewBtn}
-                        onPress={async () => {
-                          await applyAndCachePlan(entry.plan);
-                          setShowHistory(false);
-                        }}
-                      >
-                        <Ionicons name="eye-outline" size={15} color={colors.primary} />
-                        <Text style={styles.historyViewText}>View</Text>
-                      </TouchableOpacity>
-
-                      {/* Delete button */}
-                      <TouchableOpacity
-                        style={styles.historyDeleteBtn}
-                        onPress={() => handleDeleteHistoryItem(entry.id)}
-                      >
-                        <Ionicons name="trash-outline" size={15} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+                    );
+                  })}
+                </ScrollView>
+              </View>
             )}
           </View>
-          {/* Backdrop */}
-          <TouchableOpacity
-            style={styles.historyBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowHistory(false)}
-          />
         </View>
       )}
 
@@ -749,12 +779,17 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     },
     historyModalContent: {
         backgroundColor: colors.card,
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         paddingHorizontal: 20,
-        paddingBottom: 36,
-        maxHeight: "75%",
+        paddingBottom: 40,
+        height: "75%", // Tăng chiều cao cố định để giống Bottom Sheet
         zIndex: 1,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 15,
+        elevation: 20,
     },
     historyHandle: {
         width: 40, height: 4,
