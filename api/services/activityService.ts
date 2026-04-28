@@ -12,7 +12,9 @@ export interface HeartRateUpdateRequest {
 
 export interface ActivityFinishRequest {
   end_at?: string;
-  calories_burned?: number;
+  active_calories?: number;
+  exercise_minutes?: number;
+  calories_burned?: number; // legacy
   distance_meter?: number;
   avg_heart_rate?: number;
   workoutLogs?: {

@@ -71,7 +71,8 @@ export default function GymSummaryScreen() {
             const act = await activityService.start({ type: "GYM", mode: "INDOOR" });
             if (act && act.id) {
                 await activityService.finish(act.id, {
-                    calories_burned: stats.calories,
+                    active_calories: stats.calories,
+                    exercise_minutes: Math.max(1, Math.round(stats.durationSecs / 60)),
                     workoutLogs: flattenedLogs
                 });
                 queryClient.invalidateQueries({ queryKey: ['daily-health'] });

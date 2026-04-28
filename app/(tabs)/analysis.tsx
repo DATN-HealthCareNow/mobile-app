@@ -1,307 +1,107 @@
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState, useRef } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
-  ActivityIndicator, Image, KeyboardAvoidingView, Platform,
-  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../context/ThemeContext";
 import { Typography } from "../../constants/typography";
-import {
-  useHealthInsights, useHealthChat,
-  ChatMessage, HealthInsightResponse,
-} from "../../hooks/useHealthInsights";
+import { useHealthInsights, HealthInsightResponse } from "../../hooks/useHealthInsights";
+import { useWeeklyReport } from "../../hooks/useDailyHealthMetric";
+import { DailyHealthDTO } from "../../api/services/iotService";
+
+const { width } = Dimensions.get("window");
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const TREND_ICON: Record<string, string> = {
-  INCREASING: "↗", DECREASING: "↘", STABLE: "→", INSUFFICIENT_DATA: "–",
-};
-
-const TREND_COLOR = (t: string, colors: any) => {
-  if (t === "INCREASING") return "#22c55e";
-  if (t === "DECREASING") return "#ef4444";
-  if (t === "STABLE") return colors.primary;
-  return colors.textSecondary;
-};
-
-const RISK_COLOR: Record<string, string> = {
-  HIGH: "#ef4444", MEDIUM: "#f59e0b", LOW: "#22c55e",
-};
 
 const ACT_LABEL: Record<string, string> = {
   SEDENTARY: "Ít vận động", LIGHTLY_ACTIVE: "Nhẹ nhàng",
   MODERATELY_ACTIVE: "Vừa phải", VERY_ACTIVE: "Năng động", UNKNOWN: "Chưa rõ",
 };
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+const getBMIStatusColor = (bmi: number | null) => {
+  if (!bmi) return "#94a3b8";
+  if (bmi < 18.5) return "#3b82f6";
+  if (bmi < 25) return "#22c55e";
+  if (bmi < 30) return "#f59e0b";
+  return "#ef4444";
+};
 
-function MetricPill({ label, value, color }: { label: string; value: string; color: string }) {
+// ── Components ───────────────────────────────────────────────────────────────
+
+function TopMetricCard({ title, value, subLabel, badgeText, badgeColor, isDark }: any) {
   return (
-    <View style={[pillStyles.wrap, { borderColor: color + "44" }]}>
-      <Text style={[pillStyles.value, { color }]}>{value}</Text>
-      <Text style={pillStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
-const pillStyles = StyleSheet.create({
-  wrap: { alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, borderWidth: 1, minWidth: 80 },
-  value: { fontSize: 18, fontWeight: "700" },
-  label: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
-});
-
-function TrendRow({ label, trend, colors }: { label: string; trend: string; colors: any }) {
-  return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-      <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{label}</Text>
-      <Text style={{ color: TREND_COLOR(trend, colors), fontWeight: "700" }}>
-        {TREND_ICON[trend] ?? "–"} {trend.replace("_", " ")}
-      </Text>
-    </View>
-  );
-}
-
-function InsightCard({ data, colors, isDark }: { data: HealthInsightResponse; colors: any; isDark: boolean }) {
-  const { analytics, insight } = data;
-
-  return (
-    <>
-      {/* Biometric Pills */}
-      <View style={{ flexDirection: "row", justifyContent: "space-around", marginBottom: 20 }}>
-        <MetricPill label="BMI" value={analytics.bmi?.toFixed(1) ?? "--"} color={colors.primary} />
-        <MetricPill label="BMR" value={analytics.bmr ? `${analytics.bmr} kcal` : "--"} color={colors.accent} />
-        <MetricPill label="TDEE" value={analytics.tdee ? `${analytics.tdee} kcal` : "--"} color={colors.secondary} />
-      </View>
-
-      {/* Activity level */}
-      <View style={[cardStyles.section, { backgroundColor: isDark ? "#ffffff08" : "#f1f5f9", borderRadius: 12, padding: 12, marginBottom: 12 }]}>
-        <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 4 }}>MỨC ĐỘ VẬN ĐỘNG</Text>
-        <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>
-          {ACT_LABEL[analytics.activity_level] ?? analytics.activity_level}
-        </Text>
-        {analytics.stats.steps_avg_7d != null && (
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-            TB {Math.round(analytics.stats.steps_avg_7d).toLocaleString()} bước/ngày
-            {analytics.stats.activity_consistency != null
-              ? ` · ${Math.round(analytics.stats.activity_consistency * 100)}% ngày hoạt động`
-              : ""}
-          </Text>
-        )}
-      </View>
-
-      {/* Trends */}
-      <View style={{ marginBottom: 12 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 8 }}>XU HƯỚNG 7 NGÀY</Text>
-        <TrendRow label="Bước chân" trend={analytics.trends.steps} colors={colors} />
-        <TrendRow label="Lượng calo" trend={analytics.trends.calories} colors={colors} />
-        {data.mode === "ADVANCED" && (
-          <>
-            <TrendRow label="Giấc ngủ" trend={analytics.trends.sleep} colors={colors} />
-            <TrendRow label="Nhịp tim" trend={analytics.trends.heart_rate} colors={colors} />
-          </>
-        )}
-      </View>
-
-      {/* Advanced stats */}
-      {data.mode === "ADVANCED" && analytics.advanced && (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          {analytics.advanced.sleep_avg_hours != null && (
-            <MetricPill label="Giấc ngủ TB" value={`${analytics.advanced.sleep_avg_hours}h`} color={colors.accent} />
-          )}
-          {analytics.advanced.heart_rate_avg != null && (
-            <MetricPill label="Nhịp tim TB" value={`${analytics.advanced.heart_rate_avg} bpm`} color="#ef4444" />
-          )}
-          {analytics.advanced.recovery_score != null && (
-            <MetricPill label="Recovery" value={`${analytics.advanced.recovery_score}%`} color="#22c55e" />
-          )}
+    <View style={[styles.topCard, isDark && { backgroundColor: "#1e293b", borderColor: "#334155" }]}>
+      <Text style={styles.topCardTitle}>{title}</Text>
+      <Text style={[styles.topCardValue, isDark && { color: "#f8fafc" }]}>{value}</Text>
+      {badgeText ? (
+        <View style={[styles.topCardBadge, { backgroundColor: badgeColor + "22" }]}>
+          <Text style={[styles.topCardBadgeText, { color: badgeColor }]}>{badgeText}</Text>
         </View>
+      ) : (
+        <Text style={styles.topCardSubLabel}>{subLabel}</Text>
       )}
-
-      {/* AI Insight */}
-      {insight && (
-        <>
-          <View style={[cardStyles.section, { backgroundColor: colors.primary + "18", borderRadius: 12, padding: 14, marginBottom: 12 }]}>
-            <Text style={{ color: colors.primary, fontWeight: "700", fontSize: 12, marginBottom: 6 }}>✨ AI NHẬN XÉT</Text>
-            <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{insight.summary}</Text>
-          </View>
-
-          {insight.insights.length > 0 && (
-            <View style={{ marginBottom: 12 }}>
-              {insight.insights.map((ins, i) => (
-                <View key={i} style={{ flexDirection: "row", marginBottom: 6 }}>
-                  <Text style={{ color: colors.primary, marginRight: 6 }}>•</Text>
-                  <Text style={{ color: colors.text, fontSize: 13, flex: 1, lineHeight: 18 }}>{ins}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {insight.risks.length > 0 && (
-            <View style={[cardStyles.section, { backgroundColor: "#ef444418", borderRadius: 12, padding: 12, marginBottom: 12 }]}>
-              <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 12, marginBottom: 6 }}>⚠️ RỦI RO</Text>
-              {insight.risks.map((r, i) => (
-                <Text key={i} style={{ color: colors.text, fontSize: 13, marginBottom: 3 }}>• {r}</Text>
-              ))}
-            </View>
-          )}
-
-          {insight.prediction && (
-            <View style={[cardStyles.section, { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, marginBottom: 12 }]}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 6 }}>DỰ ĐOÁN 7 NGÀY TỚI</Text>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <View>
-                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Mức hoạt động</Text>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>{ACT_LABEL[insight.prediction.expected_activity_level] ?? insight.prediction.expected_activity_level}</Text>
-                </View>
-                <View style={{ alignItems: "center" }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Nguy cơ cân nặng</Text>
-                  <Text style={{ color: RISK_COLOR[insight.prediction.weight_change_risk] ?? colors.text, fontWeight: "700" }}>{insight.prediction.weight_change_risk}</Text>
-                </View>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Độ tin cậy</Text>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>{insight.prediction.confidence}</Text>
-                </View>
-              </View>
-              {insight.prediction.notes && (
-                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8, fontStyle: "italic" }}>{insight.prediction.notes}</Text>
-              )}
-            </View>
-          )}
-
-          {insight.recommendations.length > 0 && (
-            <View>
-              <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 8 }}>KHUYẾN NGHỊ</Text>
-              {insight.recommendations.map((r, i) => (
-                <View key={i} style={[cardStyles.section, { flexDirection: "row", alignItems: "flex-start", backgroundColor: "#22c55e12", borderRadius: 10, padding: 10, marginBottom: 6 }]}>
-                  <Text style={{ color: "#22c55e", marginRight: 8, marginTop: 1 }}>✓</Text>
-                  <Text style={{ color: colors.text, fontSize: 13, flex: 1, lineHeight: 18 }}>{r}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </>
-      )}
-    </>
+    </View>
   );
 }
 
-const cardStyles = StyleSheet.create({ section: {} });
+function BarChartCard({ title, subtitle, icon, iconBg, iconColor, data, highlightColor, colors, isDark, refreshTrigger }: any) {
+  // Find max value to scale bars relative to card height
+  const maxVal = Math.max(...data.map((d: any) => d.value), 1);
+  
+  const [selectedIndex, setSelectedIndex] = useState<number>(6); // Default to last day (today)
 
-// ── Chat Section ──────────────────────────────────────────────────────────────
-
-function ChatSection({
-  insightData, colors, isDark,
-}: { insightData: HealthInsightResponse; colors: any; isDark: boolean }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const scrollRef = useRef<ScrollView>(null);
-  const { mutate: sendChat, isPending } = useHealthChat();
-
-  const handleSend = (text?: string) => {
-    const msg = text ?? input.trim();
-    if (!msg) return;
-    setInput("");
-
-    const updated: ChatMessage[] = [...messages, { role: "user", content: msg }];
-    setMessages(updated);
-
-    sendChat(
-      {
-        user_profile: {
-          age: 25, gender: 1, height_cm: 170, weight_kg: 65, language: "vi",
-        },
-        analytics_context: insightData.analytics as any,
-        conversation_history: updated,
-        message: msg,
-      },
-      {
-        onSuccess: (res) => {
-          setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
-          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-        },
-      }
-    );
-  };
-
-  const suggested = messages.length === 0
-    ? ["Tôi nên cải thiện gì trước tiên?", "Mức vận động của tôi có ổn không?", "Tôi nên ăn bao nhiêu calo?"]
-    : [];
+  // Auto-select today's column when data loads or refreshed
+  useEffect(() => {
+    const todayIdx = data.findIndex((d: any) => d.isToday);
+    if (todayIdx !== -1) {
+      setSelectedIndex(todayIdx);
+    }
+  }, [data, refreshTrigger]);
 
   return (
-    <View style={{ marginTop: 20, marginBottom: 120 }}>
-      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 16, marginBottom: 12 }}>
-        💬 Hỏi AI Coach
-      </Text>
-
-      {/* Message list */}
-      <ScrollView ref={scrollRef} style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-        {messages.length === 0 && (
-          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: "center", marginVertical: 16 }}>
-            Hỏi AI về dữ liệu sức khỏe 7 ngày của bạn
-          </Text>
-        )}
-        {messages.map((m, i) => (
-          <View
-            key={i}
-            style={{
-              alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-              backgroundColor: m.role === "user" ? colors.primary : (isDark ? "#1e293b" : "#f1f5f9"),
-              borderRadius: 14,
-              padding: 12,
-              maxWidth: "82%",
-              marginBottom: 8,
-            }}
-          >
-            <Text style={{ color: m.role === "user" ? "#fff" : colors.text, fontSize: 13, lineHeight: 19 }}>
-              {m.content}
-            </Text>
+    <View style={[styles.chartCard, isDark && { backgroundColor: "#1e293b", borderColor: "#334155" }]}>
+      <View style={styles.chartHeader}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={[styles.chartIconWrap, { backgroundColor: iconBg }]}>
+            <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
           </View>
-        ))}
-        {isPending && (
-          <View style={{ alignSelf: "flex-start", padding: 12, marginBottom: 8 }}>
-            <ActivityIndicator size="small" color={colors.primary} />
+          <View>
+            <Text style={[styles.chartTitle, isDark && { color: "#f8fafc" }]}>{title}</Text>
+            <Text style={styles.chartSubtitle}>{subtitle}</Text>
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </View>
 
-      {/* Suggested questions */}
-      {suggested.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-          {suggested.map((q, i) => (
-            <TouchableOpacity
-              key={i}
-              onPress={() => handleSend(q)}
-              style={{ backgroundColor: colors.primary + "22", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: colors.primary + "44" }}
-            >
-              <Text style={{ color: colors.primary, fontSize: 12 }}>{q}</Text>
+      <View style={styles.chartBarsWrap}>
+        {data.map((day: any, i: number) => {
+          // Default height is 10% minimum
+          const heightPct = Math.max((day.value / maxVal) * 100, 10);
+          const isSelected = i === selectedIndex;
+          
+          return (
+            <TouchableOpacity key={i} style={styles.barCol} activeOpacity={0.7} onPress={() => setSelectedIndex(i)}>
+              <View style={styles.barTrack}>
+                {isSelected ? (
+                  <LinearGradient
+                    colors={highlightColor}
+                    style={[styles.barFill, { height: `${heightPct}%`, shadowColor: highlightColor[1], shadowOpacity: 0.5, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}
+                  />
+                ) : (
+                  <View style={[styles.barFill, { height: `${heightPct}%`, backgroundColor: isDark ? "#334155" : `${highlightColor[0]}44` }]} />
+                )}
+                
+                <Text style={[styles.barValueLabel, { color: isSelected ? highlightColor[1] : colors.textSecondary }]}>
+                  {day.value > 1000 ? (day.value/1000).toFixed(1) + 'k' : day.value}
+                </Text>
+              </View>
+              <Text style={[styles.barLabel, isSelected && { color: highlightColor[1], fontWeight: "700" }]}>
+                {day.dayName}
+              </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Input */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="Hỏi về sức khỏe của bạn..."
-          placeholderTextColor={colors.textSecondary}
-          style={{
-            flex: 1, backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-            borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
-            color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border,
-          }}
-          onSubmitEditing={() => handleSend()}
-        />
-        <TouchableOpacity
-          onPress={() => handleSend()}
-          disabled={!input.trim() || isPending}
-          style={{ backgroundColor: colors.primary, borderRadius: 24, padding: 12 }}
-        >
-          <Ionicons name="send" size={16} color="#fff" />
-        </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -312,19 +112,80 @@ function ChatSection({
 export default function AnalysisScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { data: rawData, isLoading, isError, refetch } = useHealthInsights();
-  const data = rawData as HealthInsightResponse | undefined;
+  
+  const [refreshCount, setRefreshCount] = useState(0);
 
-  const styles = createStyles(colors, isDark);
+  // 1. Fetch AI Analytics
+  const { data: rawData, isLoading: aiLoading, isError: aiError, refetch: refetchAi } = useHealthInsights();
+  const aiData = rawData as HealthInsightResponse | undefined;
+
+  // 2. Compute date range for 7 days
+  const { startDate, endDate, last7Days } = useMemo(() => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    
+    const sDate = sevenDaysAgo.toISOString().split("T")[0];
+    const eDate = today.toISOString().split("T")[0];
+
+    const days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(sevenDaysAgo);
+      d.setDate(d.getDate() + i);
+      return {
+        date: d.toISOString().split("T")[0],
+        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()],
+        isToday: d.toISOString().split("T")[0] === eDate,
+      };
+    });
+
+    return { startDate: sDate, endDate: eDate, last7Days: days };
+  }, []);
+
+  // 3. Fetch 7-day raw data
+  const { data: weeklyData, isLoading: weeklyLoading, refetch: refetchWeekly } = useWeeklyReport(startDate, endDate);
+
+  const isLoading = aiLoading || weeklyLoading;
+
+  const handleRefresh = () => {
+    refetchAi();
+    refetchWeekly();
+    setRefreshCount(c => c + 1);
+  };
+
+  // 4. Map raw data to chart format
+  const chartData = useMemo(() => {
+    return {
+      steps: last7Days.map(d => {
+        const r = weeklyData?.find((w: DailyHealthDTO) => w.date_string === d.date || w.date_string_local === d.date);
+        return { ...d, value: r?.metrics?.steps ?? 0 };
+      }),
+      calories: last7Days.map(d => {
+        const r = weeklyData?.find((w: DailyHealthDTO) => w.date_string === d.date || w.date_string_local === d.date);
+        const appCal = Number(r?.metrics?.active_calories ?? 0);
+        const ggCal = Number((r?.metrics as any)?.google_active_calories ?? 0);
+        return { ...d, value: appCal + ggCal };
+      }),
+      exercise: last7Days.map(d => {
+        const r = weeklyData?.find((w: DailyHealthDTO) => w.date_string === d.date || w.date_string_local === d.date);
+        const appMin = Number(r?.metrics?.exercise_minutes ?? 0);
+        const ggMin = Number(r?.metrics?.google_exercise_minutes ?? 0);
+        return { ...d, value: appMin + ggMin };
+      }),
+      heartRate: last7Days.map(d => {
+        const r = weeklyData?.find((w: DailyHealthDTO) => w.date_string === d.date || w.date_string_local === d.date);
+        return { ...d, value: r?.metrics?.heart_rate ?? 0 };
+      }),
+    };
+  }, [last7Days, weeklyData]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <LinearGradient
           colors={
             isDark 
               ? ["#0d1c2e", "#12263d", colors.background] 
-              : ["#b9dbf5", "#e7f2fb", colors.background]
+              : ["#e0f2fe", "#f0f9ff", colors.background]
           }
           style={styles.heroBg}
         />
@@ -334,89 +195,158 @@ export default function AnalysisScreen() {
           <View style={styles.logoWrap}>
             <Image source={require("../../assets/images/logo.png")} style={styles.logoImage} resizeMode="contain" />
             <View>
-              <Text style={styles.title}>
-                <Text style={{ color: "#0f3f67" }}>HealthCare </Text>
-                <Text style={{ color: "#1497dd" }}>Now</Text>
+              <Text style={[styles.title, isDark && { color: "#f8fafc" }]}>
+                <Text style={{ color: isDark ? "#38bdf8" : "#0f3f67" }}>Health</Text>
+                <Text style={{ color: "#1497dd" }}> Analytics</Text>
               </Text>
-              <Text style={styles.subtitle}>AI insights · 7 ngày</Text>
+              <Text style={styles.subtitle}>Báo cáo sức khỏe 7 ngày</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => refetch()}>
-              <Ionicons name="refresh-outline" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/screen/settings" as any)}>
-              <Ionicons name="settings-outline" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={[styles.iconBtn, isDark && { backgroundColor: "#1e293b", borderColor: "#334155" }]} onPress={handleRefresh}>
+            <Ionicons name="refresh-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {/* Loading state */}
         {isLoading && (
           <View style={{ alignItems: "center", paddingTop: 60 }}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 13 }}>
-              AI đang phân tích dữ liệu 7 ngày...
-            </Text>
-          </View>
-        )}
-
-        {/* Error state */}
-        {isError && !isLoading && (
-          <View style={[styles.card, { alignItems: "center", paddingVertical: 32 }]}>
-            <MaterialIcons name="error-outline" size={40} color="#ef4444" />
-            <Text style={{ color: colors.text, marginTop: 12, fontWeight: "700" }}>Không tải được phân tích</Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 6, textAlign: "center" }}>
-              Vui lòng đồng bộ dữ liệu sức khỏe và thử lại
-            </Text>
-            <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 16, backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 10 }}>
-              <Text style={{ color: "#fff", fontWeight: "700" }}>Thử lại</Text>
-            </TouchableOpacity>
+            <Text style={{ color: colors.textSecondary, marginTop: 12, fontSize: 13 }}>Đang tổng hợp dữ liệu...</Text>
           </View>
         )}
 
         {/* Main content */}
-        {data && !isLoading && (
-          <>
-            {/* Mode badge */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginBottom: 12, gap: 8 }}>
-              <View style={{ backgroundColor: data.mode === "ADVANCED" ? "#22c55e22" : colors.primary + "22", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ color: data.mode === "ADVANCED" ? "#22c55e" : colors.primary, fontSize: 11, fontWeight: "700" }}>
-                  {data.mode === "ADVANCED" ? "⌚ ADVANCED MODE" : "📱 BASIC MODE"}
-                </Text>
-              </View>
-              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Chất lượng dữ liệu: {data.data_quality}</Text>
+        {!isLoading && aiData && (
+          <View style={styles.contentWrap}>
+            
+            {/* Top 3 Cards */}
+            <View style={styles.topCardsRow}>
+              <TopMetricCard 
+                title="BMI" 
+                value={aiData.analytics.bmi?.toFixed(1) ?? "--"} 
+                badgeText={aiData.analytics.bmi_category ?? "N/A"}
+                badgeColor={getBMIStatusColor(aiData.analytics.bmi)}
+                isDark={isDark}
+              />
+              <TopMetricCard 
+                title="BMR" 
+                value={aiData.analytics.bmr ?? "--"} 
+                subLabel="kcal"
+                isDark={isDark}
+              />
+              <TopMetricCard 
+                title="TDEE" 
+                value={aiData.analytics.tdee ?? "--"} 
+                subLabel="kcal"
+                isDark={isDark}
+              />
             </View>
 
-            {/* Analysis card */}
-            <View style={styles.card}>
-              {data.error && (
-                <View style={{ backgroundColor: "#f59e0b18", borderRadius: 10, padding: 10, marginBottom: 12 }}>
-                  <Text style={{ color: "#f59e0b", fontSize: 12 }}>⚠️ {data.error}</Text>
-                </View>
-              )}
-              <InsightCard data={data} colors={colors} isDark={isDark} />
+            {/* Activity Level */}
+            <View style={styles.activityLevelWrap}>
+              <Text style={styles.activityLevelText}>
+                Mức độ vận động của bạn: <Text style={{ color: colors.primary, fontWeight: "700" }}>{ACT_LABEL[aiData.analytics.activity_level] ?? aiData.analytics.activity_level}</Text>
+              </Text>
             </View>
 
-            {/* Chat section */}
-            <View style={styles.card}>
-              <ChatSection insightData={data} colors={colors} isDark={isDark} />
-            </View>
-          </>
+            {/* Charts */}
+            <BarChartCard 
+              title="Steps" 
+              subtitle="Last 7 Days" 
+              icon="shoe-print" 
+              iconBg="#e0f2fe" 
+              iconColor="#0284c7"
+              data={chartData.steps}
+              highlightColor={["#38bdf8", "#0284c7"]}
+              colors={colors}
+              isDark={isDark}
+              refreshTrigger={refreshCount}
+            />
+
+            <BarChartCard 
+              title="Kcal Burned" 
+              subtitle="Active calories" 
+              icon="fire" 
+              iconBg="#ffedd5" 
+              iconColor="#ea580c"
+              data={chartData.calories}
+              highlightColor={["#fb923c", "#ea580c"]}
+              colors={colors}
+              isDark={isDark}
+              refreshTrigger={refreshCount}
+            />
+
+            <BarChartCard 
+              title="Exercise Time" 
+              subtitle="Minutes active" 
+              icon="run" 
+              iconBg="#dcfce7" 
+              iconColor="#16a34a"
+              data={chartData.exercise}
+              highlightColor={["#4ade80", "#16a34a"]}
+              colors={colors}
+              isDark={isDark}
+              refreshTrigger={refreshCount}
+            />
+
+            <BarChartCard 
+              title="Heart Rate" 
+              subtitle="Avg daily BPM" 
+              icon="heart-pulse" 
+              iconBg="#fee2e2" 
+              iconColor="#dc2626"
+              data={chartData.heartRate}
+              highlightColor={["#f87171", "#dc2626"]}
+              colors={colors}
+              isDark={isDark}
+              refreshTrigger={refreshCount}
+            />
+
+            <View style={{ height: 40 }} />
+          </View>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
+const styles = StyleSheet.create({
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, bottom: 300 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 24 },
   logoWrap: { flexDirection: "row", alignItems: "center" },
   logoImage: { width: 38, height: 38, marginRight: 10 },
-  title: { ...Typography.brandTitle, fontSize: 20, fontWeight: "700", color: colors.text },
-  subtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  iconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, justifyContent: "center", alignItems: "center" },
-  card: { backgroundColor: colors.card, marginHorizontal: 20, marginBottom: 16, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: colors.border, shadowColor: "#0b3f64", shadowOffset: { width: 0, height: 4 }, shadowOpacity: isDark ? 0.2 : 0.07, shadowRadius: 14, elevation: 4 },
+  title: { ...Typography.brandTitle, fontSize: 22, fontWeight: "800" },
+  subtitle: { fontSize: 13, color: "#64748b", marginTop: 2 },
+  iconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", justifyContent: "center", alignItems: "center" },
+  
+  contentWrap: { paddingHorizontal: 20 },
+
+  // Top Cards
+  topCardsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  topCard: { flex: 1, backgroundColor: "#fff", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginHorizontal: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: "#f1f5f9" },
+  topCardTitle: { fontSize: 13, color: "#64748b", fontWeight: "600", marginBottom: 8 },
+  topCardValue: { fontSize: 20, fontWeight: "800", color: "#334155", marginBottom: 8 },
+  topCardSubLabel: { fontSize: 12, color: "#94a3b8" },
+  topCardBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  topCardBadgeText: { fontSize: 10, fontWeight: "700" },
+
+  // Activity Level
+  activityLevelWrap: { marginBottom: 24, paddingHorizontal: 8 },
+  activityLevelText: { fontSize: 15, color: "#475569", fontWeight: "500" },
+
+  // Chart Cards
+  chartCard: { backgroundColor: "#fff", borderRadius: 24, padding: 20, marginBottom: 20, shadowColor: "#0f172a", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 4, borderWidth: 1, borderColor: "#f1f5f9" },
+  chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
+  chartIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  chartTitle: { fontSize: 16, fontWeight: "800", color: "#1e293b" },
+  chartSubtitle: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
+  chartArrow: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#f1f5f9", justifyContent: "center", alignItems: "center" },
+  
+  chartBarsWrap: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 140 },
+  barCol: { alignItems: "center", width: `${100/7}%` },
+  barTrack: { height: 110, width: "100%", justifyContent: "flex-end", alignItems: "center", marginBottom: 8 },
+  barFill: { width: 24, borderRadius: 12 },
+  barValueLabel: { position: "absolute", top: -20, fontSize: 10, fontWeight: "700" },
+  barLabel: { fontSize: 11, color: "#94a3b8" },
 });
+

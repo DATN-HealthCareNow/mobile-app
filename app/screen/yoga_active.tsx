@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -158,103 +158,111 @@ export default function YogaActiveScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* PROGRESS BAR */}
-            <View style={styles.progressContainer}>
-                <View style={styles.progressTextRow}>
-                    <View>
-                        <Text style={styles.progressLabel}>CURRENT POSE</Text>
-                        <Text style={styles.progressValue}>{currentPoseIndex + 1} / <Text style={{ color: '#94a3b8' }}>{activeFlow.poses.length}</Text></Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.progressLabel}>TIME LEFT</Text>
-                        <Text style={styles.progressValue}>{m}:{s}</Text>
-                    </View>
-                </View>
-                {/* Visual Progress Line */}
-                <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${((currentPoseIndex + 1) / activeFlow.poses.length) * 100}%` }]} />
-                </View>
-            </View>
-
-            {/* MAIN VISUAL CARD */}
-            <View style={styles.visualWrapper}>
-                {pose.hasBreathingSync && (
-                    <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
-                )}
-                
-                <View style={[styles.imageCard, styles.shadow, isDark && {backgroundColor: '#1e293b'}]}>
-                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
-                        <Image 
-                            source={getYogaImage(pose.name)}
-                            style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                        />
-                    </View>
-                    <LinearGradient
-                        colors={['rgba(2, 132, 199, 0.1)', 'rgba(56, 189, 248, 0.2)']}
-                        style={styles.cardGradient}
-                    >
-                        <MaterialCommunityIcons name="yoga" size={64} color="rgba(255,255,255,0.6)" />
-                        
-                        {/* WARNING CHIP */}
-                        {pose.warnings && pose.warnings.length > 0 && (
-                            <View style={styles.warningChip}>
-                                <Ionicons name="warning" size={12} color="#f59e0b" />
-                                <Text style={styles.warningText}>{pose.warnings[0]}</Text>
-                            </View>
-                        )}
-                    </LinearGradient>
-
-                    {/* SUBTITLE BOX (Glassmorphism effect) */}
-                    <View style={styles.subtitleBox}>
-                        <View style={styles.subtitleIconBadge}>
-                            <Ionicons name="information" size={16} color="#0ea5e9" />
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* PROGRESS BAR */}
+                <View style={styles.progressContainer}>
+                    <View style={styles.progressTextRow}>
+                        <View>
+                            <Text style={styles.progressLabel}>CURRENT POSE</Text>
+                            <Text style={styles.progressValue}>{currentPoseIndex + 1} / <Text style={{ color: '#94a3b8' }}>{activeFlow.poses.length}</Text></Text>
                         </View>
-                        <Text style={styles.subtitleText}>{currentSubtitle}</Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={styles.progressLabel}>TIME LEFT</Text>
+                            <Text style={styles.progressValue}>{m}:{s}</Text>
+                        </View>
+                    </View>
+                    {/* Visual Progress Line */}
+                    <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${((currentPoseIndex + 1) / activeFlow.poses.length) * 100}%` }]} />
                     </View>
                 </View>
-            </View>
 
-            {/* POSE INFO */}
-            <View style={styles.poseInfoContainer}>
-                <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
-                <Text style={[styles.poseSanskrit, isDark && {color: '#94a3b8'}]}>{pose.sanskritName}</Text>
-            </View>
+                {/* MAIN VISUAL CARD */}
+                <View style={styles.visualWrapper}>
+                    {pose.hasBreathingSync && (
+                        <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
+                    )}
+                    
+                    <View style={[styles.imageCard, styles.shadow, isDark && {backgroundColor: '#1e293b'}]}>
+                        <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
+                            <Image 
+                                source={getYogaImage(pose.name)}
+                                style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                            />
+                        </View>
+                        <LinearGradient
+                            colors={['rgba(2, 132, 199, 0.1)', 'rgba(56, 189, 248, 0.2)']}
+                            style={styles.cardGradient}
+                        >
+                            <MaterialCommunityIcons name="yoga" size={64} color="rgba(255,255,255,0.6)" />
+                            
+                            {/* WARNING CHIP */}
+                            {pose.warnings && pose.warnings.length > 0 && (
+                                <View style={styles.warningChip}>
+                                    <Ionicons name="warning" size={12} color="#f59e0b" />
+                                    <Text style={styles.warningText}>{pose.warnings[0]}</Text>
+                                </View>
+                            )}
+                        </LinearGradient>
 
-            {/* CONTROLS */}
-            <View style={styles.controlsContainer}>
-                <View style={styles.largeTimer}>
-                    <Text style={styles.largeTimerText}>{m}</Text>
-                    <Text style={[styles.largeTimerText, { opacity: 0.3, marginHorizontal: -5 }]}> : </Text>
-                    <Text style={styles.largeTimerText}>{s}</Text>
+                        {/* SUBTITLE BOX (Glassmorphism effect) */}
+                        <View style={styles.subtitleBox}>
+                            <View style={styles.subtitleIconBadge}>
+                                <Ionicons name="information" size={16} color="#0ea5e9" />
+                            </View>
+                            <Text style={styles.subtitleText}>{currentSubtitle}</Text>
+                        </View>
+                    </View>
                 </View>
 
-                <View style={styles.playbackRow}>
-                    <TouchableOpacity style={styles.sideBtn} onPress={() => {}}>
-                        <Ionicons name="water" size={24} color="#7dd3fc" />
-                        <Text style={styles.sideBtnText}>OCEAN</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.skipBtn} onPress={handlePrev} disabled={currentPoseIndex === 0}>
-                        <Ionicons name="play-skip-back" size={24} color={currentPoseIndex === 0 ? '#cbd5e1' : '#bae6fd'} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        style={[styles.playPauseBtn, styles.shadow]} 
-                        onPress={() => {
-                            setPaused(!isPaused);
-                            Haptics.selectionAsync();
-                        }}
-                    >
-                        <Ionicons name={isPaused ? "play" : "pause"} size={32} color="#fff" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
-                        <Ionicons name="play-skip-forward" size={24} color="#bae6fd" />
-                    </TouchableOpacity>
-
-                    <View style={styles.sideBtn} />
+                {/* POSE INFO */}
+                <View style={styles.poseInfoContainer}>
+                    <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
+                    <Text style={[styles.poseSanskrit, isDark && {color: '#94a3b8'}]}>{pose.sanskritName}</Text>
                 </View>
-            </View>
+
+                {/* CONTROLS */}
+                <View style={styles.controlsContainer}>
+                    <View style={styles.largeTimer}>
+                        <Text style={styles.largeTimerText}>{m}</Text>
+                        <Text style={[styles.largeTimerText, { opacity: 0.3, marginHorizontal: -5 }]}> : </Text>
+                        <Text style={styles.largeTimerText}>{s}</Text>
+                    </View>
+
+                    <View style={styles.playbackRow}>
+                        <TouchableOpacity style={styles.sideBtn} onPress={handleFinish}>
+                            <Ionicons name="stop-circle" size={28} color="#ef4444" />
+                            <Text style={[styles.sideBtnText, { color: '#ef4444' }]}>KẾT THÚC</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.skipBtn} onPress={handlePrev} disabled={currentPoseIndex === 0}>
+                            <Ionicons name="play-skip-back" size={24} color={currentPoseIndex === 0 ? '#cbd5e1' : '#bae6fd'} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.playPauseBtn, styles.shadow]} 
+                            onPress={() => {
+                                setPaused(!isPaused);
+                                Haptics.selectionAsync();
+                            }}
+                        >
+                            <Ionicons name={isPaused ? "play" : "pause"} size={32} color="#fff" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
+                            <Ionicons name="play-skip-forward" size={24} color="#bae6fd" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.sideBtn} onPress={() => {}}>
+                            <Ionicons name="water" size={24} color="#7dd3fc" />
+                            <Text style={styles.sideBtnText}>OCEAN</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ScrollView>
         </LinearGradient>
     );
 }
@@ -267,6 +275,10 @@ const styles = StyleSheet.create({
 
     container: {
         flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 40,
     },
     header: {
         flexDirection: 'row',

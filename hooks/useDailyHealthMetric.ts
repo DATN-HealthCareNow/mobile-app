@@ -13,3 +13,11 @@ export const useDailyHealthMetric = (dateString: string) => {
     enabled: !!dateString,
   });
 };
+
+export const useWeeklyReport = (startDate: string, endDate: string) => {
+  return useQuery({
+    queryKey: [...DAILY_HEALTH_KEYS.all, 'report', startDate, endDate],
+    queryFn: () => iotService.getWeeklyReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+};
