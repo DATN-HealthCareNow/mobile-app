@@ -36,7 +36,7 @@ export default function YogaSummaryScreen() {
                 await activityService.finish(act.id, {
                     calories_burned: caloriesBurned,
                 });
-                queryClient.invalidateQueries({ queryKey: ['activities'] });
+                queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             }
             endFlow();
             router.replace("/(tabs)/activity");

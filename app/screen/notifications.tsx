@@ -51,7 +51,23 @@ export default function NotificationsScreen() {
   const [activeTab, setActiveTab] = useState<"UNREAD" | "READ">("UNREAD");
 
   const items = data?.content ?? [];
-  const filteredItems = items.filter((item) => activeTab === "UNREAD" ? !item.isRead : item.isRead);
+  
+  // Smart Sorting: 
+  // - Unread: Sort by createdAt (latest first)
+  // - Read: Sort by readAt (recently read first) or createdAt fallback
+  const sortedItems = [...items].sort((a, b) => {
+    if (activeTab === "READ") {
+      const timeA = a.readAt ? new Date(a.readAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = b.readAt ? new Date(b.readAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return timeB - timeA;
+    } else {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    }
+  });
+
+  const filteredItems = sortedItems.filter((item) => activeTab === "UNREAD" ? !item.isRead : item.isRead);
 
   const handleTestExercise = async () => {
     try {
@@ -64,11 +80,12 @@ export default function NotificationsScreen() {
 
   const handleMarkAllRead = () => {
     markAllAsReadMutation.mutate(undefined, {
-      onSuccess: () => {
-        // Explicitly refetch to get updated list
-        refetch();
-        // Automatically switch to READ tab after marking all
-        setActiveTab("READ");
+      onSuccess: async () => {
+        // Đợi một chút để Backend kịp xử lý Database
+        setTimeout(() => {
+          refetch();
+          setActiveTab("READ");
+        }, 600);
       },
       onError: () => {
         Alert.alert("Lỗi", "Không thể đánh dấu đã đọc tất cả.");
@@ -80,8 +97,8 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       {!isDark && (
         <LinearGradient
-          colors={["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
-          style={styles.heroBg}
+          colors={["#b9dbf5", "#e7f2fb", colors.background]}
+          style={StyleSheet.absoluteFill}
         />
       )}
       <View style={styles.header}>
@@ -90,14 +107,6 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <TouchableOpacity
-            style={styles.testBtn}
-            onPress={handleTestExercise}
-          >
-            <Text style={styles.testBtnText}>
-              Test
-            </Text>
-          </TouchableOpacity>
           {activeTab === "UNREAD" && filteredItems.length > 0 && (
             <TouchableOpacity
               style={styles.markAllBtn}
@@ -197,7 +206,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       top: 0,
       left: 0,
       right: 0,
-      height: 240,
+      bottom: 0,
     },
     header: {
       flexDirection: "row",

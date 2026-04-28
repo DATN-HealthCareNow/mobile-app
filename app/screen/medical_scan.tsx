@@ -407,9 +407,25 @@ export default function MedicalScanScreen() {
                                                             style: "destructive",
                                                             onPress: async () => {
                                                                 try {
+                                                                    // 1. Cập nhật trạng thái record thành EXPIRED
                                                                     await axiosClient.post(`/api/v1/medical-records/${record.id}/status`, { status: "EXPIRED" });
+                                                                    
+                                                                    // 2. Tìm và xóa các lịch nhắc nhở liên quan
+                                                                    const relatedSchedules = allSchedules.filter(s => s.sourceId === record.id || s.id.includes(record.id));
+                                                                    if (relatedSchedules.length > 0) {
+                                                                        const idsToDelete = relatedSchedules.map(s => s.id);
+                                                                        await deleteSchedules(idsToDelete);
+                                                                        // Hủy tất cả local notifications để dọn dẹp
+                                                                        await Notifications.cancelAllScheduledNotificationsAsync();
+                                                                        await loadSchedules();
+                                                                    }
+
                                                                     fetchHistory();
-                                                                } catch(e) { Alert.alert("Error", "Could not update status."); }
+                                                                    Alert.alert("Success", "Record expired and all reminders cleaned up.");
+                                                                } catch(e) { 
+                                                                    console.error("Expire error:", e);
+                                                                    Alert.alert("Error", "Could not fully update status or clean up reminders."); 
+                                                                }
                                                             }
                                                         }
                                                     ]);

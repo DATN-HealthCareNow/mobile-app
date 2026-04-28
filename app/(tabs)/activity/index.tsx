@@ -51,6 +51,10 @@ export default function Activity() {
     metrics?.active_calories ??
       (metrics as any)?.activeCalories ??
       0,
+  ) + Number(
+    (metrics as any)?.google_active_calories ??
+      (metrics as any)?.googleActiveCalories ??
+      0,
   );
   const totalCalories = Number(
     metrics?.total_calories ??
@@ -240,7 +244,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       left: 0,
       right: 0,
       top: 0,
-      height: 420,
+      bottom: 0,
     },
     header: {
       flexDirection: "row",

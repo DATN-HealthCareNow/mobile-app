@@ -321,7 +321,11 @@ export default function AnalysisScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <LinearGradient
-          colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+          colors={
+            isDark 
+              ? ["#0d1c2e", "#12263d", colors.background] 
+              : ["#b9dbf5", "#e7f2fb", colors.background]
+          }
           style={styles.heroBg}
         />
 
@@ -407,7 +411,7 @@ export default function AnalysisScreen() {
 
 const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  heroBg: { position: "absolute", left: 0, right: 0, top: 0, height: 360 },
+  heroBg: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
   logoWrap: { flexDirection: "row", alignItems: "center" },
   logoImage: { width: 38, height: 38, marginRight: 10 },

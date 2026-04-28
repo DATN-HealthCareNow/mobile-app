@@ -55,7 +55,7 @@ export default function Chat() {
         {/* AI MESSAGE */}
         <View style={styles.aiBubble}>
           <Text style={styles.messageText}>
-            Good morning! I've analyzed your sleep patterns from last night.
+            Good morning! I&apos;ve analyzed your sleep patterns from last night.
             It looks like you had 6 hours of deep sleep. How are you feeling?
           </Text>
         </View>
@@ -135,7 +135,7 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 180,
+    bottom: 0,
   },
 
   header: {

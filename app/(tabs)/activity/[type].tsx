@@ -11,7 +11,7 @@ import {
 } from "react-native";
 
 import { useSession } from "../../../hooks/useAuth";
-import { useUserActivities } from "../../../hooks/useActivity";
+import { useDailyHealthMetric } from "../../../hooks/useDailyHealthMetric";
 import { useTheme } from "../../../context/ThemeContext";
 
 export default function ActivityDetail() {
@@ -25,46 +25,28 @@ export default function ActivityDetail() {
   const isGym = type === "gym";
   const isStretching = type === "stretching";
 
-  const { data: activitiesPage } = useUserActivities(userId || "", 0, 50);
-  const activities = (activitiesPage?.content || activitiesPage || []) as any[];
+  const todayStr = new Date().toISOString().split("T")[0];
+  const { data: dailyHealth } = useDailyHealthMetric(todayStr);
 
   // Tính trung bình / tổng cộng của ngày hôm nay
   let avgSpeed = "-- KM/H";
-  let totalCalories = "-- KCAL";
-  let totalDistance = "-- KM";
+  const metrics: any = dailyHealth?.metrics;
 
-  if (isRunning && activities.length > 0) {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const todaysRuns = activities.filter(
-      (a: any) =>
-        a.type === "RUN" &&
-        a.start_at &&
-        (a.start_at.startsWith(todayStr) || a.start_at.includes(todayStr))
-    );
+  let _cal = (metrics?.active_calories ?? metrics?.activeCalories ?? 0) + (metrics?.google_active_calories ?? metrics?.googleActiveCalories ?? 0);
+  let totalCalories = _cal > 0 ? `${_cal} KCAL` : "-- KCAL";
 
-    if (todaysRuns.length > 0) {
-      let sumDist = 0;
-      let sumCal = 0;
-      let sumDurationSec = 0;
+  let _dist = (metrics?.distance_meters ?? metrics?.distanceMeters ?? 0) + (metrics?.google_distance_meters ?? metrics?.googleDistanceMeters ?? 0);
+  let totalDistance = _dist > 0 ? `${(_dist / 1000).toFixed(2)} KM` : "-- KM";
 
-      todaysRuns.forEach((r: any) => {
-        const dist = r.outdoor_context?.distance_meter || r.distance_meter || 0;
-        const cal = r.summary_metrics?.active_calories || r.calories_burned || 0;
-        const dur = r.summary_metrics?.total_duration || r.duration_seconds || 0;
+  let _time = (metrics?.exercise_minutes ?? metrics?.exerciseMinutes ?? 0) + (metrics?.google_exercise_minutes ?? metrics?.googleExerciseMinutes ?? 0);
+  let exerciseTime = _time > 0 ? `${_time} MIN` : "-- MIN";
 
-        sumDist += dist;
-        sumCal += cal;
-        sumDurationSec += dur;
-      });
-
-      if (sumDurationSec > 0) {
-        // Speed = (km) / (hours)
-        const speed = (sumDist / 1000) / (sumDurationSec / 3600);
-        avgSpeed = speed.toFixed(1) + " KM/H";
+  if (_dist > 0 && _time > 0) {
+      const distKm = _dist / 1000;
+      const hours = _time / 60;
+      if (hours > 0) {
+          avgSpeed = (distKm / hours).toFixed(1) + " KM/H";
       }
-      totalCalories = sumCal.toFixed(0) + " KCAL";
-      totalDistance = (sumDist / 1000).toFixed(2) + " KM";
-    }
   }
 
   return (
@@ -121,23 +103,20 @@ export default function ActivityDetail() {
         )}
         {isGym && (
           <>
-            <InfoRow icon="repeat" label="Reps" value="-- / --" colors={colors} isDark={isDark} />
-            <InfoRow icon="layers-outline" label="Sets" value="--" colors={colors} isDark={isDark} />
-            <InfoRow icon="barbell-outline" label="Weight" value="-- KG" colors={colors} isDark={isDark} />
+            <InfoRow icon="time-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
         {isYoga && (
           <>
-            <InfoRow icon="time-outline" label="Total Flow Time" value="-- MIN" colors={colors} isDark={isDark} />
-            <InfoRow icon="body-outline" label="Completed Poses" value="--" colors={colors} isDark={isDark} />
-            <InfoRow icon="flame-outline" label="Calories" value="-- KCAL" colors={colors} isDark={isDark} />
+            <InfoRow icon="time-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
         {isStretching && (
           <>
-            <InfoRow icon="medical-outline" label="Recovery Time" value="-- MIN" colors={colors} isDark={isDark} />
-            <InfoRow icon="body-outline" label="Stretches Done" value="--" colors={colors} isDark={isDark} />
-            <InfoRow icon="heart-outline" label="Relief" value="-- %" colors={colors} isDark={isDark} />
+            <InfoRow icon="medical-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
 
@@ -184,7 +163,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 320,
+    bottom: 0,
   },
   container: {
     flex: 1,

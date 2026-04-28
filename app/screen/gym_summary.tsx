@@ -74,7 +74,7 @@ export default function GymSummaryScreen() {
                     calories_burned: stats.calories,
                     workoutLogs: flattenedLogs
                 });
-                queryClient.invalidateQueries({ queryKey: ['activities'] });
+                queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             }
             resetWorkout();
             router.replace("/(tabs)/activity");

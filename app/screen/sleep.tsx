@@ -62,8 +62,8 @@ export default function SleepDashboardScreen() {
         <View style={[styles.mainContainer, { backgroundColor: colors.background }]}> 
             {!isDark && (
                 <LinearGradient
-                    colors={["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
-                    style={styles.heroBg}
+                    colors={["#b9dbf5", "#e7f2fb", colors.background]}
+                    style={StyleSheet.absoluteFill}
                 />
             )}
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

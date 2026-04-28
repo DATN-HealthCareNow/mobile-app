@@ -107,7 +107,7 @@ export default function StretchActiveScreen() {
                 await activityService.finish(act.id, {
                     calories_burned: kcal,
                 });
-                queryClient.invalidateQueries({ queryKey: ['activities'] });
+                queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             }
         } catch (error) {
             console.error(error);

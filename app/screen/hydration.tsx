@@ -48,14 +48,15 @@ export default function Hydration() {
 
   return (
     <View style={styles.container}>
+      {/* Nền Gradient toàn màn hình */}
       {!isDark && (
         <LinearGradient
-          colors={["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
-          style={styles.heroBg}
+          colors={["#b9dbf5", "#e7f2fb", colors.background]}
+          style={StyleSheet.absoluteFill}
         />
       )}
+      
       <ScrollView showsVerticalScrollIndicator={false}>
-        
         {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
