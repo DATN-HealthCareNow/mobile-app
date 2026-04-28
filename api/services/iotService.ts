@@ -41,6 +41,10 @@ export const iotService = {
     const query = dateString ? `?date=${encodeURIComponent(dateString)}` : '';
     return axiosClient.get(`/api/v1/tracking/daily${query}`);
   },
+
+  getWeeklyReport: (startDate: string, endDate: string): Promise<DailyHealthDTO[]> => {
+    return axiosClient.get(`/api/v1/tracking/report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+  },
   
   seedHealthData: (_userId: string, days: number = 7) => {
     return axiosClient.get(`/api/v1/tracking/seed-health-data?days=${days}`);

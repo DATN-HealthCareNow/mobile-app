@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ActivityIndicator, Image, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,7 +105,8 @@ export default function StretchActiveScreen() {
             const act = await activityService.start({ type: "YOGA", mode: "INDOOR" }); // Stretch uses Yoga
             if (act && act.id) {
                 await activityService.finish(act.id, {
-                    calories_burned: kcal,
+                    active_calories: kcal,
+                    exercise_minutes: Math.max(1, Math.round(durationSecs / 60))
                 });
                 queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             }
@@ -159,69 +160,81 @@ export default function StretchActiveScreen() {
                 </View>
             </View>
 
-            {/* MAIN ANIMATION AND TIMER */}
-            <View style={styles.visualContainer}>
-                {pose.hasBreathingSync && (
-                    <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
-                )}
-                <View style={[styles.avatarCard, styles.shadow, isDark && {backgroundColor: colors.card}]}>
-                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
-                        <Image 
-                            source={getStretchImage(activeWorkout.id, currentPoseIndex)}
-                            style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* MAIN ANIMATION AND TIMER */}
+                <View style={styles.visualContainer}>
+                    {pose.hasBreathingSync && (
+                        <Animated.View style={[styles.breathingCircle, animatedBreatheStyle]} />
+                    )}
+                    <View style={[styles.avatarCard, styles.shadow, isDark && {backgroundColor: colors.card}]}>
+                        <View style={[StyleSheet.absoluteFillObject, { borderRadius: 40, overflow: 'hidden' }]}>
+                            <Image 
+                                source={getStretchImage(activeWorkout.id, currentPoseIndex)}
+                                style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                            />
+                        </View>
+                        <LinearGradient
+                            colors={['rgba(124, 58, 237, 0.1)', 'rgba(139, 92, 246, 0.2)']}
+                            style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
                         />
-                    </View>
-                    <LinearGradient
-                        colors={['rgba(124, 58, 237, 0.1)', 'rgba(139, 92, 246, 0.2)']}
-                        style={[StyleSheet.absoluteFillObject, { borderRadius: 40 }]}
-                    />
 
-                    {/* TIMER OVERLAY */}
-                    <View style={styles.timerBox}>
-                        <Text style={styles.timerValue}>{s}</Text>
-                        <Text style={styles.timerLabel}>giây</Text>
+                        {/* TIMER OVERLAY */}
+                        <View style={styles.timerBox}>
+                            <Text style={styles.timerValue}>{s}</Text>
+                            <Text style={styles.timerLabel}>giây</Text>
+                        </View>
+                    </View>
+
+                    {/* WARNING TOOLTIP */}
+                    {pose.warning && (
+                        <View style={styles.warningContainer}>
+                            <Ionicons name="warning" size={16} color="#fbbf24" />
+                            <Text style={styles.warningText}>{pose.warning}</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* POSE NAME */}
+                <View style={styles.poseInfo}>
+                    <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
+                    <View style={{ height: 60, marginTop: 10 }}>
+                        {/* Fake subtitle based on timing */}
+                        <Text style={styles.voiceSubtitle}>
+                            {timeLeft > pose.durationSec - 5 ? pose.voiceStart : 
+                            timeLeft > 10 ? pose.voiceHold : pose.voiceEnd}
+                        </Text>
                     </View>
                 </View>
 
-                {/* WARNING TOOLTIP */}
-                {pose.warning && (
-                    <View style={styles.warningContainer}>
-                        <Ionicons name="warning" size={16} color="#fbbf24" />
-                        <Text style={styles.warningText}>{pose.warning}</Text>
+                {/* PLAYBACK CONTROLS */}
+                <View style={styles.playbackContainer}>
+                    <View style={styles.controlRow}>
+                        <TouchableOpacity style={styles.sideBtn} onPress={handleFinish}>
+                            <Ionicons name="stop-circle" size={28} color="#ef4444" />
+                            <Text style={[styles.sideBtnText, { color: '#ef4444' }]}>DỪNG</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.playBtn, styles.shadowPlay]} 
+                            onPress={() => {
+                                setPaused(!isPaused);
+                                Haptics.selectionAsync();
+                                Speech.stop();
+                            }}
+                        >
+                            <Ionicons name={isPaused ? "play" : "pause"} size={36} color="#fff" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.skipBtnSmall} onPress={handleNext}>
+                            <Ionicons name="play-forward" size={28} color="#8b5cf6" />
+                            <Text style={styles.skipTextSmall}>BỎ QUA</Text>
+                        </TouchableOpacity>
                     </View>
-                )}
-            </View>
-
-            {/* POSE NAME */}
-            <View style={styles.poseInfo}>
-                <Text style={[styles.poseName, isDark && {color: colors.text}]}>{pose.name}</Text>
-                <View style={{ height: 60, marginTop: 10 }}>
-                    {/* Fake subtitle based on timing */}
-                    <Text style={styles.voiceSubtitle}>
-                        {timeLeft > pose.durationSec - 5 ? pose.voiceStart : 
-                         timeLeft > 10 ? pose.voiceHold : pose.voiceEnd}
-                    </Text>
                 </View>
-            </View>
-
-            {/* PLAYBACK CONTROLS */}
-            <View style={styles.playbackContainer}>
-                <TouchableOpacity 
-                    style={[styles.playBtn, styles.shadowPlay]} 
-                    onPress={() => {
-                        setPaused(!isPaused);
-                        Haptics.selectionAsync();
-                        Speech.stop();
-                    }}
-                >
-                    <Ionicons name={isPaused ? "play" : "pause"} size={36} color="#fff" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
-                    <Text style={styles.skipText}>Bỏ qua (Skip)</Text>
-                    <Ionicons name="play-forward" size={18} color="#8b5cf6" />
-                </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {/* SAVING OVERLAY */}
             {isSaving && (
@@ -279,13 +292,17 @@ const styles = StyleSheet.create({
     poseName: { fontSize: 26, fontWeight: '900', color: '#4c1d95', textAlign: 'center' },
     voiceSubtitle: { fontSize: 16, color: '#6d28d9', fontStyle: 'italic', textAlign: 'center', lineHeight: 24, marginTop: 10 },
 
-    playbackContainer: { marginTop: 'auto', paddingBottom: 50, alignItems: 'center' },
+    playbackContainer: { marginTop: 'auto', paddingBottom: 50, alignItems: 'center', width: '100%' },
+    controlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly', width: '100%' },
+    sideBtn: { alignItems: 'center', width: 80 },
+    sideBtnText: { fontSize: 10, fontWeight: 'bold', marginTop: 4 },
     playBtn: {
         width: 80, height: 80, borderRadius: 40, backgroundColor: '#7c3aed', 
-        justifyContent: 'center', alignItems: 'center', marginBottom: 20,
+        justifyContent: 'center', alignItems: 'center',
     },
-    skipBtn: { flexDirection: 'row', alignItems: 'center' },
-    skipText: { color: '#8b5cf6', fontWeight: 'bold', marginRight: 8 },
+    skipBtnSmall: { alignItems: 'center', width: 80 },
+    skipTextSmall: { color: '#8b5cf6', fontWeight: 'bold', fontSize: 10, marginTop: 4 },
+    scrollContent: { flexGrow: 1, paddingBottom: 20 },
 
     savingOverlay: {
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 

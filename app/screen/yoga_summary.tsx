@@ -34,7 +34,8 @@ export default function YogaSummaryScreen() {
             const act = await activityService.start({ type: "YOGA", mode: "INDOOR" });
             if (act && act.id) {
                 await activityService.finish(act.id, {
-                    calories_burned: caloriesBurned,
+                    active_calories: caloriesBurned,
+                    exercise_minutes: Math.max(1, Math.round(totalDurationSecs / 60))
                 });
                 queryClient.invalidateQueries({ queryKey: ['daily-health'] });
             }

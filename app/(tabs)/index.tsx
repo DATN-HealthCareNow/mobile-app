@@ -32,6 +32,9 @@ import { useProfile } from "../../hooks/useUser";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { isScheduleToday, useScheduleStore } from "../../store/scheduleStore";
 import { useSleepStore } from "../../store/sleepStore";
+import AIPredictionWidget from "../../components/AIPredictionWidget";
+import { useHealthInsights, HealthInsightResponse } from "../../hooks/useHealthInsights";
+import { useWeeklyReport } from "../../hooks/useDailyHealthMetric";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -43,6 +46,15 @@ export default function HomeScreen() {
   const { isSyncing, syncData, authorize, hasToken } = useHealthData();
   const { schedules, loadSchedules } = useScheduleStore();
   const { sleepGoal } = useSleepStore();
+
+  // AI Prediction data
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(d); })();
+  const { data: rawInsight, isLoading: insightLoading } = useHealthInsights();
+  const aiData = rawInsight as HealthInsightResponse | undefined;
+  const { data: weeklyData } = useWeeklyReport(sevenDaysAgo, today);
   const todayCount = schedules.filter(
     (s) => s.isActive && isScheduleToday(s),
   ).length;
@@ -327,6 +339,13 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* AI PREDICTION WIDGET */}
+        <AIPredictionWidget
+          aiData={aiData}
+          weeklyData={weeklyData}
+          isLoading={insightLoading}
+        />
 
         {/* QUICK MANAGEMENT */}
         <View style={styles.sectionHeader}>
