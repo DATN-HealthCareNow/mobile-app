@@ -114,8 +114,7 @@ export default function StretchActiveScreen() {
             console.error(error);
         } finally {
             setIsSaving(false);
-            endWorkout();
-            router.replace("/(tabs)/activity");
+            router.replace("/screen/stretch_summary");
         }
     };
 

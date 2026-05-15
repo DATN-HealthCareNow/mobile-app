@@ -35,7 +35,7 @@ const API_FALLBACK_URL = !envApiUrl && hostApiUrl && hostApiUrl !== API_URL ? ho
 
 export const axiosClient = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

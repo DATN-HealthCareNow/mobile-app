@@ -8,6 +8,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,12 +16,14 @@ import {
   View,
 } from "react-native";
 import { userService } from "../../api/services/userService";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useGoogleLogin, useLogin } from "../../hooks/useAuth";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const loginMutation = useLogin();
   const googleLoginMutation = useGoogleLogin();
 
@@ -30,7 +33,7 @@ export default function LoginScreen() {
 
   const handleLogin = () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
+      Alert.alert(t("auth.common.error"), t("auth.login.validation_missing"));
       return;
     }
 
@@ -42,9 +45,8 @@ export default function LoginScreen() {
         },
         onError: (err: any) => {
           Alert.alert(
-            "Login Failed",
-            err?.response?.data?.message ||
-              "Check your credentials and try again.",
+            t("auth.login.failed_title"),
+            err?.response?.data?.message || t("auth.login.failed_message"),
           );
         },
       },
@@ -95,20 +97,20 @@ export default function LoginScreen() {
             },
             onError: (err: any) =>
               Alert.alert(
-                "Google Login Failed",
+                t("auth.login.google_failed_title"),
                 err?.response?.data?.message ||
                   err?.message ||
-                  "Please try again.",
+                  t("auth.common.try_again"),
               ),
           },
         );
       } else {
-        Alert.alert("Error", "Could not get Google ID Token");
+        Alert.alert(t("auth.common.error"), t("auth.login.google_token_error"));
       }
     } catch (error: any) {
       if (error.code !== "SIGN_IN_CANCELLED") {
         console.error("Google login error", error);
-        Alert.alert("Google Login Error", error.message);
+        Alert.alert(t("auth.login.google_error_title"), error.message);
       }
     }
   };
@@ -117,10 +119,14 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
-      <View style={styles.inner}>
+      <ScrollView
+        contentContainerStyle={styles.inner}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <Image
             source={require("../../assets/images/logo.png")}
@@ -128,14 +134,12 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Healthcare Now</Text>
-          <Text style={styles.subtitle}>
-            Your Complete Digital Health Companion
-          </Text>
+          <Text style={styles.subtitle}>{t("auth.login.subtitle")}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>{t("auth.login.email_label")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="mail-outline"
@@ -144,7 +148,7 @@ export default function LoginScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="example@email.com"
+                placeholder={t("auth.login.email_placeholder")}
                 placeholderTextColor={colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -157,7 +161,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t("auth.login.password_label")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="lock-closed-outline"
@@ -193,7 +197,9 @@ export default function LoginScreen() {
             {loginMutation.isPending ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>
+                {t("auth.login.sign_in")}
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -201,12 +207,14 @@ export default function LoginScreen() {
             style={styles.forgotBtn}
             onPress={() => router.push("/(auth)/forgot_password")}
           >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={styles.forgotText}>
+              {t("auth.login.forgot_password")}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
+            <Text style={styles.dividerText}>{t("auth.login.or")}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -226,7 +234,7 @@ export default function LoginScreen() {
                   style={{ marginRight: 10 }}
                 />
                 <Text style={styles.googleButtonText}>
-                  Continue with Google
+                  {t("auth.login.continue_google")}
                 </Text>
               </>
             )}
@@ -234,12 +242,12 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+          <Text style={styles.footerText}>{t("auth.login.no_account")}</Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-            <Text style={styles.signUpText}>Sign Up</Text>
+            <Text style={styles.signUpText}>{t("auth.login.sign_up")}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -251,8 +259,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       backgroundColor: colors.background,
     },
     inner: {
-      flex: 1,
+      flexGrow: 1,
       padding: 24,
+      paddingBottom: 60,
       justifyContent: "center",
     },
     header: {

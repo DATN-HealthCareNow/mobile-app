@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useDailyHealthMetric } from '../../hooks/useDailyHealthMetric';
 import { useSleepStore } from '../../store/sleepStore';
 
@@ -13,6 +14,7 @@ const { width } = Dimensions.get('window');
 export default function SleepDashboardScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const { alarms, toggleAlarm, removeAlarm } = useSleepStore();
 
     const today = new Intl.DateTimeFormat("en-CA", {
@@ -45,8 +47,8 @@ export default function SleepDashboardScreen() {
     
     // Tính điểm số tương đối
     const targetSleep = 420; // 7h = 420mins
-    const sleepScore = sleepMinutes >= targetSleep ? 84 : Math.min(Math.floor((sleepMinutes / targetSleep) * 80), 100);
-    const sleepQuality = sleepScore >= 80 ? 'Excellent' : sleepScore >= 60 ? 'Good' : 'Fair';
+    const sleepScore = Math.min(Math.round((sleepMinutes / targetSleep) * 100), 100);
+    const sleepQuality = sleepScore >= 80 ? t("sleep.excellent", "Excellent") : sleepScore >= 60 ? t("sleep.good", "Good") : t("sleep.fair", "Fair");
 
     // Tính fake Deep Sleep từ tổng thời gian (khoảng 20%)
     const deepMinutes = Math.floor(sleepMinutes * 0.2);
@@ -72,7 +74,7 @@ export default function SleepDashboardScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}> 
                     <Ionicons name="arrow-back" size={22} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Sleep</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>{t("sleep.title")}</Text>
                 <View style={{ width: 40, height: 40 }} />
             </View>
 
@@ -103,7 +105,7 @@ export default function SleepDashboardScreen() {
                         />
                     </Svg>
                     <View style={styles.innerCircleContent}>
-                        <Text style={styles.scoreTopLabel}>SLEEP SCORE</Text>
+                        <Text style={styles.scoreTopLabel}>{t("sleep.score")}</Text>
                         <Text style={[styles.scoreValue, { color: isDark ? '#fff' : '#0f172a' }]}>{sleepScore}</Text>
                         <Text style={styles.scoreBottomLabel}>{sleepQuality}</Text>
                     </View>
@@ -113,14 +115,14 @@ export default function SleepDashboardScreen() {
             {/* DURATION CARD */}
             <View style={[styles.durationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.durationCol}>
-                    <Text style={styles.durationLabel}>TOTAL DURATION</Text>
+                    <Text style={styles.durationLabel}>{t("sleep.total_duration")}</Text>
                     <Text style={[styles.durationText, { color: isDark ? '#fff' : '#0f172a' }]}>
                         {sleepHours}h {sleepMins}m
                     </Text>
                 </View>
                 <View style={[styles.separator, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]} />
                 <View style={styles.durationCol}>
-                    <Text style={styles.durationLabel}>DEEP SLEEP</Text>
+                    <Text style={styles.durationLabel}>{t("sleep.deep_sleep")}</Text>
                     <Text style={[styles.durationText, { color: isDark ? '#fff' : '#0f172a' }]}>
                         {deepHours}h {deepMins}m
                     </Text>
@@ -129,9 +131,9 @@ export default function SleepDashboardScreen() {
 
             {/* RELAXING SOUNDS */}
             <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#0f172a' }]}>Relaxing Sounds</Text>
+                <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#0f172a' }]}>{t("sleep.relaxing_sounds")}</Text>
                 <TouchableOpacity onPress={() => router.push("/screen/sleep_music" as any)}>
-                    <Text style={styles.viewAll}>View All</Text>
+                    <Text style={styles.viewAll}>{t("sleep.view_all")}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -141,7 +143,7 @@ export default function SleepDashboardScreen() {
                     <View style={styles.soundIconCircle}>
                         <Ionicons name="water" size={24} color="#3b82f6" />
                     </View>
-                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>Rain</Text>
+                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>{t("sleep.rain")}</Text>
                     <View style={styles.playBtn}>
                         <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
                     </View>
@@ -152,7 +154,7 @@ export default function SleepDashboardScreen() {
                     <View style={[styles.soundIconCircle, { backgroundColor: '#ede9fe' }]}>
                         <MaterialCommunityIcons name="pine-tree" size={24} color="#8b5cf6" />
                     </View>
-                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>Forest</Text>
+                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>{t("sleep.forest")}</Text>
                     <View style={styles.playBtn}>
                         <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
                     </View>
@@ -163,7 +165,7 @@ export default function SleepDashboardScreen() {
                     <View style={[styles.soundIconCircle, { backgroundColor: '#e0f2fe' }]}>
                         <Ionicons name="water-outline" size={24} color="#0284c7" />
                     </View>
-                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>Wave</Text>
+                    <Text style={[styles.soundName, { color: isDark ? '#fff' : '#0f172a' }]}>{t("sleep.wave")}</Text>
                     <View style={styles.playBtn}>
                         <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 2 }} />
                     </View>
@@ -171,7 +173,7 @@ export default function SleepDashboardScreen() {
             </ScrollView>
 
             {/* SMART ALARM */}
-            <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#0f172a', marginTop: 30, marginBottom: 15 }]}>Smart Alarm</Text>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#0f172a', marginTop: 30, marginBottom: 15 }]}>{t("sleep.smart_alarm")}</Text>
             
             {alarms.length > 0 ? (
                 alarms.map((alarm) => (
@@ -199,7 +201,7 @@ export default function SleepDashboardScreen() {
                 <View style={[styles.alarmCard, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 15 }]}>
                     <View>
                         <Text style={[styles.alarmTime, { color: '#94a3b8' }]}>--:--</Text>
-                        <Text style={styles.alarmDays}>Chưa có báo thức</Text>
+                        <Text style={styles.alarmDays}>{t("sleep.no_alarms", "No alarms set yet")}</Text>
                     </View>
                 </View>
             )}
@@ -214,7 +216,7 @@ export default function SleepDashboardScreen() {
                     onPress={() => router.push("/screen/sleep_alarm_setup" as any)}
                 >
                     <Ionicons name="alarm-outline" size={22} color="#3b82f6" style={{ marginRight: 8 }} />
-                    <Text style={styles.setupAlarmBtnText}>Cài Đặt Báo Thức</Text>
+                    <Text style={styles.setupAlarmBtnText}>{t("sleep.set_alarm", "Set Alarm")}</Text>
                 </TouchableOpacity>
             </View>
         </View>

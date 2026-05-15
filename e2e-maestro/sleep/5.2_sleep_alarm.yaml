@@ -1,0 +1,18 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- tapOn: "Home"
+- tapOn: "Sleep, 8h Goal"
+- tapOn: "Cài Đặt Báo Thức"
+- tapOn:
+    text: "23:21"
+    index: 1
+- tapOn:
+    id: "android:id/minutes"
+- tapOn: "30"
+- tapOn:
+    id: "android:id/button1"
+- tapOn: "Siren Remix"
+- tapOn:
+    id: "android:id/button1"
+- assertVisible: "Cài Đặt Báo Thức"

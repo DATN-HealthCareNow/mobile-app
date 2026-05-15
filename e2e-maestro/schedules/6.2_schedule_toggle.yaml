@@ -1,0 +1,10 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-6.2: Bật/tắt lịch tập hiện có trong Schedule Manager
+- launchApp
+- tapOn: "Home"
+- tapOn: "Manage"
+- tapOn:
+    index: 0 # Toggle lịch đầu tiên trong danh sách
+- takeScreenshot: "ScheduleToggled"
+- assertVisible: ".*Manage.*"

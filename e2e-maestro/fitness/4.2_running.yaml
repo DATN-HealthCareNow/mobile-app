@@ -1,0 +1,12 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-4.2: Bắt đầu và hoàn thành buổi chạy bộ (Running)
+- launchApp
+- tapOn: "Activity"
+- tapOn: "Running"
+- tapOn: "Start"
+- assertVisible: ".*Running.*|.*Distance.*|.*Khoảng cách.*"
+- tapOn: "Stop"
+- assertVisible: ".*Summary.*|.*Tổng kết.*|.*km.*"
+- tapOn: ".*Done.*|.*Xong.*|.*Back.*"
+- assertVisible: "Activity"

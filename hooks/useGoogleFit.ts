@@ -1,6 +1,6 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { useSession } from "./useAuth";
 import { useProfile } from "./useUser";
@@ -16,6 +16,7 @@ GoogleSignin.configure({
     "https://www.googleapis.com/auth/fitness.location.read",
   ],
   webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID || "",
+  iosClientId: process.env.EXPO_PUBLIC_IOS_CLIENT_ID || "", // Added for iOS
   offlineAccess: true,
 });
 
@@ -93,17 +94,20 @@ export const useGoogleFit = () => {
 
     const checkLoginStatus = async () => {
       try {
-        const hasPlay = await GoogleSignin.hasPlayServices();
-        if (!hasPlay) {
-          console.warn('[useGoogleFit] ⚠️ Google Play Services not available');
-          return;
+        if (Platform.OS === 'android') {
+          const hasPlay = await GoogleSignin.hasPlayServices();
+          if (!hasPlay) {
+            console.warn('[useGoogleFit] ⚠️ Google Play Services not available');
+            return;
+          }
         }
 
-        // Chỉ auto-restore cho phiên đăng nhập app bằng Google.
-        // Với tài khoản đăng nhập bằng mật khẩu, user cần bấm Connect Fit để chọn Gmail.
+        // Chỉ auto-restore cho phiên đăng nhập app bằng Google, hoặc khi user bật cài đặt tự động kết nối
         const authProvider = await SecureStore.getItemAsync('authProvider');
-        if (authProvider && authProvider !== 'google') {
-          console.log('[useGoogleFit] Password session detected, skip auto-restore Google Fit.');
+        const autoConnect = await SecureStore.getItemAsync(`autoConnectGoogleFit_${userId}`);
+        
+        if (authProvider && authProvider !== 'google' && autoConnect !== 'true') {
+          console.log('[useGoogleFit] Password session detected and auto-connect is off. Skip auto-restore Google Fit.');
           setAccessToken(null);
           return;
         }
@@ -125,11 +129,21 @@ export const useGoogleFit = () => {
         }
 
         // Bước 3: Lấy email của Google account hiện tại trên thiết bị
-        const currentUser = GoogleSignin.getCurrentUser();
+        let currentUser: any = GoogleSignin.getCurrentUser();
+        
+        // NẾU APP VỪA RESTART, TRONG BỘ NHỚ CHƯA CÓ USER, PHẢI GỌI TỰ ĐỘNG ĐĂNG NHẬP NGẦM TRƯỚC!
+        if (!currentUser) {
+          try {
+            currentUser = await GoogleSignin.signInSilently();
+          } catch (err) {
+            console.log('[useGoogleFit] signInSilently failed on startup:', err);
+          }
+        }
+
         const currentEmail = (currentUser as any)?.user?.email ?? (currentUser as any)?.email;
 
         if (!currentEmail) {
-          console.warn('[useGoogleFit] Could not determine current Google account email.');
+          console.warn('[useGoogleFit] Could not determine current Google account email after silent sign in.');
           setAccessToken(null);
           return;
         }
@@ -146,13 +160,6 @@ export const useGoogleFit = () => {
 
         // Bước 5: Đúng Gmail → restore token
         try {
-          // Gọi signInSilently để tự động làm mới token nếu bị hết hạn (expired)
-          try {
-            await GoogleSignin.signInSilently();
-          } catch (silentErr) {
-            console.log('[useGoogleFit] signInSilently failed (might need full auth):', silentErr);
-          }
-
           const tokens = await safeGetTokens();
           if (tokens?.accessToken) {
             setAccessToken(tokens.accessToken);
@@ -179,7 +186,9 @@ export const useGoogleFit = () => {
 
   const authorize = async () => {
     try {
-      await GoogleSignin.hasPlayServices();
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices();
+      }
 
       // Ép buộc đăng xuất khỏi SDK trước để hiển thị bảng chọn tài khoản (Account Picker)
       // Điều này ngăn việc tự động lấy lại session của người dùng trước đó trên thiết bị.
@@ -231,8 +240,8 @@ export const useGoogleFit = () => {
 
     const res = await fetchFn(currentToken);
     
-    if (res.status === 403) {
-      console.warn('[useGoogleFit] ⚠️ 403 Forbidden detected. Attempt #' + (retryCount + 1));
+    if (res.status === 401 || res.status === 403) {
+      console.warn('[useGoogleFit] ⚠️ 401/403 detected. Attempt #' + (retryCount + 1));
       
       try {
         if (retryCount === 0) {

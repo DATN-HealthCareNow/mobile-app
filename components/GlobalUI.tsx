@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
+import { Modal, View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from "react-native";
 import { useUIStore } from "../store/uiStore";
 import { useTheme } from "../context/ThemeContext";
 
@@ -7,11 +7,16 @@ export function GlobalUI() {
   const { isLoading, loadingText, alertConfig, hideAlert } = useUIStore();
   const { mode } = useTheme();
 
+  if (!isLoading && !alertConfig.visible) return null;
+
   return (
-    <>
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Global Loading Overlay */}
-      <Modal visible={isLoading} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/60">
+      {isLoading && (
+        <View 
+          style={StyleSheet.absoluteFill} 
+          className="items-center justify-center bg-black/60 z-[9998]"
+        >
           <View
             className={`items-center justify-center p-6 rounded-2xl shadow-xl min-w-[140px] ${
               mode === "dark" ? "bg-slate-800" : "bg-white"
@@ -27,11 +32,14 @@ export function GlobalUI() {
             </Text>
           </View>
         </View>
-      </Modal>
+      )}
 
       {/* Global Custom Alert */}
-      <Modal visible={alertConfig.visible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+      {alertConfig.visible && (
+        <View 
+          style={StyleSheet.absoluteFill} 
+          className="items-center justify-center bg-black/50 px-6 z-[9999]"
+        >
           <View
             className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl ${
               mode === "dark" ? "bg-slate-900 border border-slate-700" : "bg-white"
@@ -90,7 +98,10 @@ export function GlobalUI() {
             </View>
           </View>
         </View>
-      </Modal>
-    </>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({});
+

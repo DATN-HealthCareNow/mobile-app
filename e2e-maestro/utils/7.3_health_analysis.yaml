@@ -1,0 +1,9 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-7.3: Xem màn hình Health Analysis (BMI, TDEE, biểu đồ)
+- launchApp
+- tapOn: "Analysis"
+- assertVisible: ".*BMI.*"
+- assertVisible: ".*BMR.*"
+- assertVisible: ".*TDEE.*"
+- takeScreenshot: "AnalysisScreen"

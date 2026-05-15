@@ -7,12 +7,14 @@ import { useYogaStore } from '../../store/yogaStore';
 import { activityService } from '../../api/services/activityService';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 export default function YogaSummaryScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const queryClient = useQueryClient();
     const { activeFlow, workoutStartTime, endFlow } = useYogaStore();
 
@@ -43,7 +45,7 @@ export default function YogaSummaryScreen() {
             router.replace("/(tabs)/activity");
         } catch (error) {
             console.error("Failed to save yoga session", error);
-            alert("Errors saving activity. Please try again.");
+            alert(t('yoga.save_error', "Errors saving activity. Please try again."));
         } finally {
             setIsSaving(false);
         }
@@ -65,20 +67,20 @@ export default function YogaSummaryScreen() {
                     <View style={styles.iconGlow} />
                     <MaterialCommunityIcons name="flower-tulip" size={80} color="#fef08a" />
                 </View>
-                <Text style={styles.title}>Namaste</Text>
-                <Text style={styles.subtitle}>You completed {activeFlow?.title || 'your flow'}</Text>
+                <Text style={styles.title}>{t('yoga.namaste', 'Namaste')}</Text>
+                <Text style={styles.subtitle}>{t('yoga.completed_prefix', 'You completed')} {activeFlow?.title || t('yoga.completed_flow_default', 'your flow')}</Text>
             </LinearGradient>
 
             {/* MAIN STATS CARD */}
             <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-                <Text style={styles.cardTitle}>Mindfulness Stats</Text>
+                <Text style={styles.cardTitle}>{t('yoga.mindfulness_stats', 'Mindfulness Stats')}</Text>
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
                         <View style={[styles.iconBox, { backgroundColor: '#e0f2fe' }]}>
                             <Ionicons name="time" size={24} color="#0284c7" />
                         </View>
                         <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{m}:{s}</Text>
-                        <Text style={styles.statLabel}>Duration</Text>
+                        <Text style={styles.statLabel}>{t('yoga.duration_label', 'Duration')}</Text>
                     </View>
 
                     <View style={styles.statItem}>
@@ -86,7 +88,7 @@ export default function YogaSummaryScreen() {
                             <Ionicons name="flame" size={24} color="#ca8a04" />
                         </View>
                         <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{caloriesBurned}</Text>
-                        <Text style={styles.statLabel}>Kcal Burned</Text>
+                        <Text style={styles.statLabel}>{t('yoga.kcal_burned', 'Kcal Burned')}</Text>
                     </View>
 
                     <View style={styles.statItem}>
@@ -94,7 +96,7 @@ export default function YogaSummaryScreen() {
                             <MaterialCommunityIcons name="yoga" size={24} color="#16a34a" />
                         </View>
                         <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{activeFlow?.poses.length || 0}</Text>
-                        <Text style={styles.statLabel}>Poses</Text>
+                        <Text style={styles.statLabel}>{t('yoga.poses_count', 'Poses')}</Text>
                     </View>
                 </View>
             </View>
@@ -106,11 +108,11 @@ export default function YogaSummaryScreen() {
                     onPress={handleSave}
                     disabled={isSaving}
                 >
-                    {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Mindful Minutes</Text>}
+                    {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{t('yoga.save_btn', 'Save Mindful Minutes')}</Text>}
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
-                    <Text style={styles.discardBtnText}>Discard</Text>
+                    <Text style={styles.discardBtnText}>{t('yoga.discard_btn', 'Discard')}</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

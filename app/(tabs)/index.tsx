@@ -1,44 +1,64 @@
 import {
-    Ionicons,
-    MaterialCommunityIcons,
-    MaterialIcons,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
 } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Easing,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Alert,
 } from "react-native";
 import {
-    articleService,
-    MobileArticle,
+  articleService,
+  MobileArticle,
 } from "../../api/services/articleService";
+import SystemPulseWidget from "../../components/SystemPulseWidget";
 import { Typography } from "../../constants/typography";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useSession } from "../../hooks/useAuth";
+import { useWeeklyReport } from "../../hooks/useDailyHealthMetric";
 import { useHealthData } from "../../hooks/useHealthData";
+import {
+  HealthInsightResponse,
+  useHealthInsights,
+  useHealthProactive,
+} from "../../hooks/useHealthInsights";
 import { useUnreadNotificationCount } from "../../hooks/useNotifications";
 import { useProfile } from "../../hooks/useUser";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { isScheduleToday, useScheduleStore } from "../../store/scheduleStore";
 import { useSleepStore } from "../../store/sleepStore";
-import AIPredictionWidget from "../../components/AIPredictionWidget";
-import { useHealthInsights, HealthInsightResponse } from "../../hooks/useHealthInsights";
-import { useWeeklyReport } from "../../hooks/useDailyHealthMetric";
+
+const to24h = (timeStr: string): string => {
+  if (!timeStr) return "00:00";
+  if (!timeStr.includes("AM") && !timeStr.includes("PM")) return timeStr;
+
+  const [time, period] = timeStr.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t, language } = useLanguage();
   const { token, userId } = useSession();
   const { data: profile } = useProfile(token);
   const { data: waterProgress } = useWaterProgress();
@@ -49,18 +69,30 @@ export default function HomeScreen() {
 
   // AI Prediction data
   const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(new Date());
-  const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit" }).format(d); })();
+  const sevenDaysAgo = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  })();
   const { data: rawInsight, isLoading: insightLoading } = useHealthInsights();
   const aiData = rawInsight as HealthInsightResponse | undefined;
   const { data: weeklyData } = useWeeklyReport(sevenDaysAgo, today);
-  const todayCount = schedules.filter(
-    (s) => s.isActive && isScheduleToday(s),
-  ).length;
   const todaySchedules = schedules.filter(
     (s) => s.isActive && isScheduleToday(s),
   );
+  const todayCount = todaySchedules.filter(
+    (s) => s.type !== "Medical",
+  ).length;
   const [weatherTemp, setWeatherTemp] = useState<number | null>(null);
   const [weatherText, setWeatherText] = useState("Loading...");
   const [showAllTodaySchedules, setShowAllTodaySchedules] = useState(false);
@@ -73,6 +105,45 @@ export default function HomeScreen() {
   );
   const [showTutorial, setShowTutorial] = useState(false);
   const pulseScale = React.useRef(new Animated.Value(1)).current;
+
+  const { mutateAsync: checkProactive } = useHealthProactive();
+
+  useEffect(() => {
+    const runProactiveCheck = async () => {
+      if (!userId || !aiData?.analytics) return;
+      try {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const lastCheck = await SecureStore.getItemAsync(`last_proactive_check_${userId}`);
+        if (lastCheck === todayStr) return; // Already checked today
+
+        const payload = {
+          user_id: userId,
+          user_profile: {
+            age: profile?.age || 25,
+            gender: profile?.gender === "MALE" ? 1 : 0,
+            height_cm: profile?.height || 170,
+            weight_kg: profile?.weight || 65,
+            language: language || "vi",
+          },
+          analytics_context: aiData.analytics as any,
+        };
+
+        const res = await checkProactive(payload);
+        if (res.should_notify) {
+          Alert.alert(
+            res.title || "Health Coach",
+            res.message || "Bạn có thông báo sức khỏe mới.",
+            [{ text: "OK" }]
+          );
+        }
+        await SecureStore.setItemAsync(`last_proactive_check_${userId}`, todayStr);
+      } catch (error) {
+        console.log("Proactive check failed:", error);
+      }
+    };
+    
+    runProactiveCheck();
+  }, [userId, aiData?.analytics, profile, language]);
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -141,10 +212,16 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      loadSchedules();
+    }, [loadSchedules]),
+  );
+
   const groupedTodaySchedules = React.useMemo(() => {
     // 1. Filter out past schedules
     const upcomingSchedules = todaySchedules.filter(
-      (s) => s.time >= currentTime,
+      (s) => to24h(s.time) >= currentTime,
     );
 
     // 2. Separate normal and medical
@@ -209,6 +286,18 @@ export default function HomeScreen() {
       }
     };
     fetchArticles();
+
+    let sub: any;
+    import("react-native").then(({ DeviceEventEmitter }) => {
+      sub = DeviceEventEmitter.addListener(
+        "NEW_ARTICLE_PUBLISHED",
+        fetchArticles,
+      );
+    });
+
+    return () => {
+      if (sub) sub.remove();
+    };
   }, []);
 
   const weatherCodeMap: Record<number, string> = {
@@ -273,7 +362,9 @@ export default function HomeScreen() {
 
       <ScrollView
         style={styles.scrollSurface}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* HEADER */}
         <View style={styles.header}>
@@ -284,8 +375,10 @@ export default function HomeScreen() {
               resizeMode="contain"
             />
             <View>
-              <Text style={styles.brandTitle}>
-                <Text style={{ color: "#0f3f67" }}>HealthCare </Text>
+              <Text style={[styles.brandTitle, isDark && { color: "#f8fafc" }]}>
+                <Text style={{ color: isDark ? "#38bdf8" : "#0f3f67" }}>
+                  HealthCare{" "}
+                </Text>
                 <Text style={{ color: "#1497dd" }}>Now</Text>
               </Text>
             </View>
@@ -307,18 +400,25 @@ export default function HomeScreen() {
         <View style={styles.welcomeSection}>
           <View style={styles.welcomeRow}>
             <View style={styles.welcomeTextWrap}>
-              <Text style={styles.greeting} numberOfLines={1} ellipsizeMode="tail">
-                Hello,{" "}
+              <Text
+                style={styles.greeting}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t("home.greeting")},{" "}
                 {
-                  (profile?.fullName || profile?.full_name || "User").split(
-                    " ",
-                  )[0]
+                  (
+                    profile?.fullName ||
+                    profile?.full_name ||
+                    t("settings.new_user")
+                  ).split(" ")[0]
                 }
                 !
               </Text>
               <Text style={styles.statsSummary} numberOfLines={2}>
-                You have {todayCount} workout{todayCount !== 1 ? "s" : ""} for
-                today.
+                {language === "vi"
+                  ? `Hôm nay bạn có ${todayCount} buổi tập.`
+                  : `You have ${todayCount} workout${todayCount !== 1 ? "s" : ""} for today.`}
               </Text>
             </View>
 
@@ -332,24 +432,21 @@ export default function HomeScreen() {
                 <Text style={styles.weatherTemp}>
                   {weatherTemp !== null ? `${weatherTemp}°C` : "--°C"}
                 </Text>
-                <Text style={styles.weatherDesc} numberOfLines={1} ellipsizeMode="tail">
-                  HCMC, {weatherText}
+                <Text
+                  style={styles.weatherDesc}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {t("home.city_hcmc")}, {weatherText}
                 </Text>
               </View>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* AI PREDICTION WIDGET */}
-        <AIPredictionWidget
-          aiData={aiData}
-          weeklyData={weeklyData}
-          isLoading={insightLoading}
-        />
-
         {/* QUICK MANAGEMENT */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Daily Tracking</Text>
+          <Text style={styles.sectionTitle}>{t("home.daily_tracking")}</Text>
           <Animated.View
             style={
               showTutorial && !hasToken
@@ -381,7 +478,7 @@ export default function HomeScreen() {
                     color={colors.primary}
                   />
                   <Text style={[styles.syncBtnText, { color: colors.primary }]}>
-                    {hasToken ? "Sync Now" : "Connect Fit"}
+                    {hasToken ? t("home.sync_now") : t("home.connect_fit")}
                   </Text>
                 </>
               )}
@@ -396,11 +493,10 @@ export default function HomeScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.fitTutorialTitle}>
-                Quick setup for new users
+                {t("home.tutorial_title")}
               </Text>
               <Text style={styles.fitTutorialText}>
-                Tap the highlighted Connect Fit button to link Google Fit and
-                sync your daily steps, distance, and calories automatically.
+                {t("home.tutorial_text")}
               </Text>
             </View>
             <TouchableOpacity
@@ -426,8 +522,10 @@ export default function HomeScreen() {
             >
               <Ionicons name="moon" size={24} color="#8b5cf6" />
             </View>
-            <Text style={styles.manageCardTitle}>Sleep</Text>
-            <Text style={styles.manageCardSub}>{sleepGoal}h Goal</Text>
+            <Text style={styles.manageCardTitle}>{t("home.sleep")}</Text>
+            <Text style={styles.manageCardSub}>
+              {sleepGoal}h {t("home.goal")}
+            </Text>
           </TouchableOpacity>
 
           {/* HYDRATION MANAGEMENT */}
@@ -443,14 +541,14 @@ export default function HomeScreen() {
             >
               <Ionicons name="water" size={24} color="#3b82f6" />
             </View>
-            <Text style={styles.manageCardTitle}>Water</Text>
+            <Text style={styles.manageCardTitle}>{t("home.water")}</Text>
             <Text style={styles.manageCardSub}>
               {(
                 Number(
                   waterProgress?.goal_ml ?? waterProgress?.goalMl ?? 2500,
                 ) / 1000
               ).toFixed(1)}
-              L Goal
+              L {t("home.goal")}
             </Text>
           </TouchableOpacity>
 
@@ -467,8 +565,8 @@ export default function HomeScreen() {
             >
               <MaterialIcons name="restaurant" size={24} color="#f59e0b" />
             </View>
-            <Text style={styles.manageCardTitle}>AI Meals</Text>
-            <Text style={styles.manageCardSub}>Planner</Text>
+            <Text style={styles.manageCardTitle}>{t("home.ai_meals")}</Text>
+            <Text style={styles.manageCardSub}>{t("home.planner")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -488,20 +586,20 @@ export default function HomeScreen() {
             }}
           >
             <Text style={[styles.reminderTitle, { marginBottom: 0 }]}>
-              TODAY&apos;S SCHEDULES
+              {t("home.today_schedules")}
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/screen/schedule_manage" as any)}
             >
               <Text style={{ color: "#fff", fontSize: 13, fontWeight: "bold" }}>
-                Manage
+                {t("home.manage")}
               </Text>
             </TouchableOpacity>
           </View>
 
           {groupedTodaySchedules.length === 0 ? (
             <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-              No schedules for today. 🎉
+              {t("home.no_schedule_today")}
             </Text>
           ) : (
             <>
@@ -522,10 +620,12 @@ export default function HomeScreen() {
                           <Ionicons name="medical" size={20} color="#10b981" />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.reminderHeading}>Medication</Text>
+                          <Text style={styles.reminderHeading}>
+                            {t("home.medication")}
+                          </Text>
                           <Text style={styles.reminderSub} numberOfLines={2}>
                             {schedule.time} - {schedule.items.length}{" "}
-                            medications
+                            {t("home.medications")}
                           </Text>
                         </View>
                       </TouchableOpacity>
@@ -564,14 +664,17 @@ export default function HomeScreen() {
                     }}
                   >
                     {showAllTodaySchedules
-                      ? "Show less"
-                      : `Show more (${groupedTodaySchedules.length - 3})`}
+                      ? t("home.show_less")
+                      : `${t("home.show_more")} (${groupedTodaySchedules.length - 3})`}
                   </Text>
                 </TouchableOpacity>
               )}
             </>
           )}
         </LinearGradient>
+
+        {/* AI PREDICTION WIDGET */}
+        <SystemPulseWidget profile={profile} weeklyData={weeklyData} />
 
         {/* MEDICATION MODAL */}
         <Modal
@@ -587,7 +690,8 @@ export default function HomeScreen() {
               <View style={styles.modalHeader}>
                 <View>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>
-                    Medication - {selectedMedGroup?.items.length} types
+                    {t("home.medication")} - {selectedMedGroup?.items.length}{" "}
+                    {t("home.types")}
                   </Text>
                   <Text
                     style={{
@@ -596,7 +700,7 @@ export default function HomeScreen() {
                       marginTop: 2,
                     }}
                   >
-                    Time Slot: {selectedMedGroup?.time}
+                    {t("home.time_slot")}: {selectedMedGroup?.time}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -693,7 +797,7 @@ export default function HomeScreen() {
                                     fontStyle: "italic",
                                   }}
                                 >
-                                  Note: {med.note}
+                                  {t("home.note")}: {med.note}
                                 </Text>
                               )}
                             </View>
@@ -712,7 +816,9 @@ export default function HomeScreen() {
         {latestArticle && (
           <View style={styles.articleSection}>
             <View style={[styles.sectionHeader, { marginTop: 0 }]}>
-              <Text style={styles.sectionTitle}>Latest Articles</Text>
+              <Text style={styles.sectionTitle}>
+                {t("home.latest_articles")}
+              </Text>
               <TouchableOpacity
                 onPress={() => router.push("/screen/article_list" as any)}
               >
@@ -723,7 +829,7 @@ export default function HomeScreen() {
                     fontWeight: "bold",
                   }}
                 >
-                  View All
+                  {t("home.view_all")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -748,7 +854,8 @@ export default function HomeScreen() {
                 <View style={styles.articleBadge}>
                   <View style={styles.articleBadgeDot} />
                   <Text style={styles.articleBadgeText}>
-                    {latestArticle.category?.toUpperCase() || "HEALTH"}
+                    {latestArticle.category?.toUpperCase() ||
+                      t("home.health").toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -760,7 +867,9 @@ export default function HomeScreen() {
                   {latestArticle.summary}
                 </Text>
                 <View style={styles.articleReadMore}>
-                  <Text style={styles.articleReadMoreText}>Read Article</Text>
+                  <Text style={styles.articleReadMoreText}>
+                    {t("home.read_article")}
+                  </Text>
                   <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
                 </View>
               </View>
@@ -809,7 +918,7 @@ const createStyles = (colors: any, isDark: boolean) =>
     brandTitle: {
       ...Typography.brandTitle,
       fontSize: 22,
-      lineHeight: 26,
+      fontWeight: "800",
     },
     notificationBtn: {
       width: 40,
@@ -1050,7 +1159,6 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginTop: 4,
     },
     articleSection: {
-      marginBottom: 100,
       paddingHorizontal: 20,
     },
     articleCard: {

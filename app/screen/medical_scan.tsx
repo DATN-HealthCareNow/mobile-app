@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, TextInput } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../context/ThemeContext';
-import { axiosClient } from '../../api/axiosClient';
-import { scheduleService } from '../../api/services/scheduleService';
-import { useScheduleStore } from '../../store/scheduleStore';
-import * as Notifications from 'expo-notifications';
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as Notifications from "expo-notifications";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { axiosClient } from "../../api/axiosClient";
+import { scheduleService } from "../../api/services/scheduleService";
+import PremiumUpgradeModal from "../../components/PremiumUpgradeModal";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
+import { useSession } from "../../hooks/useAuth";
+import { useScheduleStore } from "../../store/scheduleStore";
 
 interface MedicationInfo {
   name: string;
@@ -27,561 +38,987 @@ interface AnalysisResult {
 }
 
 export default function MedicalScanScreen() {
-    const router = useRouter();
-    const { colors, isDark } = useTheme();
-    
-    const [imageUri, setImageUri] = useState<string | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [result, setResult] = useState<AnalysisResult | null>(null);
-    
-    const [savingRecordId, setSavingRecordId] = useState<string | null>(null);
-    const [history, setHistory] = useState<any[]>([]);
-    const params = useLocalSearchParams();
-    const [expandedRecordId, setExpandedRecordId] = useState<string | null>(params.expandRecordId as string || null);
-    const { schedules: allSchedules, deleteSchedules, loadSchedules } = useScheduleStore();
+  const router = useRouter();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
+  const { token, userId } = useSession();
 
-    const fetchHistory = async () => {
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [scanQuotaExceeded, setScanQuotaExceeded] = useState(false);
+
+  const [savingRecordId, setSavingRecordId] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const params = useLocalSearchParams();
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(
+    (params.expandRecordId as string) || null,
+  );
+  const {
+    schedules: allSchedules,
+    deleteSchedules,
+    loadSchedules,
+  } = useScheduleStore();
+
+  const fetchHistory = async () => {
+    try {
+      const response = await axiosClient.get("/api/v1/medical-records");
+      const list = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response)
+          ? response
+          : [];
+      setHistory(list);
+    } catch (err) {
+      console.log("Error fetching history:", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const pickImage = async (useCamera = false) => {
+    let pickerResult;
+
+    if (useCamera) {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          t("medical.permission", "Permission"),
+          t(
+            "medical.camera_permission_msg",
+            "Camera permission is required to take photos.",
+          ),
+        );
+        return;
+      }
+      pickerResult = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+    } else {
+      pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+      });
+    }
+
+    if (
+      !pickerResult.canceled &&
+      pickerResult.assets &&
+      pickerResult.assets.length > 0
+    ) {
+      const uri = pickerResult.assets[0].uri;
+      setImageUri(uri);
+      analyzeImage(uri);
+    }
+  };
+
+  const analyzeImage = async (uri: string) => {
+    setIsAnalyzing(true);
+    setResult(null);
+
+    try {
+      const filename = uri.split("/").pop() || "image.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append("file", { uri, name: filename, type });
+
+      const response = await fetch(
+        `${axiosClient.defaults.baseURL}/api/v1/bff/mobile/medical/scan`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: token ? `Bearer ${token}` : "",
+            "x-user-id": userId || "",
+          },
+        },
+      );
+
+      if (response.status === 403) {
+        setScanQuotaExceeded(true);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      let parsedResult: AnalysisResult;
+      if (typeof data.ai_response === "string") {
         try {
-            const response = await axiosClient.get('/api/v1/medical-records');
-            const list = Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
-            setHistory(list);
-        } catch (err) {
-            console.log("Error fetching history:", err);
-        }
-    };
-
-    React.useEffect(() => {
-        fetchHistory();
-    }, []);
-
-    const pickImage = async (useCamera = false) => {
-        let pickerResult;
-        
-        if (useCamera) {
-            const permission = await ImagePicker.requestCameraPermissionsAsync();
-            if (permission.status !== 'granted') {
-                Alert.alert("Quyền", "Cần cấp quyền camera để chụp ảnh");
-                return;
-            }
-            pickerResult = await ImagePicker.launchCameraAsync({
-                mediaTypes: ['images'],
-                quality: 0.8,
-            });
-        } else {
-            pickerResult = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
-                quality: 0.8,
-            });
-        }
-
-        if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
-            const uri = pickerResult.assets[0].uri;
-            setImageUri(uri);
-            analyzeImage(uri);
-        }
-    };
-
-    const analyzeImage = async (uri: string) => {
-        setIsAnalyzing(true);
-        setResult(null);
-
-        try {
-            const filename = uri.split('/').pop() || 'image.jpg';
-            const match = /\.(\w+)$/.exec(filename);
-            const type = match ? `image/${match[1]}` : `image/jpeg`;
-
-            const formData = new FormData();
-            // @ts-ignore
-            formData.append('file', { uri, name: filename, type });
-
-            // Axios thường lỗi ERR_NETWORK khi upload FormData lớn hoặc timeout 10s là quá ngắn cho AI
-            // Sử dụng fetch API native là giải pháp ổn định nhất trên React Native
-            const token = await require('expo-secure-store').getItemAsync('accessToken');
-            const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://52.220.93.185';
-            
-            const fetchResponse = await fetch(`${apiUrl}/api/v1/analysis/medical-record`, {
-                method: 'POST',
-                headers: {
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    // Không set Content-Type, fetch sẽ tự động set boundary cho multipart/form-data
-                },
-                body: formData,
-            });
-            
-            const rawText = await fetchResponse.text();
-            let data;
-            try {
-                data = JSON.parse(rawText);
-            } catch(e) {
-                data = { error: "Không thể parse JSON từ server" };
-            }
-            
-            // Xử lý nested result nếu có
-            if (data.result) {
-                try {
-                    data = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
-                } catch(e) {}
-            }
-
-            if (!fetchResponse.ok || data.error) {
-                const errorMsg = data.error_message || data.error || data.message || `Server error: ${fetchResponse.status}`;
-                Alert.alert("AI Error", errorMsg, [
-                    { text: "Chụp lại", onPress: () => { setImageUri(null); } },
-                    { text: "Đóng", style: "cancel" }
-                ]);
-            } else {
-                // Kiểm tra kết quả có hợp lệ không
-                const diagnosis = data?.diagnosis;
-                const isUnknown =
-                    !diagnosis ||
-                    diagnosis.trim() === "" ||
-                    /unknown|không xác định|không rõ|n\/a/i.test(diagnosis);
-
-                if (isUnknown) {
-                    Alert.alert(
-                        "Không thể nhận dạng",
-                        "AI không thể phân tích được hình ảnh này. Vui lòng chụp lại ảnh rõ hơn (đủ ánh sáng, không bị mờ, đúng góc chụp đơn thuốc).",
-                        [
-                            { text: "Chụp lại", onPress: () => { setImageUri(null); } },
-                            { text: "Đóng", style: "cancel" },
-                        ]
-                    );
-                } else {
-                    setResult(data);
-                }
-            }
-        } catch (error: any) {
-            console.error("Upload error:", error);
-            Alert.alert("Analysis Error", error.message || "Failed to send image to AI server. Please try again.");
-        } finally {
-            setIsAnalyzing(false);
-        }
-    };
-
-
-    const handleSaveScheduleForRecord = async (targetRecordId: string, medications: MedicationInfo[], diagnosisTitle: string) => {
-        // Check if we are toggling OFF
-        const existingSchedules = allSchedules.filter(s => s.sourceId === targetRecordId || s.id.includes(targetRecordId));
-        if (existingSchedules.length > 0) {
-            setSavingRecordId(targetRecordId);
-            try {
-                const idsToDelete = existingSchedules.map(s => s.id);
-                await deleteSchedules(idsToDelete);
-                await Notifications.cancelAllScheduledNotificationsAsync();
-                await loadSchedules();
-                Alert.alert("Success", "All reminders for this record have been disabled.");
-            } catch (e) {
-                Alert.alert("Error", "Could not disable reminders.");
-            } finally {
-                setSavingRecordId(null);
-            }
-            return;
-        }
-
-        if (!medications || medications.length === 0) {
-            Alert.alert("Notice", "No medications found to schedule.");
-            return;
-        }
-
-        setSavingRecordId(targetRecordId);
-        try {
-            let actualRecordId = targetRecordId;
-
-            // Chỉ tạo record MỚI nếu đây là scan chưa được lưu
-            // (targetRecordId bắt đầu bằng "scan_" nghĩa là chưa có trong DB)
-            if (targetRecordId.startsWith("scan_")) {
-                const recordPayload = {
-                    title: diagnosisTitle || "Medical Record",
-                    diagnosis: diagnosisTitle || "Medical Record",
-                    medications: medications || [],
-                    forbiddenFoods: result?.forbidden_foods || [],
-                    aiAnalysis: JSON.stringify(result),
-                };
-                const recordResponse = await axiosClient.post('/api/v1/medical-records', recordPayload);
-                const savedRecord = (recordResponse as any).data || recordResponse;
-                actualRecordId = savedRecord.id || targetRecordId;
-            }
-            // Nếu targetRecordId là ID thực từ DB (từ history records) → dùng trực tiếp, không tạo mới
-
-            // 2. Request permissions
-            const { status } = await Notifications.requestPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert("Notification Permission", "Record saved, but please enable notifications to receive medication reminders.");
-                setSavingRecordId(null);
-                fetchHistory(); // Refresh to show the new record anyway
-                setResult(null);
-                setImageUri(null);
-                return;
-            }
-
-            const allReminderTimes = new Set<string>();
-
-            for (const med of medications) {
-                let medSchedules = med.schedules && med.schedules.length > 0 ? med.schedules : [];
-                
-                // Fallback logic for frequency
-                if (medSchedules.length === 0) {
-                    const note = (med.note || "").toLowerCase();
-                    const dosage = (med.dosage || "").toLowerCase();
-                    
-                    if (note.includes("2 lần") || dosage.includes("2 lần")) {
-                        medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
-                    } else if (note.includes("3 lần") || dosage.includes("3 lần")) {
-                        medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "13:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
-                    } else {
-                        // Default: 1 time per day at 8:00 AM
-                        medSchedules = [{ time: "08:00", dosage: med.dosage || "" }];
-                    }
-                }
-
-                for (const sched of medSchedules) {
-                    const timeStr = sched.time;
-                    allReminderTimes.add(timeStr);
-                    const dosageText = sched.dosage || med.dosage || "";
-                    const [hour, minute] = timeStr.split(':').map(Number);
-                    
-                    await Notifications.scheduleNotificationAsync({
-                        content: {
-                            title: "💊 Medication Reminder",
-                            body: `It's time to take ${med.name} (${dosageText})`,
-                            data: { screen: 'medication_schedule', recordId: actualRecordId },
-                            sound: true,
-                            priority: Notifications.AndroidNotificationPriority.HIGH,
-                        },
-                        trigger: {
-                            type: 'daily',
-                            hour,
-                            minute,
-                            repeats: true,
-                        } as any,
-                    });
-                }
-            }
-
-            // Create ONE document in backend for all times
-            if (medications && medications.length > 0) {
-                await scheduleService.createSchedule({
-                    title: `Medication: ${diagnosisTitle}`,
-                    schedule_type: 'RECURRING',
-                    start_date: new Date().toISOString(),
-                    reminder_enabled: true,
-                    source_id: actualRecordId,
-                    diagnosis: diagnosisTitle,
-                    medications: medications,
-                    // Send an empty recurrence_config or just repeatDays since medications contain the times
-                    recurrence_config: { 
-                        repeat_days: [0, 1, 2, 3, 4, 5, 6]
-                    }
-                });
-            }
-            
-            await loadSchedules();
-            Alert.alert("Success", `Medical record saved and reminders created for ${medications.length} medications!`);
-            
-            // 3. Refresh history and clear current scan
-            fetchHistory();
-            setResult(null);
-            setImageUri(null);
+          const jsonStr = data.ai_response.replace(/```json|```/g, "").trim();
+          parsedResult = JSON.parse(jsonStr);
         } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "Could not save record or create reminders.");
-        } finally {
-            setSavingRecordId(null);
+          console.error("Parse AI string failed", e);
+          Alert.alert(
+            t("medical.parse_error", "Parse Error"),
+            t("medical.parse_error", "Không thể parse JSON từ server"),
+          );
+          setIsAnalyzing(false);
+          return;
         }
-    };
+      } else {
+        parsedResult = data.ai_response;
+      }
 
+      if (
+        !parsedResult.diagnosis &&
+        (!parsedResult.medications || parsedResult.medications.length === 0)
+      ) {
+        Alert.alert(
+          t("medical.unknown_title", "Could not recognize"),
+          t(
+            "medical.unknown_msg",
+            "AI không thể phân tích được hình ảnh này. Vui lòng chụp lại ảnh rõ hơn (đủ ánh sáng, không bị mờ, đúng góc chụp đơn thuốc).",
+          ),
+          [
+            {
+              text: t("medical.retake", "Retake"),
+              onPress: () => setImageUri(null),
+            },
+            { text: t("medical.close", "Close") },
+          ],
+        );
+        setIsAnalyzing(false);
+        return;
+      }
 
-    return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.circleBtn}>
-                    <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-                <Text style={[styles.title, { color: colors.text }]}>Scan Medical Record</Text>
-                <View style={{width: 44}} />
-            </View>
+      setResult(parsedResult);
+    } catch (error) {
+      console.error("Scan failed:", error);
+      Alert.alert(
+        t("medical.error", "AI Error"),
+        t(
+          "medical.send_error",
+          "Failed to send image to AI server. Please try again.",
+        ),
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                
-                <Text style={[styles.desc, { color: colors.textSecondary }]}>
-                    Capture or upload prescriptions and medical records for AI to automatically extract medication schedules and forbidden foods.
-                </Text>
+  const handleSaveAndSchedule = async () => {
+    if (!result) return;
+    setIsAnalyzing(true);
 
-                <View style={styles.imageBox}>
-                    {imageUri ? (
-                        <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-                    ) : (
-                        <View style={[styles.imagePlaceholder, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
-                            <Ionicons name="document-text" size={60} color="#94a3b8" />
-                            <Text style={{color: '#94a3b8', marginTop: 10}}>No image selected</Text>
-                        </View>
-                    )}
-                </View>
+    try {
+      const saveResp = await axiosClient.post("/api/v1/medical-records", {
+        diagnosis:
+          result.diagnosis || t("medical.default_title", "Medical Record"),
+        medications: result.medications || [],
+        forbidden_foods: result.forbidden_foods || [],
+        image_url: imageUri,
+      });
 
-                <View style={styles.actionRow}>
-                    <TouchableOpacity style={styles.btnOutline} onPress={() => pickImage(false)}>
-                        <Ionicons name="images" size={20} color="#0ea5e9" />
-                        <Text style={styles.btnOutlineText}>Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.btnSolid} onPress={() => pickImage(true)}>
-                        <Ionicons name="camera" size={20} color="#fff" />
-                        <Text style={styles.btnSolidText}>Take Photo</Text>
-                    </TouchableOpacity>
-                </View>
+      const savedRecord = saveResp.data;
 
-                {/* HỒ SƠ KHÁM BỆNH */}
-                {!isAnalyzing && !result && history.length > 0 && (
-                    <View style={styles.historySection}>
-                        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 16 }]}>Medical History</Text>
-                        {history.map((record, index) => {
-                            const isExpired = record.status === "EXPIRED";
-                            const statusColor = isExpired ? "#94a3b8" : "#10b981";
-                            const statusLabel = isExpired ? "Expired" : "Active Medication";
-                            
-                            let diagnosis = record.diagnosis || record.title || "Medical Record";
-                            let medicationsList: MedicationInfo[] = [];
-                            try {
-                                if (record.aiAnalysis) {
-                                    const parsed = typeof record.aiAnalysis === 'string' ? JSON.parse(record.aiAnalysis) : record.aiAnalysis;
-                                    if (parsed.diagnosis && !record.diagnosis) diagnosis = parsed.diagnosis;
-                                    if (parsed.medications) medicationsList = parsed.medications;
-                                } else if (record.medications && Array.isArray(record.medications)) {
-                                    medicationsList = record.medications;
-                                }
-                            } catch(e){}
+      // Notification Permission
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-                            return (
-                                <View key={record.id || index} style={[styles.historyCard, isExpired && { opacity: 0.75 }]}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <View style={{ flex: 1, paddingRight: 10 }}>
-                                            <Text style={[styles.historyTitle, { color: colors.text }]}>{diagnosis}</Text>
-                                            <View style={styles.statusRow}>
-                                                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                                                <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-                                                {record.expiryDate && (
-                                                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginLeft: 8 }}>
-                                                        Exp: {new Date(record.expiryDate).toLocaleDateString()}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                        </View>
-                                        <TouchableOpacity 
-                                            style={[styles.historyIconBox, { backgroundColor: isExpired ? 'rgba(148, 163, 184, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}
-                                            onPress={() => setExpandedRecordId(expandedRecordId === record.id ? null : record.id)}
-                                        >
-                                            <Ionicons name={isExpired ? "lock-closed" : "time"} size={22} color={isExpired ? "#94a3b8" : "#10b981"} />
-                                        </TouchableOpacity>
-                                    </View>
+      if (finalStatus !== "granted") {
+        Alert.alert(
+          t("medical.notice", "Notification Permission"),
+          t(
+            "medical.notif_permission_msg",
+            "Record saved, but please enable notifications to receive medication reminders.",
+          ),
+        );
+      }
 
-                                    <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, paddingHorizontal: 4}}>
-                                        {(() => {
-                                            const hasActiveSchedules = allSchedules.some(s => s.sourceId === record.id || s.id.includes(record.id));
-                                            const isProcessing = savingRecordId === record.id;
-                                            
-                                            return (
-                                                <TouchableOpacity 
-                                                    style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: hasActiveSchedules ? '#f43f5e' : '#10b981', paddingVertical: 8, borderRadius: 8}}
-                                                    onPress={() => handleSaveScheduleForRecord(record.id, medicationsList, diagnosis)}
-                                                    disabled={isProcessing}
-                                                >
-                                                    {isProcessing ? (
-                                                        <ActivityIndicator size="small" color="#fff" style={{marginRight: 6}} />
-                                                    ) : (
-                                                        <Ionicons name={hasActiveSchedules ? "notifications-off" : "notifications"} size={16} color="#fff" style={{marginRight: 6}} />
-                                                    )}
-                                                    <Text style={{color: '#fff', fontWeight: '700', fontSize: 12}}>
-                                                        {isProcessing ? "Wait..." : (hasActiveSchedules ? "Disable" : "Enable")}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })()}
+      // Create schedules on server
+      const medications = result.medications || [];
+      let scheduleCount = 0;
+      for (const med of medications) {
+        if (med.schedules && med.schedules.length > 0) {
+          for (const sched of med.schedules) {
+            try {
+              await scheduleService.createSchedule({
+                title: t("home.medication", "Medication") + ": " + med.name,
+                schedule_type: "RECURRING",
+                start_date: new Date().toISOString(),
+                reminder_enabled: true,
+                source_id: savedRecord.id,
+                recurrence_config: {
+                  repeat_days: [0, 1, 2, 3, 4, 5, 6],
+                  reminder_time: sched.time,
+                },
+              });
 
-                                        {!isExpired && (
-                                            <TouchableOpacity 
-                                                style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#64748b', paddingVertical: 8, borderRadius: 8}}
-                                                onPress={() => {
-                                                    Alert.alert("Confirm", "Mark this record as expired/recovered?", [
-                                                        { text: "Cancel", style: "cancel" },
-                                                        { 
-                                                            text: "Confirm", 
-                                                            style: "destructive",
-                                                            onPress: async () => {
-                                                                try {
-                                                                    // 1. Cập nhật trạng thái record thành EXPIRED
-                                                                    await axiosClient.post(`/api/v1/medical-records/${record.id}/status`, { status: "EXPIRED" });
-                                                                    
-                                                                    // 2. Tìm và xóa các lịch nhắc nhở liên quan
-                                                                    const relatedSchedules = allSchedules.filter(s => s.sourceId === record.id || s.id.includes(record.id));
-                                                                    if (relatedSchedules.length > 0) {
-                                                                        const idsToDelete = relatedSchedules.map(s => s.id);
-                                                                        await deleteSchedules(idsToDelete);
-                                                                        // Hủy tất cả local notifications để dọn dẹp
-                                                                        await Notifications.cancelAllScheduledNotificationsAsync();
-                                                                        await loadSchedules();
-                                                                    }
+              // Schedule Local Notification
+              const [hour, minute] = sched.time.split(":").map(Number);
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: t("medical.notif_title", "💊 Medication Reminder"),
+                  body: t(
+                    "medical.notif_body",
+                    "It's time to take {name} ({dosage})",
+                  )
+                    .replace("{name}", med.name)
+                    .replace(
+                      "{dosage}",
+                      sched.dosage || med.dosage || t("medical.unit_dose", "1 dose"),
+                    ),
+                  data: { recordId: savedRecord.id },
+                },
+                trigger: {
+                  hour,
+                  minute,
+                  repeats: true,
+                  type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                } as Notifications.NotificationTriggerInput,
+              });
+              scheduleCount++;
+            } catch (e) {
+              console.log("Failed to create sub-schedule", e);
+            }
+          }
+        }
+      }
 
-                                                                    fetchHistory();
-                                                                    Alert.alert("Success", "Record expired and all reminders cleaned up.");
-                                                                } catch(e) { 
-                                                                    console.error("Expire error:", e);
-                                                                    Alert.alert("Error", "Could not fully update status or clean up reminders."); 
-                                                                }
-                                                            }
-                                                        }
-                                                    ]);
-                                                }}
-                                            >
-                                                <Ionicons name="checkmark-done-circle" size={16} color="#fff" style={{marginRight: 6}} />
-                                                <Text style={{color: '#fff', fontWeight: '700', fontSize: 12}}>Expire</Text>
-                                            </TouchableOpacity>
-                                        )}
+      if (scheduleCount === 0) {
+        Alert.alert(
+          t("medical.notice", "Notice"),
+          t("medical.no_meds_schedule", "No medications found to schedule."),
+        );
+      } else {
+        Alert.alert(
+          t("auth.verify_register.success_title", "Success"),
+          t(
+            "medical.save_success",
+            "Medical record saved and reminders created for {count} medications!",
+          ).replace("{count}", scheduleCount.toString()),
+        );
+      }
 
-                                        <TouchableOpacity 
-                                            style={{flex: 1, minWidth: 100, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: '#10b981', paddingVertical: 8, borderRadius: 8}}
-                                            onPress={() => router.push({ pathname: '/screen/medication_schedule', params: { recordId: record.id } })}
-                                        >
-                                            <Ionicons name="calendar" size={16} color="#10b981" style={{marginRight: 6}} />
-                                            <Text style={{color: '#10b981', fontWeight: '700', fontSize: 12}}>Details</Text>
-                                        </TouchableOpacity>
-                                    </View>
+      setResult(null);
+      setImageUri(null);
+      fetchHistory();
+      loadSchedules(); // Refresh local store
+    } catch (error) {
+      console.error("Failed to save record:", error);
+      Alert.alert(
+        t("medical.error", "Error"),
+        t("medical.save_error", "Could not save record or create reminders."),
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
-                                    {expandedRecordId === record.id && (
-                                        <View style={{ marginTop: 15, backgroundColor: 'rgba(16, 185, 129, 0.05)', borderRadius: 12, padding: 12 }}>
-                                            <Text style={{fontWeight: '700', color: colors.text, marginBottom: 10}}>Medication Times:</Text>
-                                            {medicationsList.length > 0 ? (
-                                                medicationsList.map((med: any, idx: number) => {
-                                                    const displayDosage = med.schedules?.[0]?.dosage || med.dosage || "";
-                                                    const durationText = med.duration_days ? `${med.duration_days} days` : (med.duration || "");
-                                                    const times = med.schedules?.map((s: any) => s.time).join(', ') || "";
-                                                    
-                                                    return (
-                                                        <View key={idx} style={{marginBottom: 8, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: '#10b981'}}>
-                                                            <Text style={{fontWeight: '600', color: colors.text}}>{med.name}</Text>
-                                                            <Text style={{fontSize: 12, color: colors.textSecondary}}>
-                                                                {displayDosage} {durationText ? `- ${durationText}` : ""} {times ? `(Times: ${times})` : ""}
-                                                            </Text>
-                                                        </View>
-                                                    );
-                                                })
-                                            ) : (
-                                                <Text style={{fontSize: 12, color: colors.textSecondary}}>No medication info found.</Text>
-                                            )}
-                                        </View>
-                                    )}
-                                    
-                                    <View style={styles.historyDivider} />
+  const createRemindersForRecord = async (
+    recordId: string,
+    medications: any[],
+  ) => {
+    let count = 0;
+    for (const med of medications) {
+      if (med.schedules && med.schedules.length > 0) {
+        for (const sched of med.schedules) {
+          try {
+            await scheduleService.createSchedule({
+              title: t("home.medication", "Medication") + ": " + med.name,
+              schedule_type: "RECURRING",
+              start_date: new Date().toISOString(),
+              reminder_enabled: true,
+              source_id: recordId,
+              recurrence_config: {
+                repeat_days: [0, 1, 2, 3, 4, 5, 6],
+                reminder_time: sched.time,
+              },
+            });
 
-                                    <TouchableOpacity 
-                                        style={styles.addForbiddenFoodBtn}
-                                        onPress={() => router.push({ pathname: '/screen/forbidden_foods', params: { recordId: record.id } })}
-                                    >
-                                        <Ionicons name="restaurant" size={16} color="#f43f5e" />
-                                        <Text style={styles.addForbiddenFoodText}>Forbidden Food List</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            );
-                        })}
-                    </View>
-                )}
+            // Schedule Local Notification
+            const [hour, minute] = sched.time.split(":").map(Number);
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: t("medical.notif_title", "💊 Medication Reminder"),
+                body: t(
+                  "medical.notif_body",
+                  "It's time to take {name} ({dosage})",
+                )
+                  .replace("{name}", med.name)
+                  .replace(
+                    "{dosage}",
+                    sched.dosage ||
+                      med.dosage ||
+                      t("medical.unit_dose", "1 dose"),
+                  ),
+                data: { recordId },
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                hour,
+                minute,
+              } as Notifications.NotificationTriggerInput,
+            });
+            count++;
+          } catch (e) {
+            console.log("Failed to create sub-schedule", e);
+          }
+        }
+      }
+    }
+    return count;
+  };
 
-                {isAnalyzing && (
-                    <View style={styles.loadingBox}>
-                        <ActivityIndicator size="large" color="#0ea5e9" />
-                        <Text style={[styles.loadingText, { color: colors.text }]}>AI is analyzing records...</Text>
-                    </View>
-                )}
+  const toggleReminders = async (record: any) => {
+    const relatedSchedules = allSchedules.filter((s) => s.sourceId === record.id);
+    const isEnabled = relatedSchedules.length > 0;
 
-                {result && !isAnalyzing && (
-                    <View style={styles.resultContainer}>
-                        <View style={styles.sectionCard}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Ionicons name="medical" size={20} color="#10b981" />
-                                <Text style={styles.sectionTitle}>Diagnosis</Text>
-                            </View>
-                            <Text style={[styles.diagnosisText, { color: colors.text }]}>{result.diagnosis || "Unknown."}</Text>
-                        </View>
+    if (isEnabled) {
+      // Disable: Delete all
+      try {
+        await deleteSchedules(relatedSchedules.map((s) => s.id));
+        Alert.alert(t("medical.notice"), t("medical.reminders_disabled"));
+      } catch (err) {
+        Alert.alert(t("medical.error"), t("medical.expire_error"));
+      }
+    } else {
+      // Enable: Create
+      const count = await createRemindersForRecord(
+        record.id,
+        record.medications || [],
+      );
+      if (count > 0) {
+        Alert.alert(t("auth.verify_register.success_title"), t("medical.reminders_enabled"));
+      } else {
+        Alert.alert(t("medical.notice"), t("medical.no_meds_schedule"));
+      }
+    }
+    loadSchedules();
+  };
 
-                        <View style={styles.sectionCard}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Ionicons name="flask" size={20} color="#6366f1" />
-                                <Text style={styles.sectionTitle}>Prescribed Medications ({result.medications?.length || 0})</Text>
-                            </View>
-                            
-                            {result.medications && result.medications.length > 0 ? (
-                                result.medications.map((med, idx) => (
-                                    <View key={idx} style={styles.medItem}>
-                                        <Text style={[styles.medName, { color: colors.text }]}>{med.name}</Text>
-                                        <Text style={styles.medDetail}>Dosage: <Text style={{color: '#6366f1'}}>{med.dosage}</Text></Text>
-                                        <Text style={styles.medDetail}>Duration: {med.duration}</Text>
-                                        {!!med.note && <Text style={styles.medNote}>Note: {med.note}</Text>}
-                                    </View>
-                                ))
-                            ) : (
-                                <Text style={{color: '#94a3b8', fontSize: 13}}>No medications found.</Text>
-                            )}
-                        </View>
-
-
-
-                        <TouchableOpacity 
-                            style={[styles.saveBtn, savingRecordId === ("scan_" + Date.now()) && { opacity: 0.7 }]} 
-                            onPress={() => handleSaveScheduleForRecord("scan_" + Date.now(), result.medications || [], result.diagnosis || "Medical Record")}
-                            disabled={savingRecordId !== null}
-                        >
-                            {savingRecordId !== null ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                                <Text style={styles.saveBtnText}>Schedule Reminders</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </ScrollView>
-        </View>
+  const handleExpire = async (recordId: string) => {
+    Alert.alert(
+      t("medical.confirm", "Confirm"),
+      t(
+        "medical.expire_confirm_msg",
+        "Mark this record as expired/recovered?",
+      ),
+      [
+        { text: t("medical.cancel_action", "Cancel"), style: "cancel" },
+        {
+          text: t("medical.confirm", "Confirm"),
+          onPress: () => updateStatus(recordId, "EXPIRED"),
+        },
+      ],
     );
+  };
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await axiosClient.post(`/api/v1/medical-records/${id}/status`, {
+        status,
+      });
+
+      if (status === "EXPIRED") {
+        // Find and delete related schedules
+        const relatedSchedules = allSchedules.filter((s) => s.sourceId === id);
+        if (relatedSchedules.length > 0) {
+          await deleteSchedules(relatedSchedules.map((s) => s.id));
+        }
+        Alert.alert(
+          t("medical.notice", "Notice"),
+          t(
+            "medical.expire_success",
+            "Record expired and all reminders cleaned up.",
+          ),
+        );
+      }
+
+      fetchHistory();
+      loadSchedules();
+    } catch (error) {
+      Alert.alert(
+        t("medical.error", "Error"),
+        t(
+          "medical.expire_error",
+          "Could not fully update status or clean up reminders.",
+        ),
+      );
+    }
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {t("medical.scan_title", "Scan Medical Record")}
+          </Text>
+          <Text style={styles.headerSub}>
+            {t("medical.ai_feature_name", "AI Medical Scan")}
+          </Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 60 }}
+      >
+        {/* Scan Module */}
+        <View
+          style={[
+            styles.scanModule,
+            { backgroundColor: isDark ? colors.card : "#fff" },
+          ]}
+        >
+          <View style={styles.previewBox}>
+            {imageUri ? (
+              <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            ) : (
+              <View style={styles.emptyPreview}>
+                <MaterialCommunityIcons
+                  name="image-search-outline"
+                  size={60}
+                  color="#94a3b8"
+                />
+                <Text style={styles.emptyPreviewText}>
+                  {t("medical.no_image", "No image selected")}
+                </Text>
+              </View>
+            )}
+            {isAnalyzing && (
+              <View style={styles.analyzingOverlay}>
+                <ActivityIndicator size="large" color="#0ea5e9" />
+                <Text style={styles.analyzingText}>
+                  {t("medical.analyzing", "AI is analyzing records...")}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.galleryBtn]}
+              onPress={() => pickImage(false)}
+            >
+              <Ionicons name="images" size={20} color="#0ea5e9" />
+              <Text style={styles.galleryBtnText}>
+                {t("medical.gallery", "Gallery")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.cameraBtn]}
+              onPress={() => pickImage(true)}
+            >
+              <Ionicons name="camera" size={20} color="#fff" />
+              <Text style={styles.cameraBtnText}>
+                {t("medical.take_photo", "Take Photo")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* AI Result View */}
+        {result && (
+          <View
+            style={[
+              styles.resultCard,
+              { backgroundColor: isDark ? "#1e293b" : "#f8fafc" },
+            ]}
+          >
+            <View style={styles.resultHeader}>
+              <Ionicons name="sparkles" size={20} color="#0ea5e9" />
+              <Text style={[styles.resultTitle, { color: colors.text }]}>
+                {t("medical.diagnosis", "Diagnosis")}
+              </Text>
+            </View>
+            <Text style={[styles.diagnosisText, { color: colors.text }]}>
+              {result.diagnosis || t("medical.default_title", "Medical record")}
+            </Text>
+
+            <Text style={styles.resultLabel}>
+              {t(
+                "medical.medications_count",
+                "Prescribed Medications ({count})",
+              ).replace(
+                "{count}",
+                (result.medications?.length || 0).toString(),
+              )}
+            </Text>
+            {result.medications?.map((med, idx) => (
+              <View key={idx} style={styles.medCard}>
+                <View style={styles.medCardHeader}>
+                  <Text style={styles.medName}>{med.name}</Text>
+                  <Text style={styles.medDosage}>{med.dosage}</Text>
+                </View>
+                {med.schedules && (
+                  <View style={styles.medTimeRow}>
+                    <Text style={styles.medTimeLabel}>
+                      {t("medical.medication_times", "Medication Times:")}
+                    </Text>
+                    <View style={styles.timePills}>
+                      {med.schedules.map((s, si) => (
+                        <View key={si} style={styles.timePill}>
+                          <Text style={styles.timePillText}>{s.time}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {result.forbidden_foods && result.forbidden_foods.length > 0 && (
+              <>
+                <Text style={styles.resultLabel}>
+                  {t("medical.forbidden_foods_list", "Forbidden Food List")}
+                </Text>
+                <View style={styles.foodBadges}>
+                  {result.forbidden_foods.map((food, idx) => (
+                    <View key={idx} style={styles.foodBadge}>
+                      <Text style={styles.foodBadgeText}>{food}</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSaveAndSchedule}
+            >
+              <Text style={styles.saveBtnText}>
+                {t("medical.schedule_reminders", "Schedule Reminders")}
+              </Text>
+              <Ionicons
+                name="calendar"
+                size={18}
+                color="#fff"
+                style={{ marginLeft: 8 }}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* History Section */}
+        <View style={styles.historySection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {t("medical.history", "Medical History")}
+          </Text>
+          {history.map((record) => {
+            const isExpanded = expandedRecordId === record.id;
+            return (
+              <View
+                key={record.id}
+                style={[
+                  styles.recordCard,
+                  {
+                    backgroundColor: isDark ? colors.card : "#fff",
+                    opacity: record.status === "EXPIRED" ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.recordHeader}
+                  onPress={() =>
+                    setExpandedRecordId(isExpanded ? null : record.id)
+                  }
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[styles.recordDiagnosis, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {record.diagnosis}
+                    </Text>
+                    <View style={styles.recordStatusRow}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor:
+                              record.status === "ACTIVE"
+                                ? "#10b981"
+                                : "#94a3b8",
+                          },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color:
+                              record.status === "ACTIVE"
+                                ? "#10b981"
+                                : "#94a3b8",
+                          },
+                        ]}
+                      >
+                        {record.status === "ACTIVE"
+                          ? t("medical.active_medication", "Active Medication")
+                          : t("medical.expired_label", "Expired")}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.clockBox,
+                      record.status === "EXPIRED" && {
+                        backgroundColor: "rgba(148, 163, 184, 0.1)",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="time"
+                      size={22}
+                      color={record.status === "ACTIVE" ? "#10b981" : "#94a3b8"}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {isExpanded && (
+                  <View style={styles.recordDetail}>
+                    <View style={styles.divider} />
+
+                    <View style={styles.recordActionsContainer}>
+                      <View style={styles.recordActionRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.btnAction,
+                            allSchedules.some((s) => s.sourceId === record.id)
+                              ? styles.btnDisable
+                              : styles.btnEnable,
+                          ]}
+                          onPress={() => toggleReminders(record)}
+                        >
+                          <Ionicons
+                            name={
+                              allSchedules.some((s) => s.sourceId === record.id)
+                                ? "notifications-off"
+                                : "notifications"
+                            }
+                            size={18}
+                            color="#fff"
+                          />
+                          <Text style={styles.btnActionText}>
+                            {allSchedules.some((s) => s.sourceId === record.id)
+                              ? t("medical.disable", "Disable")
+                              : t("medical.enable", "Enable")}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.btnAction, styles.btnExpire]}
+                          onPress={() => handleExpire(record.id)}
+                          disabled={record.status === "EXPIRED"}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={18}
+                            color="#fff"
+                          />
+                          <Text style={styles.btnActionText}>
+                            {t("medical.expire_btn", "Expire")}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.btnDetails}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screen/medication_schedule",
+                            params: { recordId: record.id },
+                          })
+                        }
+                      >
+                        <Ionicons name="calendar" size={18} color="#10b981" />
+                        <Text style={styles.btnDetailsText}>
+                          {t("medical.details", "Details")}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.actionDivider} />
+
+                      <TouchableOpacity
+                        style={styles.btnForbidden}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screen/forbidden_foods",
+                            params: { recordId: record.id },
+                          })
+                        }
+                      >
+                        <Ionicons name="restaurant" size={18} color="#f43f5e" />
+                        <Text style={styles.btnForbiddenText}>
+                          {t("medical.forbidden_foods_btn")}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      <PremiumUpgradeModal
+        visible={scanQuotaExceeded}
+        onClose={() => setScanQuotaExceeded(false)}
+        featureName={t("medical.ai_feature_name", "AI Medical Scan")}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 15 },
-    circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(148,163,184,0.1)', justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 20, fontWeight: '800' },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 80 },
-    desc: { fontSize: 14, lineHeight: 22, marginBottom: 20 },
-    imageBox: { height: 260, borderRadius: 20, overflow: 'hidden', marginBottom: 20 },
-    imagePreview: { width: '100%', height: '100%', resizeMode: 'cover' },
-    imagePlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', borderRadius: 20 },
-    actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-    btnOutline: { flex: 1, flexDirection: 'row', height: 50, borderRadius: 14, borderWidth: 1, borderColor: '#0ea5e9', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-    btnOutlineText: { color: '#0ea5e9', fontWeight: '700', fontSize: 15, marginLeft: 8 },
-    btnSolid: { flex: 1, flexDirection: 'row', height: 50, borderRadius: 14, backgroundColor: '#0ea5e9', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
-    btnSolidText: { color: '#fff', fontWeight: '700', fontSize: 15, marginLeft: 8 },
-    
-    loadingBox: { alignItems: 'center', paddingVertical: 40 },
-    loadingText: { marginTop: 16, fontSize: 15, fontWeight: '600' },
-    
-    resultContainer: { marginTop: 10 },
-    sectionCard: { backgroundColor: 'rgba(148,163,184,0.05)', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(148,163,184,0.1)' },
-    sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#334155', marginLeft: 8 },
-    
-    diagnosisText: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
-    
-    medItem: { borderLeftWidth: 3, borderLeftColor: '#6366f1', paddingLeft: 12, marginBottom: 14 },
-    medName: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-    medDetail: { fontSize: 13, color: '#64748b', marginBottom: 2 },
-    medNote: { fontSize: 13, color: '#f59e0b', fontStyle: 'italic', marginTop: 2 },
-    historySection: { marginTop: 10, paddingBottom: 20 },
-    historyCard: { backgroundColor: 'rgba(148,163,184,0.05)', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(148,163,184,0.1)' },
-    historyTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, lineHeight: 22 },
-    statusRow: { flexDirection: 'row', alignItems: 'center' },
-    statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-    statusText: { fontSize: 12, fontWeight: '600' },
-    historyIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    historyDivider: { height: 1, backgroundColor: 'rgba(148,163,184,0.1)', marginVertical: 14 },
-    addForbiddenFoodBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244, 63, 94, 0.1)', alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-    addForbiddenFoodText: { color: '#f43f5e', fontWeight: '700', fontSize: 13, marginLeft: 6 },
+  container: { flex: 1 },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.02)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: { fontSize: 20, fontWeight: "800" },
+  headerSub: { fontSize: 12, color: "#94a3b8", fontWeight: "600" },
 
-    saveBtn: { backgroundColor: '#10b981', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' }
+  scanModule: { margin: 20, padding: 20, borderRadius: 24, elevation: 2 },
+  previewBox: {
+    width: "100%",
+    height: 200,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 20,
+  },
+  previewImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  emptyPreview: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyPreviewText: { color: "#94a3b8", marginTop: 10, fontWeight: "600" },
+  analyzingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  analyzingText: { marginTop: 12, color: "#0ea5e9", fontWeight: "700" },
+
+  btnRow: { flexDirection: "row" },
+  actionBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  galleryBtn: { marginRight: 10, borderWidth: 1, borderColor: "#0ea5e9" },
+  galleryBtnText: { marginLeft: 8, color: "#0ea5e9", fontWeight: "700" },
+  cameraBtn: { backgroundColor: "#0ea5e9" },
+  cameraBtnText: { marginLeft: 8, color: "#fff", fontWeight: "700" },
+
+  resultCard: { margin: 20, marginTop: 0, padding: 20, borderRadius: 24 },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  resultTitle: { fontSize: 16, fontWeight: "700", marginLeft: 8 },
+  diagnosisText: { fontSize: 18, fontWeight: "800", marginBottom: 20 },
+  resultLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748b",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  medCard: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#0ea5e9",
+  },
+  medCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  medName: { fontSize: 16, fontWeight: "700", flex: 1 },
+  medDosage: { fontSize: 14, color: "#0ea5e9", fontWeight: "600" },
+  medTimeRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  medTimeLabel: { fontSize: 11, color: "#94a3b8", marginBottom: 6 },
+  timePills: { flexDirection: "row", flexWrap: "wrap" },
+  timePill: {
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  timePillText: { fontSize: 11, fontWeight: "700", color: "#64748b" },
+
+  foodBadges: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20 },
+  foodBadge: {
+    backgroundColor: "rgba(244, 63, 94, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  foodBadgeText: { color: "#f43f5e", fontSize: 12, fontWeight: "600" },
+  saveBtn: {
+    backgroundColor: "#10b981",
+    height: 56,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+  },
+  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+
+  historySection: { paddingHorizontal: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 16 },
+  recordCard: { borderRadius: 20, marginBottom: 16, padding: 16, elevation: 1 },
+  recordHeader: { flexDirection: "row", alignItems: "center" },
+  recordDiagnosis: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 6,
+    lineHeight: 24,
+  },
+  recordStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  clockBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+
+  recordDetail: { marginTop: 20 },
+  divider: {
+    height: 1,
+    backgroundColor: "#f1f5f9",
+    marginBottom: 16,
+  },
+  recordActionsContainer: {
+    marginTop: 10,
+  },
+  recordActionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  btnAction: {
+    flex: 0.48,
+    height: 48,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  btnDisable: {
+    backgroundColor: "#f43f5e",
+  },
+  btnEnable: {
+    backgroundColor: "#10b981",
+  },
+  btnExpire: {
+    backgroundColor: "#64748b",
+  },
+  btnActionText: {
+    color: "#fff",
+    fontWeight: "700",
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  btnDetails: {
+    width: "100%",
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#10b981",
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  btnDetailsText: {
+    color: "#10b981",
+    fontWeight: "700",
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  actionDivider: {
+    height: 1,
+    backgroundColor: "#f1f5f9",
+    marginBottom: 20,
+  },
+  btnForbidden: {
+    width: "100%",
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(244, 63, 94, 0.1)",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  btnForbiddenText: {
+    color: "#f43f5e",
+    fontWeight: "700",
+    marginLeft: 8,
+    fontSize: 14,
+  },
 });

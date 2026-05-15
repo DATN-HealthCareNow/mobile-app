@@ -6,6 +6,7 @@ import { Accelerometer } from 'expo-sensors';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../context/ThemeContext';
 import { useSleepStore } from '../../store/sleepStore';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ALARMS = [
   { id: 'casio', requirePath: require('../../assets/audio/bao-thuc-dong-ho-casio-nhacchuongwow.com.mp3') },
@@ -22,6 +23,7 @@ export default function SleepAlarmScreen() {
     const router = useRouter();
     const { alarmId } = useLocalSearchParams();
     const { isDark } = useTheme();
+    const { t } = useLanguage();
     const { stopSleep } = useSleepStore();
 
     // Lắc thiết bị logic
@@ -64,7 +66,7 @@ export default function SleepAlarmScreen() {
                 console.log('Alarm started playing:', alarmItem.id);
             } catch (error) {
                 console.error('Error playing alarm:', error);
-                alert('Lỗi khi phát báo thức. Vui lòng thử lại.');
+                alert(t('sleep.alarm_play_error', 'Error playing alarm. Please try again.'));
             }
         };
         
@@ -140,7 +142,7 @@ export default function SleepAlarmScreen() {
         stopSleep();
         
         // Hiển thị thông báo & điều hướng
-        alert("Chúc buổi sáng tốt lành! 🌅\nBạn đã tắt báo thức thành công!");
+        alert(t('sleep.wake_up_success', "Good morning! 🌅\nYou have successfully turned off the alarm!"));
         
         // Điều hướng về trang chủ
         // Điều hướng về trang chủ
@@ -166,7 +168,7 @@ export default function SleepAlarmScreen() {
             {/* VITALS BADGE */}
             <View style={styles.vitalsBadge}>
                 <View style={styles.pulseDot} />
-                <Text style={styles.vitalsText}>VITALS WAKE-UP</Text>
+                <Text style={styles.vitalsText}>{t('sleep.vitals_wake_up', 'VITALS WAKE-UP')}</Text>
             </View>
 
             {/* BIG CLOCK CIRCLE */}
@@ -185,14 +187,14 @@ export default function SleepAlarmScreen() {
                     <Ionicons name="phone-portrait-outline" size={24} color="#0ea5e9" />
                     <View style={styles.vibrateLines} />
                 </View>
-                <Text style={[styles.shakeTitle, { color: isDark ? '#fff' : '#0f172a' }]}>Shake to Stop</Text>
-                <Text style={styles.shakeSub}>Wake up your body to deactivate</Text>
+                <Text style={[styles.shakeTitle, { color: isDark ? '#fff' : '#0f172a' }]}>{t('sleep.shake_to_stop', 'Shake to Stop')}</Text>
+                <Text style={styles.shakeSub}>{t('sleep.shake_desc', 'Wake up your body to deactivate')}</Text>
             </View>
 
             {/* CALIBRATION PROGRESS */}
             <View style={[styles.calibrationCard, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
                 <View style={styles.calibHeader}>
-                    <Text style={styles.calibLabel}>CALIBRATION</Text>
+                    <Text style={styles.calibLabel}>{t('sleep.calibration', 'CALIBRATION')}</Text>
                     <Text style={styles.calibPercent}>{Math.floor(progress)}%</Text>
                 </View>
                 <View style={styles.calibTrack}>
@@ -220,10 +222,10 @@ export default function SleepAlarmScreen() {
                             }
                         }, 5 * 60 * 1000);
                         
-                        alert("Báo thức sẽ reo lại trong 5 phút");
+                        alert(t('sleep.snooze_msg', 'Alarm will ring again in 5 minutes'));
                     }}
                 >
-                    <Text style={styles.snoozeText}>Snooze (5m)</Text>
+                    <Text style={styles.snoozeText}>{t('sleep.snooze', 'Snooze')} (5m)</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                     style={styles.settingBtn}

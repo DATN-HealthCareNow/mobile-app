@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import OtpInput from "../../components/OtpInput";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useRequestForgotPasswordOtp } from "../../hooks/useAuth";
 
@@ -21,6 +22,7 @@ const RESEND_COOLDOWN = 60; // seconds
 export default function VerifyOtpScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otp, setOtp] = useState("");
@@ -70,21 +72,25 @@ export default function VerifyOtpScreen() {
         onSuccess: () => {
           setOtp("");
           startCountdown();
-          Alert.alert("Đã gửi lại", "Mã OTP mới đã được gửi đến email của bạn.");
+          Alert.alert(
+            t("auth.verify.resend_success_title"),
+            t("auth.verify.resend_success_message"),
+          );
         },
         onError: (err: any) => {
           Alert.alert(
-            "Gửi lại thất bại",
-            err?.response?.data?.message || "Không thể gửi lại mã OTP."
+            t("auth.verify.resend_failed_title"),
+            err?.response?.data?.message ||
+              t("auth.verify.resend_failed_message"),
           );
         },
-      }
+      },
     );
   };
 
   const handleVerify = () => {
     if (!otp || otp.length < 6) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ mã OTP 6 chữ số.");
+      Alert.alert(t("auth.common.error"), t("auth.verify.invalid_otp"));
       return;
     }
     // Navigate to reset_password with email and otp
@@ -101,39 +107,49 @@ export default function VerifyOtpScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+            <Ionicons
+              name="shield-checkmark"
+              size={32}
+              color={colors.primary}
+            />
           </View>
-          <Text style={styles.title}>Xác thực OTP</Text>
-          <Text style={styles.subtitle}>
-            Mã xác nhận đã được gửi đến
-          </Text>
+          <Text style={styles.title}>{t("auth.verify.title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.verify.subtitle")}</Text>
           <Text style={styles.emailHighlight}>{email}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.otpSection}>
-            <Text style={styles.label}>Nhập mã 6 chữ số</Text>
+            <Text style={styles.label}>{t("auth.verify.enter_code")}</Text>
             <OtpInput value={otp} onChange={setOtp} length={6} />
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, (otp.length < 6) && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton,
+              otp.length < 6 && styles.buttonDisabled,
+            ]}
             onPress={handleVerify}
             disabled={otp.length < 6}
           >
-            <Text style={styles.buttonText}>Xác nhận</Text>
+            <Text style={styles.buttonText}>{t("auth.verify.confirm")}</Text>
           </TouchableOpacity>
 
           {/* Resend section */}
           <View style={styles.resendRow}>
-            <Text style={styles.resendLabel}>Chưa nhận được mã? </Text>
+            <Text style={styles.resendLabel}>
+              {t("auth.verify.not_received")}
+            </Text>
             {canResend ? (
               <TouchableOpacity
                 onPress={handleResendOtp}
@@ -142,19 +158,27 @@ export default function VerifyOtpScreen() {
                 {requestOtpMutation.isPending ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Text style={styles.resendLink}>Gửi lại</Text>
+                  <Text style={styles.resendLink}>
+                    {t("auth.verify.resend")}
+                  </Text>
                 )}
               </TouchableOpacity>
             ) : (
-              <Text style={styles.countdownText}>Gửi lại sau {countdown}s</Text>
+              <Text style={styles.countdownText}>
+                {t("auth.verify.resend_after", "Resend after")} {countdown}s
+              </Text>
             )}
           </View>
 
           {/* Security note */}
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} />
+            <Ionicons
+              name="information-circle-outline"
+              size={16}
+              color={colors.textSecondary}
+            />
             <Text style={styles.infoText}>
-              Mã OTP có hiệu lực trong 5 phút. Không chia sẻ mã này với bất kỳ ai.
+              {t("auth.verify.security_note")}
             </Text>
           </View>
         </View>
@@ -190,7 +214,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: isDark ? "rgba(59,130,246,0.15)" : "rgba(59,130,246,0.1)",
+      backgroundColor: isDark
+        ? "rgba(59,130,246,0.15)"
+        : "rgba(59,130,246,0.1)",
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 20,

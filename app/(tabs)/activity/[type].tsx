@@ -13,12 +13,14 @@ import {
 import { useSession } from "../../../hooks/useAuth";
 import { useDailyHealthMetric } from "../../../hooks/useDailyHealthMetric";
 import { useTheme } from "../../../context/ThemeContext";
+import { useLanguage } from "../../../context/LanguageContext";
 
 export default function ActivityDetail() {
   const { type } = useLocalSearchParams();
   const router = useRouter();
   const { userId } = useSession();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   const isRunning = type === "running";
   const isYoga = type === "yoga";
@@ -29,23 +31,23 @@ export default function ActivityDetail() {
   const { data: dailyHealth } = useDailyHealthMetric(todayStr);
 
   // Tính trung bình / tổng cộng của ngày hôm nay
-  let avgSpeed = "-- KM/H";
   const metrics: any = dailyHealth?.metrics;
 
   let _cal = (metrics?.active_calories ?? metrics?.activeCalories ?? 0) + (metrics?.google_active_calories ?? metrics?.googleActiveCalories ?? 0);
-  let totalCalories = _cal > 0 ? `${_cal} KCAL` : "-- KCAL";
+  let totalCalories = _cal > 0 ? `${_cal} ${t("personal_data.unit_kcal", "KCAL")}` : `-- ${t("personal_data.unit_kcal", "KCAL")}`;
 
   let _dist = (metrics?.distance_meters ?? metrics?.distanceMeters ?? 0) + (metrics?.google_distance_meters ?? metrics?.googleDistanceMeters ?? 0);
-  let totalDistance = _dist > 0 ? `${(_dist / 1000).toFixed(2)} KM` : "-- KM";
+  let totalDistance = _dist > 0 ? `${(_dist / 1000).toFixed(2)} ${t("personal_data.unit_km", "KM")}` : `-- ${t("personal_data.unit_km", "KM")}`;
 
   let _time = (metrics?.exercise_minutes ?? metrics?.exerciseMinutes ?? 0) + (metrics?.google_exercise_minutes ?? metrics?.googleExerciseMinutes ?? 0);
-  let exerciseTime = _time > 0 ? `${_time} MIN` : "-- MIN";
+  let exerciseTime = _time > 0 ? `${_time} ${t("personal_data.unit_min", "MIN")}` : `-- ${t("personal_data.unit_min", "MIN")}`;
 
+  let avgSpeed = `-- ${t("personal_data.unit_km", "KM")}/H`;
   if (_dist > 0 && _time > 0) {
       const distKm = _dist / 1000;
       const hours = _time / 60;
       if (hours > 0) {
-          avgSpeed = (distKm / hours).toFixed(1) + " KM/H";
+          avgSpeed = (distKm / hours).toFixed(1) + ` ${t("personal_data.unit_km", "KM")}/H`;
       }
   }
 
@@ -64,7 +66,7 @@ export default function ActivityDetail() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Fitness Activities</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t("activity.details_title", "Fitness Activities")}</Text>
 
         <View style={{ width: 44 }} />
       </View>
@@ -74,12 +76,12 @@ export default function ActivityDetail() {
         <View style={styles.cardHeader}>
           <View>
             <Text style={[styles.activityTitle, { color: colors.text }]}>
-              {isRunning ? "Running" : isYoga ? "Yoga" : isStretching ? "Stretching" : "Gym"}
+              {isRunning ? t("activity.running", "Running") : isYoga ? t("activity.yoga", "Yoga") : isStretching ? t("activity.stretching", "Stretching") : t("activity.gym", "Gym")}
             </Text>
 
             <View style={[styles.badge, isDark && { backgroundColor: 'rgba(56, 189, 248, 0.2)' }]}>
               <Text style={[styles.badgeText, isDark && { color: '#38bdf8' }]}>
-                {isRunning ? "Aerobic" : isYoga ? "Flexibility" : isStretching ? "Recovery" : "Strength"}
+                {isRunning ? t("activity.aerobic", "Aerobic") : isYoga ? t("activity.flexibility", "Flexibility") : isStretching ? t("activity.recovery", "Recovery") : t("activity.strength", "Strength")}
               </Text>
             </View>
           </View>
@@ -96,27 +98,27 @@ export default function ActivityDetail() {
         {/* STATS */}
         {isRunning && (
           <>
-            <InfoRow icon="walk-outline" label="Total Distance" value={totalDistance} colors={colors} isDark={isDark} />
-            <InfoRow icon="speedometer" label="Avg. Speed" value={avgSpeed} colors={colors} isDark={isDark} />
-            <InfoRow icon="fire-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
+            <InfoRow icon="walk-outline" label={t("activity.total_dist", "Total Distance")} value={totalDistance} colors={colors} isDark={isDark} />
+            <InfoRow icon="speedometer" label={t("activity.avg_speed", "Avg. Speed")} value={avgSpeed} colors={colors} isDark={isDark} />
+            <InfoRow icon="fire-outline" label={t("activity.calories", "Calories")} value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
         {isGym && (
           <>
-            <InfoRow icon="time-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
-            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
+            <InfoRow icon="time-outline" label={t("activity.exercise_time", "Exercise Time")} value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label={t("activity.calories", "Calories")} value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
         {isYoga && (
           <>
-            <InfoRow icon="time-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
-            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
+            <InfoRow icon="time-outline" label={t("activity.exercise_time", "Exercise Time")} value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label={t("activity.calories", "Calories")} value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
         {isStretching && (
           <>
-            <InfoRow icon="medical-outline" label="Exercise Time" value={exerciseTime} colors={colors} isDark={isDark} />
-            <InfoRow icon="flame-outline" label="Calories" value={totalCalories} colors={colors} isDark={isDark} />
+            <InfoRow icon="medical-outline" label={t("activity.exercise_time", "Exercise Time")} value={exerciseTime} colors={colors} isDark={isDark} />
+            <InfoRow icon="flame-outline" label={t("activity.calories", "Calories")} value={totalCalories} colors={colors} isDark={isDark} />
           </>
         )}
 
@@ -134,7 +136,7 @@ export default function ActivityDetail() {
             }
           }}
         >
-          <Text style={styles.startText}>Start</Text>
+          <Text style={styles.startText}>{t("activity.start_btn", "Start")}</Text>
         </TouchableOpacity>
       </View>
       </ScrollView>

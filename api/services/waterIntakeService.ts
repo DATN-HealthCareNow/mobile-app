@@ -46,6 +46,10 @@ export const waterIntakeService = {
     return aggregate.logs;
   },
 
+  get_history_logs: async (): Promise<WaterLogDTO[]> => {
+    return axiosClient.get('/api/v1/bff/mobile/hydration/logs');
+  },
+
   update_goal: async (data: WaterLogRequest): Promise<void> => {
     return axiosClient.put('/api/v1/water-intake/goal', data);
   }

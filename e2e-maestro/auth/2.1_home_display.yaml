@@ -1,0 +1,9 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-2.1: Xem màn hình Home & kiểm tra các widget hiển thị
+- launchApp
+- tapOn: "Home"
+- assertVisible: ".*Daily Tracking.*|.*Theo dõi hàng ngày.*"
+- assertVisible: ".*Sleep.*|.*Ngủ.*"
+- assertVisible: ".*Water.*|.*Nước.*"
+- assertVisible: ".*AI.*Meal.*|.*Bữa ăn.*"

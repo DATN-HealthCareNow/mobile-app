@@ -8,11 +8,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function RunSummaryScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const queryClient = useQueryClient();
 
     const activityId = (params.activityId as string) || null;
@@ -55,7 +57,7 @@ export default function RunSummaryScreen() {
             router.replace("/(tabs)/activity"); // Quay về màn chính
         } catch (error: any) {
             console.error(error?.response?.data || error.message);
-            alert("Errors during saving! Please try again.");
+            alert(t('running.save_error', 'Errors during saving! Please try again.'));
         } finally {
             setIsSaving(false);
         }
@@ -67,7 +69,7 @@ export default function RunSummaryScreen() {
             // Xin quyền Gallery
             const { status } = await MediaLibrary.requestPermissionsAsync();
             if (status !== 'granted') {
-                alert("Permission needed to save your route image.");
+                alert(t('running.permission_error', 'Permission needed to save your route image.'));
                 return;
             }
             
@@ -77,9 +79,9 @@ export default function RunSummaryScreen() {
             // Gợi ý Share nếu Share Module khả dụng
             const isShareAvailable = await Sharing.isAvailableAsync();
             if (isShareAvailable) {
-                await Sharing.shareAsync(mapImageUri, { dialogTitle: "Check out my run on HealthCareNow!" });
+                await Sharing.shareAsync(mapImageUri, { dialogTitle: t('running.share_title', "Check out my run on HealthCareNow!") });
             } else {
-                alert("Awesome! Route Map has been saved to your Photos/Gallery.");
+                alert(t('running.save_success', "Awesome! Route Map has been saved to your Photos/Gallery."));
             }
         } catch (error) {
             console.error("Save/Share Failed", error);
@@ -100,8 +102,8 @@ export default function RunSummaryScreen() {
                     />
 
                     <View style={{ position: 'absolute', bottom: 40, alignItems: 'center', width: '100%' }}>
-                        <Text style={styles.title}>Run Completed!</Text>
-                        <Text style={styles.subtitle}>Awesome job. Here is your route.</Text>
+                        <Text style={styles.title}>{t('running.completed', 'Run Completed!')}</Text>
+                        <Text style={styles.subtitle}>{t('running.completed_subtitle_map', 'Awesome job. Here is your route.')}</Text>
                     </View>
                 </View>
             ) : (
@@ -113,8 +115,8 @@ export default function RunSummaryScreen() {
                         <View style={styles.trophyGlow} />
                         <Ionicons name="trophy" size={80} color="#fde047" />
                     </View>
-                    <Text style={styles.title}>Run Completed!</Text>
-                    <Text style={styles.subtitle}>Awesome job. You&apos;re getting stronger everyday.</Text>
+                    <Text style={styles.title}>{t('running.completed', 'Run Completed!')}</Text>
+                    <Text style={styles.subtitle}>{t('running.completed_subtitle_trophy', "Awesome job. You're getting stronger everyday.")}</Text>
                 </LinearGradient>
             )}
 
@@ -122,10 +124,10 @@ export default function RunSummaryScreen() {
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 {/* Distance Big */}
                 <View style={styles.primaryStatBox}>
-                    <Text style={styles.primaryLabel}>TOTAL DISTANCE</Text>
+                    <Text style={styles.primaryLabel}>{t('running.total_distance', 'TOTAL DISTANCE')}</Text>
                     <View style={styles.primaryRow}>
                         <Text style={[styles.primaryValue, { color: isDark ? colors.text : '#0369a1' }]}>{distance.toFixed(2)}</Text>
-                        <Text style={styles.primaryUnit}> KM</Text>
+                        <Text style={styles.primaryUnit}> {t("personal_data.unit_km", "KM")}</Text>
                     </View>
                 </View>
 
@@ -133,17 +135,17 @@ export default function RunSummaryScreen() {
                 <View style={styles.grid}>
                     <View style={styles.gridItem}>
                         <Ionicons name="time-outline" size={24} color="#64748b" style={{marginBottom: 8}} />
-                        <Text style={styles.gridLabel}>DURATION</Text>
+                        <Text style={styles.gridLabel}>{t('running.duration', 'DURATION')}</Text>
                         <Text style={[styles.gridValue, { color: colors.text }]}>{formatTime(timeSecs)}</Text>
                     </View>
                     <View style={[styles.gridItem, styles.gridBorder, { borderColor: colors.border }]}>
                         <MaterialCommunityIcons name="speedometer" size={24} color="#64748b" style={{marginBottom: 8}} />
-                        <Text style={styles.gridLabel}>AVG PACE</Text>
+                        <Text style={styles.gridLabel}>{t('running.avg_pace', 'AVG PACE')}</Text>
                         <Text style={[styles.gridValue, { color: colors.text }]}>{pace}</Text>
                     </View>
                     <View style={styles.gridItem}>
                         <Ionicons name="flame-outline" size={24} color="#f97316" style={{marginBottom: 8}} />
-                        <Text style={styles.gridLabel}>CALORIES</Text>
+                        <Text style={styles.gridLabel}>{t('running.calories', 'CALORIES')}</Text>
                         <Text style={[styles.gridValue, { color: colors.text }]}>{calories}</Text>
                     </View>
                 </View>
@@ -154,7 +156,7 @@ export default function RunSummaryScreen() {
                 {mapImageUri && (
                     <TouchableOpacity style={styles.shareBtn} onPress={handleShareRoute}>
                         <Ionicons name="share-social-outline" size={20} color="#0284c7" />
-                        <Text style={styles.shareBtnText}>Share / Save Route Map</Text>
+                        <Text style={styles.shareBtnText}>{t('running.share', 'Share / Save Route Map')}</Text>
                     </TouchableOpacity>
                 )}
 
@@ -166,12 +168,12 @@ export default function RunSummaryScreen() {
                     {isSaving ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.saveBtnText}>Save Activity</Text>
+                        <Text style={styles.saveBtnText}>{t('running.save_activity', 'Save Activity')}</Text>
                     )}
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.discardBtn} onPress={() => router.replace("/(tabs)/activity")}>
-                    <Text style={styles.discardBtnText}>Discard</Text>
+                    <Text style={styles.discardBtnText}>{t('running.discard', 'Discard')}</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

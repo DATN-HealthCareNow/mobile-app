@@ -1,0 +1,8 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-7.6: Xem màn hình Notifications (Thông báo)
+- launchApp
+- tapOn: "Home"
+- tapOn:
+    point: 94%,8% # Vị trí nút notification icon ở góc phải header
+- assertVisible: ".*Notification.*|.*Thông báo.*"

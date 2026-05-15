@@ -1,0 +1,6 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-1.1: Khởi động ứng dụng & hiển thị màn hình đăng nhập
+- launchApp
+- assertVisible: "Sign In"
+- assertVisible: "Continue with Google"

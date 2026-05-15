@@ -1,0 +1,7 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- tapOn: "Sign In"
+- tapOn: "Continue with Google"
+- tapOn: "17ATT_03_NguyenCongDanh"
+- assertVisible: ".*(Home|Trang chủ).*"

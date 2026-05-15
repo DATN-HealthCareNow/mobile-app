@@ -13,12 +13,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useConfirmForgotPassword } from "../../hooks/useAuth";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const { email, otp } = useLocalSearchParams<{ email: string; otp: string }>();
 
   const [newPassword, setNewPassword] = useState("");
@@ -30,22 +32,44 @@ export default function ResetPasswordScreen() {
 
   const getPasswordStrength = (pwd: string) => {
     if (pwd.length === 0) return null;
-    if (pwd.length < 6) return { label: "Yếu", color: "#ef4444", width: "25%" };
-    if (pwd.length < 8) return { label: "Trung bình", color: "#f59e0b", width: "55%" };
+    if (pwd.length < 6)
+      return {
+        label: t("auth.reset.strength_weak"),
+        color: "#ef4444",
+        width: "25%",
+      };
+    if (pwd.length < 8)
+      return {
+        label: t("auth.reset.strength_medium"),
+        color: "#f59e0b",
+        width: "55%",
+      };
     if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd))
-      return { label: "Rất mạnh", color: "#10b981", width: "100%" };
+      return {
+        label: t("auth.reset.strength_very_strong"),
+        color: "#10b981",
+        width: "100%",
+      };
     if (/[A-Z]/.test(pwd) || /[0-9]/.test(pwd))
-      return { label: "Mạnh", color: "#3b82f6", width: "80%" };
-    return { label: "Trung bình", color: "#f59e0b", width: "55%" };
+      return {
+        label: t("auth.reset.strength_strong"),
+        color: "#3b82f6",
+        width: "80%",
+      };
+    return {
+      label: t("auth.reset.strength_medium"),
+      color: "#f59e0b",
+      width: "55%",
+    };
   };
 
   const handleResetPassword = () => {
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert("Lỗi", "Mật khẩu phải có ít nhất 6 ký tự.");
+      Alert.alert(t("auth.common.error"), t("auth.reset.password_min_length"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp.");
+      Alert.alert(t("auth.common.error"), t("auth.reset.password_mismatch"));
       return;
     }
 
@@ -54,23 +78,23 @@ export default function ResetPasswordScreen() {
       {
         onSuccess: () => {
           Alert.alert(
-            "Thành công! 🎉",
-            "Mật khẩu của bạn đã được đặt lại thành công. Vui lòng đăng nhập lại.",
+            t("auth.reset.success_title"),
+            t("auth.reset.success_message"),
             [
               {
-                text: "Đăng nhập",
+                text: t("auth.login.sign_in"),
                 onPress: () => router.replace("/(auth)/login"),
               },
-            ]
+            ],
           );
         },
         onError: (err: any) => {
           Alert.alert(
-            "Đặt lại thất bại",
-            err?.response?.data?.message || "Mã OTP không hợp lệ hoặc đã hết hạn."
+            t("auth.reset.failed_title"),
+            err?.response?.data?.message || t("auth.reset.invalid_otp"),
           );
         },
-      }
+      },
     );
   };
 
@@ -82,7 +106,10 @@ export default function ResetPasswordScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -91,16 +118,14 @@ export default function ResetPasswordScreen() {
           <View style={styles.iconCircle}>
             <Ionicons name="key" size={32} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Đặt mật khẩu mới</Text>
-          <Text style={styles.subtitle}>
-            Tạo mật khẩu mới cho tài khoản của bạn. Hãy chọn mật khẩu mạnh và dễ nhớ.
-          </Text>
+          <Text style={styles.title}>{t("auth.reset.title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.reset.subtitle")}</Text>
         </View>
 
         <View style={styles.form}>
           {/* New Password */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Mật khẩu mới</Text>
+            <Text style={styles.label}>{t("auth.reset.new_password")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="lock-closed-outline"
@@ -109,7 +134,7 @@ export default function ResetPasswordScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Nhập mật khẩu mới"
+                placeholder={t("auth.reset.new_password_placeholder")}
                 placeholderTextColor={colors.textSecondary}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -132,7 +157,10 @@ export default function ResetPasswordScreen() {
                   <View
                     style={[
                       styles.strengthBar,
-                      { width: strength.width as any, backgroundColor: strength.color },
+                      {
+                        width: strength.width as any,
+                        backgroundColor: strength.color,
+                      },
                     ]}
                   />
                 </View>
@@ -145,15 +173,20 @@ export default function ResetPasswordScreen() {
 
           {/* Confirm Password */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Xác nhận mật khẩu</Text>
-            <View style={[
-              styles.inputWrapper,
-              confirmPassword.length > 0 && newPassword !== confirmPassword
-                ? styles.inputError
-                : confirmPassword.length > 0 && newPassword === confirmPassword
-                ? styles.inputSuccess
-                : null,
-            ]}>
+            <Text style={styles.label}>
+              {t("auth.register.confirm_password_label")}
+            </Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                confirmPassword.length > 0 && newPassword !== confirmPassword
+                  ? styles.inputError
+                  : confirmPassword.length > 0 &&
+                      newPassword === confirmPassword
+                    ? styles.inputSuccess
+                    : null,
+              ]}
+            >
               <Ionicons
                 name="lock-closed-outline"
                 size={20}
@@ -161,14 +194,16 @@ export default function ResetPasswordScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Nhập lại mật khẩu"
+                placeholder={t("auth.reset.confirm_password_placeholder")}
                 placeholderTextColor={colors.textSecondary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
               />
-              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
                 <Ionicons
                   name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
                   size={20}
@@ -177,26 +212,30 @@ export default function ResetPasswordScreen() {
               </TouchableOpacity>
             </View>
             {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-              <Text style={styles.errorHint}>Mật khẩu không khớp</Text>
+              <Text style={styles.errorHint}>
+                {t("auth.reset.password_not_match")}
+              </Text>
             )}
           </View>
 
           {/* Requirements */}
           <View style={styles.requirementBox}>
-            <Text style={styles.requirementTitle}>Yêu cầu mật khẩu:</Text>
+            <Text style={styles.requirementTitle}>
+              {t("auth.reset.requirements")}
+            </Text>
             <RequirementItem
               met={newPassword.length >= 6}
-              text="Ít nhất 6 ký tự"
+              text={t("auth.reset.requirement_min_6")}
               colors={colors}
             />
             <RequirementItem
               met={/[A-Z]/.test(newPassword)}
-              text="Có chữ hoa (khuyến khích)"
+              text={t("auth.reset.requirement_uppercase")}
               colors={colors}
             />
             <RequirementItem
               met={/[0-9]/.test(newPassword)}
-              text="Có chữ số (khuyến khích)"
+              text={t("auth.reset.requirement_number")}
               colors={colors}
             />
           </View>
@@ -204,8 +243,10 @@ export default function ResetPasswordScreen() {
           <TouchableOpacity
             style={[
               styles.primaryButton,
-              (confirmMutation.isPending || newPassword.length < 6 || newPassword !== confirmPassword)
-                && styles.buttonDisabled,
+              (confirmMutation.isPending ||
+                newPassword.length < 6 ||
+                newPassword !== confirmPassword) &&
+                styles.buttonDisabled,
             ]}
             onPress={handleResetPassword}
             disabled={
@@ -218,8 +259,15 @@ export default function ResetPasswordScreen() {
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Xác nhận đặt lại mật khẩu</Text>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="#FFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.buttonText}>
+                  {t("auth.reset.confirm_button")}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -239,7 +287,14 @@ function RequirementItem({
   colors: any;
 }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 8 }}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 6,
+        gap: 8,
+      }}
+    >
       <Ionicons
         name={met ? "checkmark-circle" : "ellipse-outline"}
         size={16}
@@ -285,7 +340,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: isDark ? "rgba(59,130,246,0.15)" : "rgba(59,130,246,0.1)",
+      backgroundColor: isDark
+        ? "rgba(59,130,246,0.15)"
+        : "rgba(59,130,246,0.1)",
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 20,

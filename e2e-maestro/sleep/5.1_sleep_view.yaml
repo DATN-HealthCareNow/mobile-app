@@ -1,0 +1,9 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-5.1: Xem màn hình Sleep & thông tin mục tiêu giấc ngủ
+- launchApp
+- tapOn: "Home"
+- tapOn: "Sleep, 8h Goal"
+- assertVisible: ".*Sleep.*|.*Ngủ.*"
+- assertVisible: ".*Goal.*|.*Mục tiêu.*"
+- assertVisible: ".*Alarm.*|.*Báo thức.*|.*Cài Đặt.*"

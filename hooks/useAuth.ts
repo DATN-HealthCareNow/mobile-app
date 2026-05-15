@@ -3,6 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import React from "react";
 import {
   authService,
+  ChangeEmailConfirmRequest,
+  ChangeEmailRequest,
   ChangePasswordConfirmRequest,
   ForgotPasswordConfirmRequest,
   LoginRequest,
@@ -29,7 +31,7 @@ export const useGoogleLogin = () => {
         await SecureStore.setItemAsync("userId", data.user_id);
         if (data?.is_new_user || data?.isNewUser) {
           await SecureStore.setItemAsync(
-            `fitTutorialPending:${data.user_id}`,
+            `fitTutorialPending_${data.user_id}`,
             "true",
           );
         }
@@ -90,7 +92,7 @@ export const useRegister = () => {
       if (data.user_id) {
         await SecureStore.setItemAsync("userId", data.user_id);
         await SecureStore.setItemAsync(
-          `fitTutorialPending:${data.user_id}`,
+          `fitTutorialPending_${data.user_id}`,
           "true",
         );
       }
@@ -138,6 +140,21 @@ export const useConfirmForgotPassword = () => {
   });
 };
 
+export const useRequestChangeEmailOtp = () => {
+  return useMutation({
+    mutationFn: (data: ChangeEmailRequest) =>
+      authService.requestChangeEmailOtp(data),
+  });
+};
+
+export const useConfirmChangeEmail = () => {
+  return useMutation({
+    mutationFn: (data: ChangeEmailConfirmRequest) =>
+      authService.confirmChangeEmail(data),
+  });
+};
+
+
 export const useLogout = () => {
   const queryClient = useQueryClient();
 
@@ -155,20 +172,23 @@ export const useSession = () => {
   const [session, setSession] = React.useState<{
     token: string | null;
     userId: string | null;
+    authProvider: string | null;
     isLoading: boolean;
   }>({
     token: null,
     userId: null,
+    authProvider: null,
     isLoading: true,
   });
 
   const loadSession = React.useCallback(async () => {
     try {
-      const [token, userId] = await Promise.all([
+      const [token, userId, authProvider] = await Promise.all([
         SecureStore.getItemAsync("accessToken"),
         SecureStore.getItemAsync("userId"),
+        SecureStore.getItemAsync("authProvider"),
       ]);
-      setSession({ token, userId, isLoading: false });
+      setSession({ token, userId, authProvider, isLoading: false });
     } catch (e) {
       console.error("[useSession] Error loading session:", e);
       setSession({ token: null, userId: null, isLoading: false });

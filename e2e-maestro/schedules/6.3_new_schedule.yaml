@@ -1,0 +1,17 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- tapOn: "Home"
+- tapOn: "Manage"
+- tapOn:
+    point: 90%, 90% # Thường là nút dấu cộng (+) ở góc màn hình, dựa trên việc Studio để trống text
+- tapOn: "Daily"
+- tapOn: "e.g. 45 mins"
+- inputText: "30 mins"
+- tapOn:
+    id: "com.google.android.inputmethod.latin:id/0_resource_name_obfuscated"
+    index: 48 # Bấm phím trên bàn phím Gboard
+- tapOn: "Create Schedule"
+- tapOn:
+    id: "android:id/button1"
+- assertVisible: "Manage"

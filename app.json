@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.danhvip2k4.mobileapp",
       "supportsTablet": true,
       "infoPlist": {
         "NSHealthShareUsageDescription": "HealthCareNow needs access to your health data to display your daily steps and calories.",

@@ -1,38 +1,44 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useRequestChangePasswordOtp, useConfirmChangePassword, useSession } from '../../hooks/useAuth';
-import { useProfile } from '../../hooks/useUser';
-import { useTheme } from '../../context/ThemeContext';
-import OtpInput from '../../components/OtpInput';
-import { useEffect, useRef } from 'react';
+  View,
+} from "react-native";
+import OtpInput from "../../components/OtpInput";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  useConfirmChangePassword,
+  useRequestChangePasswordOtp,
+  useSession,
+} from "../../hooks/useAuth";
+import { useProfile } from "../../hooks/useUser";
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  
+  const { t } = useLanguage();
+
   const { token } = useSession();
   const { data: profile } = useProfile(token);
-  
+
   const requestOtpMutation = useRequestChangePasswordOtp();
   const confirmMutation = useConfirmChangePassword();
 
   const [step, setStep] = useState(1);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const timerRef = useRef<any>(null);
@@ -54,13 +60,19 @@ export default function ChangePasswordScreen() {
 
   const handleRequestOtp = () => {
     if (!currentPassword) {
-      Alert.alert('Error', 'Please enter your current password');
+      Alert.alert(
+        t("change_password.error"),
+        t("change_password.enter_current"),
+      );
       return;
     }
-    
+
     if (!profile?.email) {
-       Alert.alert('Error', 'User profile or email not found');
-       return;
+      Alert.alert(
+        t("change_password.error"),
+        t("change_password.profile_not_found"),
+      );
+      return;
     }
 
     requestOtpMutation.mutate(
@@ -71,9 +83,13 @@ export default function ChangePasswordScreen() {
           startCountdown();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.response?.data?.message || 'Failed to send OTP. Check your current password.');
+          Alert.alert(
+            t("change_password.error"),
+            err?.response?.data?.message ||
+              t("change_password.send_otp_failed"),
+          );
         },
-      }
+      },
     );
   };
 
@@ -83,44 +99,69 @@ export default function ChangePasswordScreen() {
       { email: profile.email, current_password: currentPassword },
       {
         onSuccess: () => {
-          Alert.alert('Success', 'A new OTP has been sent to your email.');
+          Alert.alert(
+            t("change_password.success"),
+            t("change_password.resend_success"),
+          );
           startCountdown();
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.response?.data?.message || 'Failed to resend OTP.');
+          Alert.alert(
+            t("change_password.error"),
+            err?.response?.data?.message || t("change_password.resend_failed"),
+          );
         },
-      }
+      },
     );
   };
 
   const handleChangePassword = () => {
     if (!otp || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(
+        t("change_password.error"),
+        t("change_password.fill_all_fields"),
+      );
       return;
     }
 
     if (!profile?.email) {
-      Alert.alert('Error', 'User profile not loaded. Please try again.');
+      Alert.alert(
+        t("change_password.error"),
+        t("change_password.profile_not_loaded"),
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(
+        t("change_password.error"),
+        t("change_password.passwords_not_match"),
+      );
       return;
     }
 
     confirmMutation.mutate(
-      { email: profile.email, current_password: currentPassword, otp, new_password: newPassword },
+      {
+        email: profile.email,
+        current_password: currentPassword,
+        otp,
+        new_password: newPassword,
+      },
       {
         onSuccess: () => {
-          Alert.alert('Success', 'Password has been changed successfully!', [
-            { text: 'OK', onPress: () => router.back() }
-          ]);
+          Alert.alert(
+            t("change_password.success"),
+            t("change_password.success_message"),
+            [{ text: t("change_password.ok"), onPress: () => router.back() }],
+          );
         },
         onError: (err: any) => {
-          Alert.alert('Error', err?.response?.data?.message || 'Invalid OTP or failed to change password.');
+          Alert.alert(
+            t("change_password.error"),
+            err?.response?.data?.message || t("change_password.change_failed"),
+          );
         },
-      }
+      },
     );
   };
 
@@ -128,72 +169,104 @@ export default function ChangePasswordScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => {
-          if (step === 3) setStep(2);
-          else if (step === 2) setStep(1);
-          else router.back();
-        }}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (step === 3) setStep(2);
+            else if (step === 2) setStep(1);
+            else router.back();
+          }}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
-        <View style={{width: 44}}/>
+        <Text style={styles.headerTitle}>{t("change_password.title")}</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.subtitle}>
-          {step === 1 
-            ? "Enter your current password to receive a verification OTP."
+          {step === 1
+            ? t("change_password.step1_subtitle")
             : step === 2
-            ? `We've sent a 6-digit OTP to your email. Please enter it below.`
-            : "Now enter your new password to complete the update."}
+              ? t("change_password.step2_subtitle")
+              : t("change_password.step3_subtitle")}
         </Text>
 
         {step === 1 ? (
           <>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Current Password</Text>
+              <Text style={styles.label}>
+                {t("change_password.current_password")}
+              </Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
                 <TextInput
                   style={styles.input}
-                  placeholder="********"
+                  placeholder={t("change_password.password_placeholder")}
                   placeholderTextColor={colors.textSecondary}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.textSecondary} />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={{ alignSelf: 'flex-end', marginBottom: 20 }} 
-              onPress={() => router.push('/(auth)/forgot_password')}
+            <TouchableOpacity
+              style={{ alignSelf: "flex-end", marginBottom: 20 }}
+              onPress={() => router.push("/(auth)/forgot_password")}
             >
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>Forgot Password?</Text>
+              <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                {t("change_password.forgot_password")}
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={handleRequestOtp} disabled={requestOtpMutation.isPending}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleRequestOtp}
+              disabled={requestOtpMutation.isPending}
+            >
               {requestOtpMutation.isPending ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.actionBtnText}>Send OTP</Text>
+                <Text style={styles.actionBtnText}>
+                  {t("change_password.send_otp")}
+                </Text>
               )}
             </TouchableOpacity>
           </>
         ) : step === 2 ? (
           <>
-            <View style={{ alignItems: 'center', marginBottom: 30 }}>
-              <Text style={[styles.headerTitle, { fontSize: 24, marginBottom: 8 }]}>Verify Your Identity</Text>
-              <Text style={[styles.subtitle, { textAlign: 'center' }]}>
-                Enter the 6-digit code sent to your email&nbsp;
-                <Text style={{ fontWeight: '700', color: colors.text }}>{profile?.email}</Text>
+            <View style={{ alignItems: "center", marginBottom: 30 }}>
+              <Text
+                style={[styles.headerTitle, { fontSize: 24, marginBottom: 8 }]}
+              >
+                {t("change_password.verify_identity")}
+              </Text>
+              <Text style={[styles.subtitle, { textAlign: "center" }]}>
+                {t("change_password.enter_code")}&nbsp;
+                <Text style={{ fontWeight: "700", color: colors.text }}>
+                  {profile?.email}
+                </Text>
               </Text>
             </View>
 
@@ -201,56 +274,102 @@ export default function ChangePasswordScreen() {
               <OtpInput value={otp} onChange={setOtp} />
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
-              <Text style={styles.resendText}>Resend code in&nbsp;</Text>
-              <Text style={{ color: colors.primary, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-                {Math.floor(countdown / 60).toString().padStart(2, '0')}:{(countdown % 60).toString().padStart(2, '0')}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                marginTop: 20,
+              }}
+            >
+              <Text style={styles.resendText}>
+                {t("change_password.resend_code_in")}
+              </Text>
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontWeight: "700",
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {Math.floor(countdown / 60)
+                  .toString()
+                  .padStart(2, "0")}
+                :{(countdown % 60).toString().padStart(2, "0")}
               </Text>
             </View>
 
             {countdown === 0 && (
-              <TouchableOpacity onPress={handleResendOtp} style={{ marginTop: 10, alignItems: 'center' }}>
-                <Text style={{ color: colors.primary, fontWeight: '600' }}>Didn&apos;t receive the code? Resend OTP</Text>
+              <TouchableOpacity
+                onPress={handleResendOtp}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                  {t("change_password.resend_otp")}
+                </Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity 
-              style={[styles.actionBtn, { marginTop: 40 }]} 
+            <TouchableOpacity
+              style={[styles.actionBtn, { marginTop: 40 }]}
               onPress={() => {
                 if (otp.length === 6) setStep(3);
-                else Alert.alert('Error', 'Please enter 6-digit OTP');
+                else
+                  Alert.alert(
+                    t("change_password.error"),
+                    t("change_password.invalid_otp"),
+                  );
               }}
             >
-              <Text style={styles.actionBtnText}>Verify Now</Text>
+              <Text style={styles.actionBtnText}>
+                {t("change_password.verify_now")}
+              </Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>New Password</Text>
+              <Text style={styles.label}>
+                {t("change_password.new_password")}
+              </Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
                 <TextInput
                   style={styles.input}
-                  placeholder="********"
+                  placeholder={t("change_password.password_placeholder")}
                   placeholderTextColor={colors.textSecondary}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={colors.textSecondary} />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm New Password</Text>
+              <Text style={styles.label}>
+                {t("change_password.confirm_password")}
+              </Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
                 <TextInput
                   style={styles.input}
-                  placeholder="********"
+                  placeholder={t("change_password.password_placeholder")}
                   placeholderTextColor={colors.textSecondary}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -259,99 +378,102 @@ export default function ChangePasswordScreen() {
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.actionBtn, { marginTop: 40 }]} 
-              onPress={handleChangePassword} 
+            <TouchableOpacity
+              style={[styles.actionBtn, { marginTop: 40 }]}
+              onPress={handleChangePassword}
               disabled={confirmMutation.isPending}
             >
               {confirmMutation.isPending ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.actionBtnText}>Update Password</Text>
+                <Text style={styles.actionBtnText}>
+                  {t("change_password.update_password")}
+                </Text>
               )}
             </TouchableOpacity>
           </>
         )}
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: 60,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  content: {
-    padding: 24,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    marginBottom: 30,
-    lineHeight: 22,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 56,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  input: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  actionBtn: {
-    backgroundColor: colors.primary,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  actionBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  resendText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-});
+const createStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: 60,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      color: colors.text,
+    },
+    content: {
+      padding: 24,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginBottom: 30,
+      lineHeight: 22,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 8,
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    input: {
+      flex: 1,
+      marginLeft: 12,
+      fontSize: 16,
+      color: colors.text,
+    },
+    actionBtn: {
+      backgroundColor: colors.primary,
+      height: 56,
+      borderRadius: 16,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 10,
+    },
+    actionBtnText: {
+      color: "#FFF",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+    resendText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+  });

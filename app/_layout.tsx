@@ -12,8 +12,16 @@ import {
   AppState,
   AppStateStatus,
   View,
+  LogBox,
 } from "react-native";
+
+LogBox.ignoreLogs([
+  "Expo AV has been deprecated",
+  "failed to register push token",
+  "shouldShowAlert is deprecated",
+]);
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { LanguageProvider } from "../context/LanguageContext";
 import { useSession } from "../hooks/useAuth";
 import { GlobalUI } from "../components/GlobalUI";
 import { useRealtimeNotifications } from "../hooks/useRealtimeNotifications";
@@ -181,7 +189,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <RootLayoutNav />
+        <LanguageProvider>
+          <RootLayoutNav />
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

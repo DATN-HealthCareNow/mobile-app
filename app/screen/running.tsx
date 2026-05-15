@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { activityService } from '../../api/services/activityService';
+import { useLanguage } from '../../context/LanguageContext';
 
 import { GpsBatchRequest } from '../../api/services/gpsTrackService';
 import { useBatchGpsPoints } from '../../hooks/useGpsTrack';
@@ -28,6 +29,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 export default function RunningScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   // States
   const [isRunning, setIsRunning] = useState(true); // Bắt đầu chạy ngay khi vào màn hình
@@ -52,7 +54,7 @@ export default function RunningScreen() {
     const startTracking = async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        alert('Permission to access location was denied');
+        alert(t('medical.camera_permission_msg', 'Permission to access location was denied'));
         return;
       }
 
@@ -266,7 +268,7 @@ export default function RunningScreen() {
 
           <View style={[styles.gpsPill, isDark && { backgroundColor: colors.card }]}>
              <View style={styles.gpsDot} />
-             <Text style={styles.gpsText}>GPS ACTIVE</Text>
+             <Text style={styles.gpsText}>{t('running.gps_active', 'GPS ACTIVE')}</Text>
           </View>
 
           <View style={{ width: 48 }} />
@@ -277,7 +279,7 @@ export default function RunningScreen() {
       <View style={[styles.bottomCard, { backgroundColor: isDark ? colors.card : '#ffffff' }]}>
         <View style={styles.dragIndicator} />
 
-        <Text style={[styles.elapsedLabel, isDark && { color: '#94a3b8' }]}>ELAPSED TIME</Text>
+        <Text style={[styles.elapsedLabel, isDark && { color: '#94a3b8' }]}>{t('running.elapsed_time', 'ELAPSED TIME')}</Text>
         <View style={styles.timeContainer}>
           <Text style={[styles.timeMain, { color: isDark ? colors.text : '#0369a1' }]}>
             {hrsPart(formattedTime.mainPart)}
@@ -293,7 +295,7 @@ export default function RunningScreen() {
           <View style={[styles.metricBox, isDark && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
             <View style={styles.metricLabelRow}>
                <MaterialCommunityIcons name="ruler" size={16} color="#0ea5e9" />
-               <Text style={styles.metricLabel}>DISTANCE</Text>
+               <Text style={styles.metricLabel}>{t('running.distance', 'DISTANCE')}</Text>
             </View>
             <View style={styles.metricValueRow}>
               <Text style={[styles.metricValue, { color: isDark ? colors.text : '#0369a1' }]}>
@@ -307,7 +309,7 @@ export default function RunningScreen() {
           <View style={[styles.metricBox, isDark && { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }]}>
             <View style={styles.metricLabelRow}>
                <MaterialCommunityIcons name="speedometer" size={16} color="#0ea5e9" />
-               <Text style={styles.metricLabel}>AVG PACE</Text>
+               <Text style={styles.metricLabel}>{t('running.pace', 'AVG PACE')}</Text>
             </View>
             <View style={styles.metricValueRow}>
               <Text style={[styles.metricValue, { color: isDark ? colors.text : '#0369a1' }]}>
@@ -326,7 +328,7 @@ export default function RunningScreen() {
 
           <TouchableOpacity style={[styles.pauseButton, isPaused && { backgroundColor: '#10b981' }]} onPress={handleTogglePause}>
             <Ionicons name={isPaused ? "play" : "pause"} size={28} color="#fff" />
-            <Text style={styles.pauseText}>{isPaused ? "RESUME RUN" : "PAUSE RUN"}</Text>
+            <Text style={styles.pauseText}>{isPaused ? t('running.resume', 'RESUME RUN') : t('running.pause', 'PAUSE RUN')}</Text>
           </TouchableOpacity>
         </View>
       </View>
