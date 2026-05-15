@@ -1,0 +1,37 @@
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    # --- NHÓM 1: KHỞI ĐỘNG & XEM HỒ SƠ ---
+    - auth/1.1_launch_app.yaml
+    - auth/1.2_login.yaml
+    - auth/1.3_view_profile.yaml
+    
+    # --- NHÓM 2: ĐIỀU HƯỚNG TABS ---
+    - auth/2.1_home_display.yaml
+    - auth/2.2_tab_navigation.yaml
+    
+    # --- NHÓM 3: THEO DÕI NƯỚC (CHỈ NHẤN +/ QUICK ADD) ---
+    - tracking/3.1_hydration_view.yaml
+    - tracking/3.2_hydration.yaml
+    - tracking/3.3_hydration_multiple_logs.yaml
+    
+    # --- NHÓM 4: FITNESS (CHỈ NHẤN START/STOP/COMPLETE) ---
+    - fitness/4.1_activity_list.yaml
+    - fitness/4.2_running.yaml
+    - fitness/4.3_gym_workout.yaml
+    - fitness/4.4_yoga.yaml
+    - fitness/4.5_stretch.yaml
+    
+    # --- NHÓM 5: GIẤC NGỦ & LỊCH (XEM & NGHE NHẠC) ---
+    - sleep/5.1_sleep_view.yaml
+    - sleep/5.3_sleep_music.yaml
+    - schedules/6.1_schedule_view.yaml
+    - schedules/6.2_schedule_toggle.yaml
+    
+    # --- NHÓM 6: TIỆN ÍCH (XEM BÀI VIẾT, ĐỔI THEME, ĐỔI NGÔN NGỮ) ---
+    - utils/7.1_articles_list.yaml
+    - utils/7.2_article_detail.yaml
+    - utils/7.3_health_analysis.yaml
+    - utils/7.4_theming.yaml
+    - utils/7.5_language_switch.yaml
+    - utils/7.6_notifications.yaml

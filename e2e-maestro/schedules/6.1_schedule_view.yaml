@@ -1,0 +1,7 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-6.1: Xem danh sách lịch (Schedule Manager)
+- launchApp
+- tapOn: "Home"
+- tapOn: "Manage"
+- assertVisible: ".*Manage.*|.*Quản lý.*"

@@ -1,13 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useTheme } from '../../context/ThemeContext';
-import { articleService, MobileArticle } from '../../api/services/articleService';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import {
+    articleService,
+    MobileArticle,
+} from "../../api/services/articleService";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 
 export default function ArticleListScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   const [isLoading, setIsLoading] = useState(true);
   const [articles, setArticles] = useState<MobileArticle[]>([]);
@@ -18,7 +31,7 @@ export default function ArticleListScreen() {
         const data = await articleService.get_published();
         setArticles(data);
       } catch (error) {
-        console.error('Loi lay danh sach bai viet:', error);
+        console.error(t("article.error"), error);
       } finally {
         setIsLoading(false);
       }
@@ -30,40 +43,67 @@ export default function ArticleListScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.circleBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.circleBtn}
+        >
           <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>All Articles</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {t("article.title")}
+        </Text>
         <View style={{ width: 44 }} />
       </View>
 
       {isLoading ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={{ color: colors.text, marginTop: 10 }}>
+            {t("article.loading")}
+          </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {articles.map((article) => (
             <TouchableOpacity
               key={article.id}
-              style={[styles.card, { backgroundColor: isDark ? '#0f172a' : '#ffffff' }]}
-              onPress={() => router.push({ pathname: '/screen/article_detail', params: { id: article.id } } as any)}
+              style={[
+                styles.card,
+                { backgroundColor: isDark ? "#0f172a" : "#ffffff" },
+              ]}
+              onPress={() =>
+                router.push({
+                  pathname: "/screen/article_detail",
+                  params: { id: article.id },
+                } as any)
+              }
             >
               <Image
                 source={{
                   uri:
                     article.coverImageUrl ||
-                    'https://img.freepik.com/free-vector/healthy-lifestyle-concept-illustration_114360-6003.jpg',
+                    "https://img.freepik.com/free-vector/healthy-lifestyle-concept-illustration_114360-6003.jpg",
                 }}
                 style={styles.cover}
               />
               <View style={styles.contentWrap}>
-                <Text style={[styles.category, { color: '#3b82f6' }]}>{article.category || 'Health'}</Text>
-                <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+                <Text style={[styles.category, { color: "#3b82f6" }]}>
+                  {article.category || t("article.health")}
+                </Text>
+                <Text
+                  style={[styles.cardTitle, { color: colors.text }]}
+                  numberOfLines={2}
+                >
                   {article.title}
                 </Text>
-                <Text style={[styles.summary, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {article.summary || 'No summary'}
+                <Text
+                  style={[styles.summary, { color: colors.textSecondary }]}
+                  numberOfLines={2}
+                >
+                  {article.summary || t("article.content")}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -71,7 +111,9 @@ export default function ArticleListScreen() {
 
           {!articles.length && (
             <View style={styles.emptyState}>
-              <Text style={{ color: colors.textSecondary }}>Chua co bai viet nao.</Text>
+              <Text style={{ color: colors.textSecondary }}>
+                {t("article.no_articles")}
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -83,9 +125,9 @@ export default function ArticleListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 15,
@@ -94,27 +136,37 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(148,163,184,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(148,163,184,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  title: { fontSize: 20, fontWeight: '800' },
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 20, fontWeight: "800" },
+  centerBox: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 60 },
   card: {
     borderRadius: 16,
     marginBottom: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: 'rgba(148,163,184,0.15)',
+    borderColor: "rgba(148,163,184,0.15)",
   },
-  cover: { width: '100%', height: 170, resizeMode: 'cover' },
+  cover: { width: "100%", height: 170, resizeMode: "cover" },
   contentWrap: { padding: 14 },
-  category: { fontSize: 12, fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
-  cardTitle: { fontSize: 16, fontWeight: '800', lineHeight: 22, marginBottom: 6 },
+  category: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 22,
+    marginBottom: 6,
+  },
   summary: { fontSize: 13, lineHeight: 19 },
   emptyState: {
     marginTop: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
 });

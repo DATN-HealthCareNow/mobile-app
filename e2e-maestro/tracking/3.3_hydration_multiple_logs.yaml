@@ -1,0 +1,10 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-3.3: Ghi nhật ký nước từ nhiều lần log
+- launchApp
+- tapOn: "Home"
+- tapOn: "Water, 2.5L Goal"
+- tapOn: "+ 500ml"
+- tapOn: "+ 500ml"
+- tapOn: "+ 250ml"
+- assertVisible: ".*1250.*" # Kiểm tra tổng tích lũy 500+500+250

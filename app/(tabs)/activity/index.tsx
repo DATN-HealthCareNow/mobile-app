@@ -1,24 +1,25 @@
-import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
     Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity,
-    View,
-    Modal,
     TextInput,
-    KeyboardAvoidingView,
-    Platform,
+    TouchableOpacity,
     TouchableWithoutFeedback,
-    Keyboard
+    View,
 } from "react-native";
-import { useTheme } from "../../../context/ThemeContext";
 import { Typography } from "../../../constants/typography";
+import { useLanguage } from "../../../context/LanguageContext";
+import { useTheme } from "../../../context/ThemeContext";
 import { useDailyHealthMetric } from "../../../hooks/useDailyHealthMetric";
 
 import { useGoalStore } from "../../../store/goalStore";
@@ -26,7 +27,9 @@ import { useGoalStore } from "../../../store/goalStore";
 export default function Activity() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { stepsGoal, caloriesGoal, setStepsGoal, setCaloriesGoal } = useGoalStore();
+  const { t } = useLanguage();
+  const { stepsGoal, caloriesGoal, setStepsGoal, setCaloriesGoal } =
+    useGoalStore();
 
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [tempSteps, setTempSteps] = useState(stepsGoal.toString());
@@ -52,7 +55,8 @@ export default function Activity() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  const { data: dailyHealth, isLoading: dailyHealthLoading } = useDailyHealthMetric(today);
+  const { data: dailyHealth, isLoading: dailyHealthLoading } =
+    useDailyHealthMetric(today);
 
   const styles = createStyles(colors, isDark);
 
@@ -71,19 +75,15 @@ export default function Activity() {
 
   const metrics = dailyHealth?.metrics;
   const stepsToday = Number(metrics?.steps ?? 0);
-  const activeCalories = Number(
-    metrics?.active_calories ??
-      (metrics as any)?.activeCalories ??
-      0,
-  ) + Number(
-    (metrics as any)?.google_active_calories ??
-      (metrics as any)?.googleActiveCalories ??
-      0,
-  );
+  const activeCalories =
+    Number(metrics?.active_calories ?? (metrics as any)?.activeCalories ?? 0) +
+    Number(
+      (metrics as any)?.google_active_calories ??
+        (metrics as any)?.googleActiveCalories ??
+        0,
+    );
   const totalCalories = Number(
-    metrics?.total_calories ??
-      (metrics as any)?.totalCalories ??
-      0,
+    metrics?.total_calories ?? (metrics as any)?.totalCalories ?? 0,
   );
 
   const ActivityItem = ({ icon, title, sub, color, onPress, colors }: any) => {
@@ -101,11 +101,16 @@ export default function Activity() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
+        colors={
+          isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]
+        }
         style={styles.heroBg}
       />
 
-      <ScrollView style={styles.scrollSurface} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollSurface}
+        showsVerticalScrollIndicator={false}
+      >
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
@@ -114,13 +119,24 @@ export default function Activity() {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.title}>
-              <Text style={{ color: "#0f3f67" }}>Activity </Text>
-              <Text style={{ color: "#1497dd" }}>Hub</Text>
+            <Text style={[styles.title, isDark && { color: "#f8fafc" }]}>
+              <Text style={{ color: isDark ? "#38bdf8" : "#0f3f67" }}>
+                {t("activity.hub").split(" ")[0]}{" "}
+              </Text>
+              <Text style={{ color: "#1497dd" }}>
+                {t("activity.hub").split(" ")[1]}
+              </Text>
             </Text>
           </View>
-          <TouchableOpacity style={styles.settingsBtn} onPress={handleOpenModal}>
-            <Ionicons name="settings-outline" size={20} color={colors.textSecondary} />
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={handleOpenModal}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
@@ -129,23 +145,36 @@ export default function Activity() {
           {/* Steps Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={[styles.cardIconBox, { backgroundColor: isDark ? "#1e3a8a" : "#eff6ff" }]}>
+              <View
+                style={[
+                  styles.cardIconBox,
+                  { backgroundColor: isDark ? "#1e3a8a" : "#eff6ff" },
+                ]}
+              >
                 <MaterialCommunityIcons name="walk" size={24} color="#3b82f6" />
               </View>
-              <View style={[styles.cardBadge, { backgroundColor: isDark ? "#064e3b" : "#dcfce7" }]}>
+              <View
+                style={[
+                  styles.cardBadge,
+                  { backgroundColor: isDark ? "#064e3b" : "#dcfce7" },
+                ]}
+              >
                 <Text style={[styles.cardBadgeText, { color: "#22c55e" }]}>
                   {Math.round((stepsToday / (stepsGoal || 1)) * 100)}%
                 </Text>
               </View>
             </View>
-            <Text style={styles.cardLabel}>STEPS</Text>
+            <Text style={styles.cardLabel}>{t("activity.steps")}</Text>
             <Text style={styles.cardValue}>{stepsToday.toLocaleString()}</Text>
             <View style={styles.progressTrack}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
-                  { backgroundColor: "#3b82f6", width: `${Math.min((stepsToday / (stepsGoal || 1)) * 100, 100)}%` }
-                ]} 
+                  styles.progressFill,
+                  {
+                    backgroundColor: "#3b82f6",
+                    width: `${Math.min((stepsToday / (stepsGoal || 1)) * 100, 100)}%`,
+                  },
+                ]}
               />
             </View>
           </View>
@@ -153,25 +182,47 @@ export default function Activity() {
           {/* Calories Card */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <View style={[styles.cardIconBox, { backgroundColor: isDark ? "#7c2d12" : "#fff7ed" }]}>
+              <View
+                style={[
+                  styles.cardIconBox,
+                  { backgroundColor: isDark ? "#7c2d12" : "#fff7ed" },
+                ]}
+              >
                 <MaterialCommunityIcons name="fire" size={24} color="#ea580c" />
               </View>
-              <View style={[styles.cardBadge, { backgroundColor: isDark ? "#334155" : "#f1f5f9" }]}>
-                <Text style={[styles.cardBadgeText, { color: isDark ? "#cbd5e1" : "#64748b" }]}>
-                  Target {caloriesGoal >= 1000 ? (caloriesGoal/1000).toFixed(1) + 'k' : caloriesGoal}
+              <View
+                style={[
+                  styles.cardBadge,
+                  { backgroundColor: isDark ? "#334155" : "#f1f5f9" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.cardBadgeText,
+                    { color: isDark ? "#cbd5e1" : "#64748b" },
+                  ]}
+                >
+                  {t("activity.goal", "Target")}{" "}
+                  {caloriesGoal >= 1000
+                    ? (caloriesGoal / 1000).toFixed(1) + "k"
+                    : caloriesGoal}
                 </Text>
               </View>
             </View>
-            <Text style={styles.cardLabel}>BURNED</Text>
+            <Text style={styles.cardLabel}>{t("activity.burned")}</Text>
             <Text style={styles.cardValue}>
-              {activeCalories.toLocaleString()} <Text style={styles.cardUnit}>kcal</Text>
+              {activeCalories.toLocaleString()}{" "}
+              <Text style={styles.cardUnit}>kcal</Text>
             </Text>
             <View style={styles.progressTrack}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
-                  { backgroundColor: "#ea580c", width: `${Math.min((activeCalories / (caloriesGoal || 1)) * 100, 100)}%` }
-                ]} 
+                  styles.progressFill,
+                  {
+                    backgroundColor: "#ea580c",
+                    width: `${Math.min((activeCalories / (caloriesGoal || 1)) * 100, 100)}%`,
+                  },
+                ]}
               />
             </View>
           </View>
@@ -179,17 +230,14 @@ export default function Activity() {
 
         {/* START ACTIVITY */}
         <View style={styles.startHeader}>
-          <Text style={styles.startTitle}>Start Activity</Text>
-          <TouchableOpacity>
-            <Text style={styles.edit}>Edit</Text>
-          </TouchableOpacity>
+          <Text style={styles.startTitle}>{t("activity.start")}</Text>
         </View>
 
         <View style={styles.grid}>
           <ActivityItem
             icon="run"
-            title="Running"
-            sub="Outdoor"
+            title={t("activity.running")}
+            sub={t("activity.outdoor")}
             color="#0ea5e9"
             onPress={() =>
               router.push({
@@ -202,8 +250,8 @@ export default function Activity() {
 
           <ActivityItem
             icon="dumbbell"
-            title="Gym"
-            sub="Indoor"
+            title={t("activity.gym")}
+            sub={t("activity.indoor")}
             color="#6366f1"
             onPress={() =>
               router.push({
@@ -214,12 +262,10 @@ export default function Activity() {
             colors={colors}
           />
 
-     
-
           <ActivityItem
             icon="human-handsup"
-            title="Stretching"
-            sub="Indoor"
+            title={t("activity.stretching")}
+            sub={t("activity.indoor")}
             color="#8b5cf6"
             onPress={() =>
               router.push({
@@ -232,8 +278,8 @@ export default function Activity() {
 
           <ActivityItem
             icon="yoga"
-            title="Yoga"
-            sub="Indoor"
+            title={t("activity.yoga")}
+            sub={t("activity.indoor")}
             color="#0ea5e9"
             onPress={() =>
               router.push({
@@ -248,11 +294,11 @@ export default function Activity() {
       </ScrollView>
 
       {/* FLOATING ACTION BUTTON FOR ADD SCHEDULE */}
-      <TouchableOpacity 
-          style={styles.fabBtn} 
-          onPress={() => router.push("/screen/schedule_new" as any)}
+      <TouchableOpacity
+        style={styles.fabBtn}
+        onPress={() => router.push("/screen/schedule_new" as any)}
       >
-          <Ionicons name="add" size={32} color="#fff" />
+        <Ionicons name="add" size={32} color="#fff" />
       </TouchableOpacity>
 
       {/* GOAL MODAL */}
@@ -265,15 +311,28 @@ export default function Activity() {
         <TouchableWithoutFeedback onPress={() => setIsGoalModalOpen(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <KeyboardAvoidingView 
+              <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={[styles.modalContent, isDark && { backgroundColor: "#1e293b", borderColor: "#334155" }]}
+                style={[
+                  styles.modalContent,
+                  isDark && {
+                    backgroundColor: "#1e293b",
+                    borderColor: "#334155",
+                  },
+                ]}
               >
-                <Text style={styles.modalTitle}>Set Daily Goals</Text>
-                
-                <Text style={styles.inputLabel}>Steps Goal</Text>
+                <Text style={styles.modalTitle}>{t("activity.set_goals", "Set Daily Goals")}</Text>
+
+                <Text style={styles.inputLabel}>{t("activity.steps_goal", "Steps Goal")}</Text>
                 <TextInput
-                  style={[styles.modalInput, isDark && { backgroundColor: "#0f172a", color: "#fff", borderColor: "#334155" }]}
+                  style={[
+                    styles.modalInput,
+                    isDark && {
+                      backgroundColor: "#0f172a",
+                      color: "#fff",
+                      borderColor: "#334155",
+                    },
+                  ]}
                   keyboardType="numeric"
                   value={tempSteps}
                   onChangeText={setTempSteps}
@@ -281,9 +340,16 @@ export default function Activity() {
                   placeholderTextColor={colors.textSecondary}
                 />
 
-                <Text style={styles.inputLabel}>Calories Goal (kcal)</Text>
+                <Text style={styles.inputLabel}>{t("activity.calories_goal", "Calories Goal (kcal)")}</Text>
                 <TextInput
-                  style={[styles.modalInput, isDark && { backgroundColor: "#0f172a", color: "#fff", borderColor: "#334155" }]}
+                  style={[
+                    styles.modalInput,
+                    isDark && {
+                      backgroundColor: "#0f172a",
+                      color: "#fff",
+                      borderColor: "#334155",
+                    },
+                  ]}
                   keyboardType="numeric"
                   value={tempCalories}
                   onChangeText={setTempCalories}
@@ -292,14 +358,32 @@ export default function Activity() {
                 />
 
                 <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[styles.modalBtn, { backgroundColor: isDark ? "#334155" : "#f1f5f9" }]} 
+                  <TouchableOpacity
+                    style={[
+                      styles.modalBtn,
+                      { backgroundColor: isDark ? "#334155" : "#f1f5f9" },
+                    ]}
                     onPress={() => setIsGoalModalOpen(false)}
                   >
-                    <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                    <Text
+                      style={[
+                        styles.modalBtnText,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {t("activity.cancel", "Cancel")}
+                    </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.primary }]} onPress={handleSaveGoals}>
-                    <Text style={[styles.modalBtnText, { color: "#fff" }]}>Save</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={handleSaveGoals}
+                  >
+                    <Text style={[styles.modalBtnText, { color: "#fff" }]}>
+                      {t("activity.save", "Save")}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </KeyboardAvoidingView>
@@ -348,8 +432,7 @@ const createStyles = (colors: any, isDark: boolean) =>
     title: {
       ...Typography.brandTitle,
       fontSize: 22,
-      fontWeight: "700",
-      color: colors.text,
+      fontWeight: "800",
     },
     settingsBtn: {
       width: 40,
@@ -488,15 +571,15 @@ const createStyles = (colors: any, isDark: boolean) =>
       marginTop: 4,
     },
     fabBtn: {
-      position: 'absolute',
+      position: "absolute",
       bottom: 20,
       right: 20,
       width: 64,
       height: 64,
       borderRadius: 32,
       backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
       borderWidth: 4,
       borderColor: colors.tabBar,
       shadowColor: colors.primary,
@@ -568,5 +651,5 @@ const createStyles = (colors: any, isDark: boolean) =>
     modalBtnText: {
       fontSize: 16,
       fontWeight: "700",
-    }
+    },
   });

@@ -1,56 +1,76 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-  Image,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useRegister } from '../../hooks/useAuth';
-import { useTheme } from '../../context/ThemeContext';
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
+import { useRequestRegisterOtp } from "../../hooks/useAuth";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const registerMutation = useRegister();
+  const { t } = useLanguage();
+  const requestOtpMutation = useRequestRegisterOtp();
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = () => {
     if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert(
+        t("auth.common.error"),
+        t("auth.register.validation_all_fields"),
+      );
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert(
+        t("auth.common.error"),
+        t("auth.register.validation_password_mismatch"),
+      );
       return;
     }
 
-    registerMutation.mutate(
-      { full_name: fullName, email, password },
+    requestOtpMutation.mutate(
+      { email },
       {
         onSuccess: () => {
-          Alert.alert('Success', 'Account created! Please provide some basic health metrics.', [
-            { text: 'OK', onPress: () => router.replace('/screen/metric_entry') }
-          ]);
+          router.push({
+            pathname: "/(auth)/verify_register_otp",
+            params: { email, full_name: fullName, password },
+          } as any);
         },
         onError: (err: any) => {
-          Alert.alert('Registration Failed', err?.response?.data?.message || 'Something went wrong.');
+          if (err?.response?.status === 400) {
+            Alert.alert(
+              t("auth.register.failed_title"),
+              t("auth.register.email_exists"),
+            );
+          } else {
+            Alert.alert(
+              t("auth.register.failed_title"),
+              err?.response?.data?.message ||
+                t("auth.register.send_otp_failed"),
+            );
+          }
         },
-      }
+      },
     );
   };
 
@@ -58,10 +78,14 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -73,17 +97,23 @@ export default function RegisterScreen() {
             resizeMode="contain"
           />
           <Text style={styles.title}>Healthcare Now</Text>
-          <Text style={styles.subtitle}>Join Healthcare Now today</Text>
+          <Text style={styles.subtitle}>{t("auth.register.subtitle")}</Text>
         </View>
 
         <View style={styles.form}>
-           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>
+              {t("auth.register.full_name_label")}
+            </Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
               <TextInput
                 style={styles.input}
-                placeholder="John Doe"
+                placeholder={t("auth.register.full_name_placeholder")}
                 placeholderTextColor={colors.textSecondary}
                 value={fullName}
                 onChangeText={setFullName}
@@ -92,12 +122,16 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
+            <Text style={styles.label}>{t("auth.login.email_label")}</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
               <TextInput
                 style={styles.input}
-                placeholder="example@email.com"
+                placeholder={t("auth.login.email_placeholder")}
                 placeholderTextColor={colors.textSecondary}
                 value={email}
                 onChangeText={setEmail}
@@ -110,9 +144,13 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t("auth.login.password_label")}</Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="********"
@@ -126,7 +164,7 @@ export default function RegisterScreen() {
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                 <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
                   size={20}
                   color={colors.textSecondary}
                 />
@@ -135,9 +173,15 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
+            <Text style={styles.label}>
+              {t("auth.register.confirm_password_label")}
+            </Text>
             <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
               <TextInput
                 style={styles.input}
                 placeholder="********"
@@ -152,19 +196,27 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={registerMutation.isPending}>
-            {registerMutation.isPending ? (
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={handleRegister}
+            disabled={requestOtpMutation.isPending}
+          >
+            {requestOtpMutation.isPending ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.registerButtonText}>Sign Up</Text>
+              <Text style={styles.registerButtonText}>
+                {t("auth.login.sign_up")}
+              </Text>
             )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-            <Text style={styles.loginText}>Sign In</Text>
+          <Text style={styles.footerText}>
+            {t("auth.register.have_account")}
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <Text style={styles.loginText}>{t("auth.login.sign_in")}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -172,103 +224,106 @@ export default function RegisterScreen() {
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingTop: 60,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  header: {
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-  form: {
-    width: '100%',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 56,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.text,
-    marginLeft: 12,
-  },
-  registerButton: {
-    backgroundColor: colors.primary,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  registerButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 40,
-    marginBottom: 40,
-  },
-  footerText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-  },
-  loginText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+const createStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      padding: 24,
+      paddingTop: 60,
+      paddingBottom: 60,
+    },
+    backBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 32,
+    },
+    header: {
+      marginBottom: 40,
+      alignItems: "center",
+    },
+    logoImage: {
+      width: 80,
+      height: 80,
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    form: {
+      width: "100%",
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: colors.text,
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    input: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+      marginLeft: 12,
+    },
+    registerButton: {
+      backgroundColor: colors.primary,
+      height: 56,
+      borderRadius: 16,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 20,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    registerButtonText: {
+      color: "#FFF",
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    footer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      marginTop: 40,
+      marginBottom: 40,
+    },
+    footerText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+    },
+    loginText: {
+      color: colors.primary,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+  });

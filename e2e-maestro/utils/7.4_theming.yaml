@@ -1,0 +1,7 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- tapOn: "Profile"
+- tapOn:
+    point: 83%,83% # Bấm vào vị trí nút gạt đổi giao diện bạn vừa soi được
+- takeScreenshot: "ThemeChange_Success"

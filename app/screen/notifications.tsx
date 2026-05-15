@@ -1,20 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Alert,
-  Image,
 } from "react-native";
-import { useState } from "react";
-import { useTheme } from "../../context/ThemeContext";
 import { notificationService } from "../../api/services/notificationService";
+import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 import {
   useMarkAllNotificationsAsRead,
   useMarkNotificationAsRead,
@@ -24,41 +24,75 @@ import {
 const getNotificationIcon = (eventId?: string) => {
   switch (eventId) {
     case "WATER_REMINDER":
-      return { type: 'icon', name: "water", color: "#3b82f6", bg: "rgba(59, 130, 246, 0.15)" }; // Blue
+      return {
+        type: "icon",
+        name: "water",
+        color: "#3b82f6",
+        bg: "rgba(59, 130, 246, 0.15)",
+      }; // Blue
     case "LOW_EXERCISE_REMINDER":
     case "ACTIVITY_REMINDER":
-      return { type: 'icon', name: "walk", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)" }; // Orange
+      return {
+        type: "icon",
+        name: "walk",
+        color: "#f59e0b",
+        bg: "rgba(245, 158, 11, 0.15)",
+      }; // Orange
     case "MEDICATION_TIME":
-      return { type: 'icon', name: "medkit", color: "#10b981", bg: "rgba(16, 185, 129, 0.15)" }; // Green
+      return {
+        type: "icon",
+        name: "medkit",
+        color: "#10b981",
+        bg: "rgba(16, 185, 129, 0.15)",
+      }; // Green
     case "SLEEP_REMINDER":
-      return { type: 'icon', name: "moon", color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.15)" }; // Purple
+      return {
+        type: "icon",
+        name: "moon",
+        color: "#8b5cf6",
+        bg: "rgba(139, 92, 246, 0.15)",
+      }; // Purple
     case "HEALTH_REPORT":
-      return { type: 'icon', name: "document-text", color: "#6366f1", bg: "rgba(99, 102, 241, 0.15)" }; // Indigo
+      return {
+        type: "icon",
+        name: "document-text",
+        color: "#6366f1",
+        bg: "rgba(99, 102, 241, 0.15)",
+      }; // Indigo
     default:
-      return { type: 'image', bg: "rgba(100, 116, 139, 0.1)" }; // App Logo
+      return { type: "image", bg: "rgba(100, 116, 139, 0.1)" }; // App Logo
   }
 };
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = createStyles(colors, isDark);
 
   const { data, isLoading, refetch, isRefetching } = useNotifications(0, 30);
   const markAsReadMutation = useMarkNotificationAsRead();
   const markAllAsReadMutation = useMarkAllNotificationsAsRead();
-  
+
   const [activeTab, setActiveTab] = useState<"UNREAD" | "READ">("UNREAD");
 
   const items = data?.content ?? [];
-  
-  // Smart Sorting: 
+
+  // Smart Sorting:
   // - Unread: Sort by createdAt (latest first)
   // - Read: Sort by readAt (recently read first) or createdAt fallback
   const sortedItems = [...items].sort((a, b) => {
     if (activeTab === "READ") {
-      const timeA = a.readAt ? new Date(a.readAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-      const timeB = b.readAt ? new Date(b.readAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      const timeA = a.readAt
+        ? new Date(a.readAt).getTime()
+        : a.createdAt
+          ? new Date(a.createdAt).getTime()
+          : 0;
+      const timeB = b.readAt
+        ? new Date(b.readAt).getTime()
+        : b.createdAt
+          ? new Date(b.createdAt).getTime()
+          : 0;
       return timeB - timeA;
     } else {
       const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -67,29 +101,38 @@ export default function NotificationsScreen() {
     }
   });
 
-  const filteredItems = sortedItems.filter((item) => activeTab === "UNREAD" ? !item.isRead : item.isRead);
+  const filteredItems = sortedItems.filter((item) =>
+    activeTab === "UNREAD" ? !item.isRead : item.isRead,
+  );
 
   const handleTestExercise = async () => {
     try {
       await notificationService.testExercise();
-      Alert.alert("Thành công", "Đã gửi thông báo nhắc nhở luyện tập đến điện thoại!");
+      Alert.alert(
+        t("notifications.success_title"),
+        t("notifications.success_message"),
+      );
     } catch (e) {
-      Alert.alert("Lỗi", "Không thể gửi thông báo thử nghiệm.");
+      Alert.alert(
+        t("notifications.error_title"),
+        t("notifications.error_message"),
+      );
     }
   };
 
   const handleMarkAllRead = () => {
     markAllAsReadMutation.mutate(undefined, {
-      onSuccess: async () => {
-        // Đợi một chút để Backend kịp xử lý Database
-        setTimeout(() => {
-          refetch();
-          setActiveTab("READ");
-        }, 600);
+      onSuccess: () => {
+        // Invalidate and refetch immediately
+        refetch();
+        setActiveTab("READ");
       },
       onError: () => {
-        Alert.alert("Lỗi", "Không thể đánh dấu đã đọc tất cả.");
-      }
+        Alert.alert(
+          t("notifications.error_title"),
+          t("notifications.mark_all_error"),
+        );
+      },
     });
   };
 
@@ -102,11 +145,14 @@ export default function NotificationsScreen() {
         />
       )}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.circleBtn}
+          onPress={() => router.back()}
+        >
           <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Notifications</Text>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        <Text style={styles.title}>{t("notifications.title")}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           {activeTab === "UNREAD" && filteredItems.length > 0 && (
             <TouchableOpacity
               style={styles.markAllBtn}
@@ -114,7 +160,9 @@ export default function NotificationsScreen() {
               onPress={handleMarkAllRead}
             >
               <Text style={styles.markAllText}>
-                {markAllAsReadMutation.isPending ? "Đang xử lý..." : "Đọc tất cả"}
+                {markAllAsReadMutation.isPending
+                  ? t("notifications.processing")
+                  : t("notifications.mark_all_read")}
               </Text>
             </TouchableOpacity>
           )}
@@ -126,13 +174,27 @@ export default function NotificationsScreen() {
           style={[styles.tab, activeTab === "UNREAD" && styles.activeTab]}
           onPress={() => setActiveTab("UNREAD")}
         >
-          <Text style={[styles.tabText, activeTab === "UNREAD" && styles.activeTabText]}>Chưa đọc</Text>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "UNREAD" && styles.activeTabText,
+            ]}
+          >
+            {t("notifications.tab_unread")}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === "READ" && styles.activeTab]}
           onPress={() => setActiveTab("READ")}
         >
-          <Text style={[styles.tabText, activeTab === "READ" && styles.activeTabText]}>Đã đọc</Text>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "READ" && styles.activeTabText,
+            ]}
+          >
+            {t("notifications.tab_read")}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -144,7 +206,9 @@ export default function NotificationsScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={filteredItems.length === 0 ? styles.centerBox : styles.listContent}
+          contentContainerStyle={
+            filteredItems.length === 0 ? styles.centerBox : styles.listContent
+          }
           refreshing={isRefetching}
           onRefresh={refetch}
           renderItem={({ item }) => {
@@ -161,11 +225,21 @@ export default function NotificationsScreen() {
                 }}
               >
                 <View style={styles.cardInner}>
-                  <View style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}>
-                    {iconConfig.type === 'image' ? (
-                        <Image source={require("../../assets/images/logo.png")} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                  <View
+                    style={[styles.iconBox, { backgroundColor: iconConfig.bg }]}
+                  >
+                    {iconConfig.type === "image" ? (
+                      <Image
+                        source={require("../../assets/images/logo.png")}
+                        style={{ width: 24, height: 24 }}
+                        resizeMode="contain"
+                      />
                     ) : (
-                        <Ionicons name={iconConfig.name as any} size={22} color={iconConfig.color} />
+                      <Ionicons
+                        name={iconConfig.name as any}
+                        size={22}
+                        color={iconConfig.color}
+                      />
                     )}
                   </View>
                   <View style={styles.cardContentWrapper}>
@@ -173,11 +247,11 @@ export default function NotificationsScreen() {
                       <Text style={styles.cardTitle}>{item.title}</Text>
                       {unread && <View style={styles.unreadDot} />}
                     </View>
-                    <Text style={styles.cardContent}>
-                      {(item.content || "").replace(/{execiseMintues}/g, "30").replace(/{exerciseMinutes}/g, "30")}
-                    </Text>
+                    <Text style={styles.cardContent}>{item.content || ""}</Text>
                     <Text style={styles.cardTime}>
-                      {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
+                      {item.createdAt
+                        ? new Date(item.createdAt).toLocaleString()
+                        : ""}
                     </Text>
                   </View>
                 </View>
@@ -185,7 +259,7 @@ export default function NotificationsScreen() {
             );
           }}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>Chưa có thông báo nào.</Text>
+            <Text style={styles.emptyText}>{t("notifications.empty")}</Text>
           }
         />
       )}
@@ -235,7 +309,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       borderRadius: 10,
       backgroundColor: isDark ? "rgba(59,130,246,0.2)" : "#e6f3ff",
       borderWidth: 1,
-      borderColor: isDark ? "rgba(147, 197, 253, 0.2)" : "rgba(59,130,246,0.18)",
+      borderColor: isDark
+        ? "rgba(147, 197, 253, 0.2)"
+        : "rgba(59,130,246,0.18)",
     },
     markAllText: {
       color: colors.primary,

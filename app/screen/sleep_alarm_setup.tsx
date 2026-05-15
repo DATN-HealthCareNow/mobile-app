@@ -7,14 +7,14 @@ import * as Notifications from 'expo-notifications';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../context/ThemeContext';
 import { useSleepStore } from '../../store/sleepStore';
+import { useLanguage } from '../../context/LanguageContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
   }),
 });
 
@@ -29,6 +29,7 @@ const ALARMS = [
 export default function SleepAlarmSetupScreen() {
     const router = useRouter();
     const { isDark } = useTheme();
+    const { t, language } = useLanguage();
     const { startSleep, addAlarm } = useSleepStore();
 
     const [alarmTime, setAlarmTime] = useState(new Date());
@@ -41,13 +42,15 @@ export default function SleepAlarmSetupScreen() {
     const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4]); // T2-T6
     const isSavingRef = useRef(false);
 
-    const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const DAYS_VI = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const DAYS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const DAYS = language === 'vi' ? DAYS_VI : DAYS_EN;
 
     const formatDays = (days: number[]) => {
-        if (days.length === 7) return 'Mỗi ngày';
-        if (days.length === 0) return 'Chỉ 1 lần';
-        if (days.length === 5 && days.every(d => d < 5)) return 'Ngày thường';
-        if (days.length === 2 && days.includes(5) && days.includes(6)) return 'Cuối tuần';
+        if (days.length === 7) return t('sleep.every_day', 'Every day');
+        if (days.length === 0) return t('sleep.once', 'Once');
+        if (days.length === 5 && days.every(d => d < 5)) return t('sleep.weekdays', 'Weekdays');
+        if (days.length === 2 && days.includes(5) && days.includes(6)) return t('sleep.weekends', 'Weekends');
         return days.sort().map(d => DAYS[d]).join(', ');
     };
 
@@ -95,8 +98,8 @@ export default function SleepAlarmSetupScreen() {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         
-        setSleepDurationText(`Nếu ngủ bây giờ, bạn sẽ có ${hours}h ${minutes}m thời lượng ngủ`);
-    }, [alarmTime]);
+        setSleepDurationText(`${t('sleep.prediction_prefix', 'If you sleep now, you will have')} ${hours}h ${minutes}m ${t('sleep.prediction_suffix', 'sleep duration')}`);
+    }, [alarmTime, language]);
 
     const handleSave = async () => {
         if (isSavingRef.current) {
@@ -119,7 +122,7 @@ export default function SleepAlarmSetupScreen() {
             // Request permissions
             const { status } = await Notifications.requestPermissionsAsync();
             if (status !== 'granted') {
-                alert('Vui lòng cấp quyền thông báo để chuông báo thức có thể hoạt động!');
+                alert(t('sleep.notif_permission_msg', 'Please grant notification permission for the alarm to work!'));
                 return;
             }
 
@@ -157,15 +160,15 @@ export default function SleepAlarmSetupScreen() {
             // Schedule notification
             const delaySeconds = Math.floor((triggerTime.getTime() - now.getTime()) / 1000);
             if (delaySeconds < 0) {
-                alert('Thời gian báo thức phải là trong tương lai!');
+                alert(t('sleep.future_time_error', 'Alarm time must be in the future!'));
                 return;
             }
 
             // SCHEDULE NOTIFICATION WITHOUT CLEARING OTHERS
             await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: 'Đã đến giờ tính giấc!',
-                    body: 'Chào buổi sáng! Hãy thức dậy và bắt đầu một ngày mới.',
+                    title: t('sleep.alarm_notif_title', 'Wake up time!'),
+                    body: t('sleep.alarm_notif_body', 'Good morning! Wake up and start a new day.'),
                     data: { alarmId: selectedAlarm.id, type: 'sleep_alarm' }
                 },
                 trigger: {
@@ -189,11 +192,11 @@ export default function SleepAlarmSetupScreen() {
 
             startSleep(timeToSleep, undefined, selectedAlarm.id);
             
-            alert('Đã đặt báo thức thành công! Ứng dụng sẽ báo khi đến giờ.');
+            alert(t('sleep.save_success', 'Alarm set successfully! The app will notify you when it\'s time.'));
             router.back();
         } catch (error) {
             console.error('Failed to schedule alarm', error);
-            alert('Không thể cài đặt báo thức');
+            alert(t('sleep.save_error', 'Failed to set alarm'));
         } finally {
             isSavingRef.current = false;
             setIsSaving(false);
@@ -207,7 +210,7 @@ export default function SleepAlarmSetupScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
                     <Ionicons name="close" size={28} color={isDark ? '#fff' : '#0f172a'} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#0f172a' }]}>Đặt báo thức</Text>
+                <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#0f172a' }]}>{t('sleep.alarm_setup_title', 'Set Alarm')}</Text>
                 <View style={styles.iconBtn} />
             </View>
 
@@ -256,15 +259,15 @@ export default function SleepAlarmSetupScreen() {
                 <View style={[styles.optionsGroup, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
                     <View style={styles.optionRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={[styles.optionLabel, { color: isDark ? '#fff' : '#0f172a' }]}>Báo thức thông minh</Text>
-                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Đánh thức trong pha ngủ nông</Text>
+                            <Text style={[styles.optionLabel, { color: isDark ? '#fff' : '#0f172a' }]}>{t('sleep.smart_alarm', 'Smart Alarm')}</Text>
+                            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{t('sleep.smart_alarm_desc', 'Wake up in light sleep phase')}</Text>
                         </View>
                         <Switch trackColor={{ false: '#cbd5e1', true: '#8b5cf6' }} value={isSmartAlarm} onValueChange={setIsSmartAlarm} />
                     </View>
                 </View>
 
                 {/* Day Selection */}
-                <Text style={styles.sectionTitle}>LẶP LẠI</Text>
+                <Text style={styles.sectionTitle}>{t('sleep.repeat_title', 'REPEAT')}</Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginBottom: 10 }}>
                     {DAYS.map((day, idx) => {
                         const isSelected = selectedDays.includes(idx);
@@ -285,7 +288,7 @@ export default function SleepAlarmSetupScreen() {
                 </View>
 
                 {/* Sounds List */}
-                <Text style={styles.sectionTitle}>CHỌN NHẠC CHUÔNG</Text>
+                <Text style={styles.sectionTitle}>{t('sleep.choose_ringtone', 'CHOOSE RINGTONE')}</Text>
                 <View style={[styles.optionsGroup, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
                     {ALARMS.map((alarm, index) => (
                         <View key={alarm.id}>
@@ -309,7 +312,7 @@ export default function SleepAlarmSetupScreen() {
             <View style={styles.bottomAction}>
                 <TouchableOpacity style={[styles.startSleepBtn, isSaving && { opacity: 0.7 }]} onPress={handleSave} disabled={isSaving}>
                     <Ionicons name="moon" size={24} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={styles.startSleepText}>{isSaving ? 'Đang lưu...' : 'Bắt đầu ngủ'}</Text>
+                    <Text style={styles.startSleepText}>{isSaving ? t('sleep.saving', 'Saving...') : t('sleep.start_sleeping', 'Start Sleeping')}</Text>
                 </TouchableOpacity>
             </View>
         </View>

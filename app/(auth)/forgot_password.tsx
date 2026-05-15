@@ -2,30 +2,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useRequestForgotPasswordOtp } from "../../hooks/useAuth";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   const [email, setEmail] = useState("");
   const requestOtpMutation = useRequestForgotPasswordOtp();
 
   const handleRequestOtp = () => {
     if (!email.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập địa chỉ email của bạn.");
+      Alert.alert(
+        t("auth.common.error"),
+        t("auth.forgot.validation_email_required"),
+      );
       return;
     }
 
@@ -40,11 +45,12 @@ export default function ForgotPasswordScreen() {
         },
         onError: (err: any) => {
           Alert.alert(
-            "Gửi mã thất bại",
-            err?.response?.data?.message || "Không thể gửi mã OTP. Vui lòng thử lại."
+            t("auth.forgot.send_failed_title"),
+            err?.response?.data?.message ||
+              t("auth.forgot.send_failed_message"),
           );
         },
-      }
+      },
     );
   };
 
@@ -64,15 +70,13 @@ export default function ForgotPasswordScreen() {
           <View style={styles.iconCircle}>
             <Ionicons name="lock-closed" size={32} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Quên mật khẩu</Text>
-          <Text style={styles.subtitle}>
-            Nhập địa chỉ email đã đăng ký. Chúng tôi sẽ gửi mã xác nhận đến email của bạn.
-          </Text>
+          <Text style={styles.title}>{t("auth.forgot.title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.forgot.subtitle")}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Địa chỉ Email</Text>
+            <Text style={styles.label}>{t("auth.login.email_label")}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="mail-outline"
@@ -93,14 +97,19 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, requestOtpMutation.isPending && styles.buttonDisabled]}
+            style={[
+              styles.primaryButton,
+              requestOtpMutation.isPending && styles.buttonDisabled,
+            ]}
             onPress={handleRequestOtp}
             disabled={requestOtpMutation.isPending}
           >
             {requestOtpMutation.isPending ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonText}>Gửi mã xác nhận</Text>
+              <Text style={styles.buttonText}>
+                {t("auth.forgot.send_code")}
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -108,8 +117,14 @@ export default function ForgotPasswordScreen() {
             style={styles.backToLoginBtn}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back-outline" size={16} color={colors.primary} />
-            <Text style={styles.backToLoginText}>Quay lại đăng nhập</Text>
+            <Ionicons
+              name="arrow-back-outline"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.backToLoginText}>
+              {t("auth.forgot.back_login")}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -144,7 +159,9 @@ const createStyles = (colors: any, isDark: boolean) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: isDark ? "rgba(59,130,246,0.15)" : "rgba(59,130,246,0.1)",
+      backgroundColor: isDark
+        ? "rgba(59,130,246,0.15)"
+        : "rgba(59,130,246,0.1)",
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 20,

@@ -77,10 +77,7 @@ const normalizeHydration = (raw: any): HydrationAggregateDTO => {
     0,
   );
   const mergedCurrent = Math.max(currentFromProgress, currentFromLogs);
-  const mergedGoal = Math.max(
-    toNumber(normalizedProgress?.goal_ml ?? normalizedProgress?.goalMl, 0),
-    2500,
-  );
+  const mergedGoal = toNumber(normalizedProgress?.goal_ml ?? normalizedProgress?.goalMl, 2000);
   const mergedPercent = mergedGoal > 0 ? (mergedCurrent / mergedGoal) * 100 : 0;
 
   const progress = normalizeProgress({
@@ -120,6 +117,13 @@ export const useWaterLogs = () => {
   });
 };
 
+export const useWaterHistoryLogs = () => {
+  return useQuery({
+    queryKey: [...WATER_KEYS.logs(), 'history'],
+    queryFn: waterIntakeService.get_history_logs,
+  });
+};
+
 export const useLogWater = () => {
   const queryClient = useQueryClient();
 
@@ -133,7 +137,7 @@ export const useLogWater = () => {
 
       const prevProgress = normalizedPrev.progress;
       const current = toNumber(prevProgress?.total_today_ml, 0);
-      const goal = toNumber(prevProgress?.goal_ml, 2500);
+      const goal = toNumber(prevProgress?.goal_ml, 2000);
       const nextCurrent = Math.max(0, current + toNumber(data?.amount_ml, 0));
       const nextPercent = goal > 0 ? Math.min(100, (nextCurrent / goal) * 100) : 0;
 

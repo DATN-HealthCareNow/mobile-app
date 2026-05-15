@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -11,20 +12,31 @@ import {
     View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Ionicons } from "@expo/vector-icons";
-import { useWaterProgress, useWaterLogs, useLogWater } from "../../hooks/useWaterIntake";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
+import {
+    useLogWater,
+    useWaterLogs,
+    useWaterProgress,
+} from "../../hooks/useWaterIntake";
 
 export default function Hydration() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
-  const { data: progressData, isLoading: isProgressLoading } = useWaterProgress();
+  const { t } = useLanguage();
+  const { data: progressData, isLoading: isProgressLoading } =
+    useWaterProgress();
   const { data: logsData, isLoading: isLogsLoading } = useWaterLogs();
   const { mutate: logWater } = useLogWater();
 
-  const current = Number(progressData?.total_today_ml ?? progressData?.current_amount ?? 0) || 0;
-  const goal = Number(progressData?.goal_ml ?? progressData?.goal_amount ?? 2500) || 2500;
-  const rawPercent = Number(progressData?.progress_percent ?? progressData?.percentage);
+  const current =
+    Number(progressData?.total_today_ml ?? progressData?.current_amount ?? 0) ||
+    0;
+  const goal =
+    Number(progressData?.goal_ml ?? progressData?.goal_amount ?? 2000) || 2000;
+  const rawPercent = Number(
+    progressData?.progress_percent ?? progressData?.percentage,
+  );
   const calculatedPercent = goal > 0 ? (current / goal) * 100 : 0;
   const percent = Math.max(
     0,
@@ -40,7 +52,12 @@ export default function Hydration() {
 
   if (isProgressLoading || isLogsLoading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -55,12 +72,19 @@ export default function Hydration() {
           style={StyleSheet.absoluteFill}
         />
       )}
-      
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color={colors.textSecondary} />
+          <TouchableOpacity
+            style={styles.circleBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
 
           <View style={{ alignItems: "center", flexDirection: "row" }}>
@@ -73,19 +97,29 @@ export default function Hydration() {
               <Text style={styles.brandText}>HEALTHCARE NOW</Text>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Ionicons name="water" size={14} color={colors.primary} />
-                <Text style={styles.title}> Hydration</Text>
+                <Text style={styles.title}> {t("hydration.title")}</Text>
               </View>
             </View>
           </View>
 
           <TouchableOpacity style={styles.circleBtn}>
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+            <Ionicons
+              name="ellipsis-vertical"
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
         {/* DATE */}
         <View style={styles.datePill}>
-          <Text style={styles.dateText}>Today, 14 Oct</Text>
+          <Text style={styles.dateText}>
+            {t("hydration.today")},{" "}
+            {new Date().toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+            })}
+          </Text>
         </View>
 
         {/* WATER TANK */}
@@ -111,7 +145,10 @@ export default function Hydration() {
               </Svg>
             </View>
             <View style={styles.percentOverlay}>
-                <Text style={styles.percentText}>{Math.round(percent)}<Text style={{fontSize: 24}}>%</Text></Text>
+              <Text style={styles.percentText}>
+                {Math.round(percent)}
+                <Text style={{ fontSize: 24 }}>%</Text>
+              </Text>
             </View>
           </View>
         </View>
@@ -119,297 +156,335 @@ export default function Hydration() {
         {/* AMOUNT */}
         <Text style={styles.amount}>
           {current.toLocaleString()}{" "}
-          <Text style={styles.ml}>ml</Text>
+          <Text style={styles.ml}>{t("hydration.ml")}</Text>
         </Text>
-        <Text style={styles.goal}>Goal: {goal.toLocaleString()} ml</Text>
+        <Text style={styles.goal}>
+          {t("hydration.goal")}: {goal.toLocaleString()} {t("hydration.ml")}
+        </Text>
 
         {/* QUICK ADD */}
-        <Text style={styles.sectionTitle}>QUICK ADD</Text>
+        <Text style={styles.sectionTitle}>{t("hydration.quick_add")}</Text>
 
         <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickCard} onPress={() => handleQuickAdd(250)}>
-            <Ionicons name="water-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.quickText}>+ 250ml</Text>
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => handleQuickAdd(250)}
+          >
+            <Ionicons
+              name="water-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.quickText}>+ 250{t("hydration.ml")}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickCardPrimary} onPress={() => handleQuickAdd(500)}>
+          <TouchableOpacity
+            style={styles.quickCardPrimary}
+            onPress={() => handleQuickAdd(500)}
+          >
             <Ionicons name="water" size={24} color="#fff" />
-            <Text style={styles.quickTextPrimary}>+ 500ml</Text>
+            <Text style={styles.quickTextPrimary}>
+              + 500{t("hydration.ml")}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickCard}>
             <Ionicons name="add" size={20} color={colors.textSecondary} />
-            <Text style={styles.quickText}>Custom</Text>
+            <Text style={styles.quickText}>{t("hydration.custom")}</Text>
           </TouchableOpacity>
         </View>
 
         {/* RECENT ACTIVITY */}
         <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
+          <Text style={styles.sectionTitle}>
+            {t("hydration.recent_activity")}
+          </Text>
           <TouchableOpacity>
-            <Text style={styles.viewAll}>View All</Text>
+            <Text style={styles.viewAll}>{t("hydration.view_all")}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.activityContainer}>
-            {logs.map((item: any, index: number) => {
-            const reason = item.adjustment_reason ?? item.adjustmentReason ?? "Water";
+          {logs.map((item: any, index: number) => {
+            const reason =
+              item.adjustment_reason ?? item.adjustmentReason ?? "Water";
             const createdAt = item.created_at ?? item.createdAt ?? item.time;
             const amount = Number(item.amount_ml ?? item.amountMl ?? 0) || 0;
 
             return (
-            <View key={index} style={styles.activityCard}>
+              <View key={index} style={styles.activityCard}>
                 <View style={styles.activityLeft}>
-                    <View style={styles.activityIcon}>
-                        <Ionicons name="water" size={18} color={colors.primary} />
-                    </View>
-                    <View>
-                  <Text style={styles.activityTitle}>{reason}</Text>
-                  <Text style={styles.activityTime}>{createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
-                    </View>
+                  <View style={styles.activityIcon}>
+                    <Ionicons name="water" size={18} color={colors.primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.activityTitle}>{reason}</Text>
+                    <Text style={styles.activityTime}>
+                      {createdAt
+                        ? new Date(createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : ""}
+                    </Text>
+                  </View>
                 </View>
-              <Text style={styles.activityAmount}>+ {amount}ml</Text>
-            </View>
-            )})}
-            {logs.length === 0 && (
-               <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 20 }}>No logs today yet.</Text>
-            )}
+                <Text style={styles.activityAmount}>+ {amount}ml</Text>
+              </View>
+            );
+          })}
+          {logs.length === 0 && (
+            <Text
+              style={{
+                textAlign: "center",
+                color: colors.textSecondary,
+                marginTop: 20,
+              }}
+            >
+              {t("hydration.no_logs")}
+            </Text>
+          )}
         </View>
-        <View style={{height: 100}} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 20,
-  },
-  heroBg: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 320,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 60,
-  },
-  circleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoSmall: {
-    width: 32,
-    height: 32,
-    marginRight: 10,
-  },
-  brandText: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: colors.textSecondary,
-    letterSpacing: 1.5,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  datePill: {
-    alignSelf: "center",
-    backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "#e6f3ff",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: isDark ? "rgba(59, 130, 246, 0.3)" : "rgba(59, 130, 246, 0.1)",
-  },
-  dateText: {
-    color: isDark ? "#bfdbfe" : colors.primary,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  tankWrapper: {
-    alignItems: "center",
-    marginTop: 40,
-    position: "relative",
-  },
-  tankGlow: {
-    position: "absolute",
-    width: 220,
-    height: 380,
-    borderRadius: 110,
-    backgroundColor: colors.primary,
-    opacity: 0.1,
-    shadowColor: colors.primary,
-    shadowRadius: 50,
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  tank: {
-    width: 200,
-    height: 340,
-    borderRadius: 100,
-    backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: isDark ? "rgba(255,255,255,0.14)" : "#c9dcec",
-    justifyContent: "flex-end",
-  },
-  waterFill: {
-    width: "100%",
-    position: "absolute",
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  wave: {
-    position: "absolute",
-    top: -25,
-  },
-  percentOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center"
-  },
-  percentText: {
-    fontSize: 64,
-    fontWeight: "bold",
-    color: isDark ? "#fff" : colors.text,
-  },
-  amount: {
-    fontSize: 32,
-    fontWeight: "800",
-    textAlign: "center",
-    color: colors.text,
-    marginTop: 30,
-  },
-  ml: {
-    fontSize: 18,
-    color: colors.textSecondary,
-  },
-  goal: {
-    textAlign: "center",
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 40,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    letterSpacing: 1,
-    color: colors.textSecondary,
-    marginBottom: 16,
-    marginLeft: 4,
-  },
-  quickRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 40,
-  },
-  quickCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    paddingVertical: 18,
-    borderRadius: 24,
-    alignItems: "center",
-    marginHorizontal: 5,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#0b3f64",
-    shadowOpacity: isDark ? 0.12 : 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  quickCardPrimary: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 18,
-    borderRadius: 24,
-    alignItems: "center",
-    marginHorizontal: 5,
-    shadowColor: colors.primary,
-    shadowRadius: 10,
-    shadowOpacity: 0.3,
-    elevation: 4,
-  },
-  quickText: {
-    color: colors.text,
-    marginTop: 8,
-    fontWeight: "600",
-  },
-  quickTextPrimary: {
-    color: "#fff",
-    marginTop: 8,
-    fontWeight: "bold",
-  },
-  recentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  viewAll: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  activityContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 24,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginTop: 12,
-    shadowColor: "#0b3f64",
-    shadowOpacity: isDark ? 0.12 : 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  activityCard: {
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  activityLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  activityTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  activityTime: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  activityAmount: {
-    color: colors.primary,
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingHorizontal: 20,
+    },
+    heroBg: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 320,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 60,
+    },
+    circleBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    logoSmall: {
+      width: 32,
+      height: 32,
+      marginRight: 10,
+    },
+    brandText: {
+      fontSize: 10,
+      fontWeight: "900",
+      color: colors.textSecondary,
+      letterSpacing: 1.5,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text,
+    },
+    datePill: {
+      alignSelf: "center",
+      backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "#e6f3ff",
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      borderRadius: 20,
+      marginTop: 20,
+      borderWidth: 1,
+      borderColor: isDark
+        ? "rgba(59, 130, 246, 0.3)"
+        : "rgba(59, 130, 246, 0.1)",
+    },
+    dateText: {
+      color: isDark ? "#bfdbfe" : colors.primary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    tankWrapper: {
+      alignItems: "center",
+      marginTop: 40,
+      position: "relative",
+    },
+    tankGlow: {
+      position: "absolute",
+      width: 220,
+      height: 380,
+      borderRadius: 110,
+      backgroundColor: colors.primary,
+      opacity: 0.1,
+      shadowColor: colors.primary,
+      shadowRadius: 50,
+      shadowOpacity: 1,
+      shadowOffset: { width: 0, height: 0 },
+    },
+    tank: {
+      width: 200,
+      height: 340,
+      borderRadius: 100,
+      backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: isDark ? "rgba(255,255,255,0.14)" : "#c9dcec",
+      justifyContent: "flex-end",
+    },
+    waterFill: {
+      width: "100%",
+      position: "absolute",
+      bottom: 0,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    wave: {
+      position: "absolute",
+      top: -25,
+    },
+    percentOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    percentText: {
+      fontSize: 64,
+      fontWeight: "bold",
+      color: isDark ? "#fff" : colors.text,
+    },
+    amount: {
+      fontSize: 32,
+      fontWeight: "800",
+      textAlign: "center",
+      color: colors.text,
+      marginTop: 30,
+    },
+    ml: {
+      fontSize: 18,
+      color: colors.textSecondary,
+    },
+    goal: {
+      textAlign: "center",
+      color: colors.textSecondary,
+      marginTop: 4,
+      marginBottom: 40,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: "bold",
+      letterSpacing: 1,
+      color: colors.textSecondary,
+      marginBottom: 16,
+      marginLeft: 4,
+    },
+    quickRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 40,
+    },
+    quickCard: {
+      flex: 1,
+      backgroundColor: colors.card,
+      paddingVertical: 18,
+      borderRadius: 24,
+      alignItems: "center",
+      marginHorizontal: 5,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#0b3f64",
+      shadowOpacity: isDark ? 0.12 : 0.05,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
+    quickCardPrimary: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      paddingVertical: 18,
+      borderRadius: 24,
+      alignItems: "center",
+      marginHorizontal: 5,
+      shadowColor: colors.primary,
+      shadowRadius: 10,
+      shadowOpacity: 0.3,
+      elevation: 4,
+    },
+    quickText: {
+      color: colors.text,
+      marginTop: 8,
+      fontWeight: "600",
+    },
+    quickTextPrimary: {
+      color: "#fff",
+      marginTop: 8,
+      fontWeight: "bold",
+    },
+    recentHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    viewAll: {
+      color: colors.primary,
+      fontWeight: "700",
+      fontSize: 13,
+    },
+    activityContainer: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 12,
+      shadowColor: "#0b3f64",
+      shadowOpacity: isDark ? 0.12 : 0.05,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
+    },
+    activityCard: {
+      padding: 16,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    activityLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    activityIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 14,
+      backgroundColor: isDark
+        ? "rgba(96, 165, 250, 0.1)"
+        : "rgba(59, 130, 246, 0.1)",
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 16,
+    },
+    activityTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    activityTime: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    activityAmount: {
+      color: colors.primary,
+      fontWeight: "700",
+    },
+  });

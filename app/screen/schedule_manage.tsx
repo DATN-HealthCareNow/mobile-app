@@ -4,10 +4,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useScheduleStore, getNextScheduleDay } from '../../store/scheduleStore';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function ScheduleManageScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const { schedules, toggleSchedule, deleteSchedule, deleteSchedules } = useScheduleStore();
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     
@@ -17,13 +19,13 @@ export default function ScheduleManageScreen() {
 
     const activeCount = schedules.filter(s => s.isActive).length;
     const weekDays = [
-        { key: 'M', label: 'Mon' },
-        { key: 'T', label: 'Tue' },
-        { key: 'W', label: 'Wed' },
-        { key: 'Th', label: 'Thu' },
-        { key: 'F', label: 'Fri' },
-        { key: 'S', label: 'Sat' },
-        { key: 'Su', label: 'Sun' },
+        { key: 'M', label: t('common.mon', 'Mon') },
+        { key: 'T', label: t('common.tue', 'Tue') },
+        { key: 'W', label: t('common.wed', 'Wed') },
+        { key: 'Th', label: t('common.thu', 'Thu') },
+        { key: 'F', label: t('common.fri', 'Fri') },
+        { key: 'S', label: t('common.sat', 'Sat') },
+        { key: 'Su', label: t('common.sun', 'Sun') },
     ];
 
     const todayKey = useMemo(() => {
@@ -47,18 +49,19 @@ export default function ScheduleManageScreen() {
         
         const groupedMedicals: Record<string, any> = {};
         medicalSchedules.forEach(med => {
-            if (!groupedMedicals[med.goal]) {
-                groupedMedicals[med.goal] = {
+            const groupKey = med.goal;
+            if (!groupedMedicals[groupKey]) {
+                groupedMedicals[groupKey] = {
                     ...med,
                     isGroupedMedical: true,
                     times: [med.time],
                     originalIds: [med.id]
                 };
             } else {
-                if (!groupedMedicals[med.goal].times.includes(med.time)) {
-                    groupedMedicals[med.goal].times.push(med.time);
+                if (!groupedMedicals[groupKey].times.includes(med.time)) {
+                    groupedMedicals[groupKey].times.push(med.time);
                 }
-                groupedMedicals[med.goal].originalIds.push(med.id);
+                groupedMedicals[groupKey].originalIds.push(med.id);
             }
         });
 
@@ -77,7 +80,7 @@ export default function ScheduleManageScreen() {
             case 'Yoga': return { icon: 'yoga', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' };
             case 'Pool Laps': return { icon: 'swim', color: '#14b8a6', bg: 'rgba(20, 184, 166, 0.15)' };
             case 'HIIT Training': return { icon: 'flash', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
-            case 'Medical': return { icon: 'pill', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' };
+            case 'Medical': return { icon: 'medical', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' };
             default: return { icon: 'human-handsup', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' };
         }
     };
@@ -114,8 +117,8 @@ export default function ScheduleManageScreen() {
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Activity</Text>
-                    <Text style={styles.headerSub}>{activeCount} active schedules</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('tabs.activity', 'Activity')}</Text>
+                    <Text style={styles.headerSub}>{activeCount} {t('schedule.active_schedules', 'active schedules')}</Text>
                 </View>
                 {!isEditMode ? (
                     <TouchableOpacity onPress={() => setIsEditMode(true)} style={styles.editBtn}>
@@ -123,7 +126,7 @@ export default function ScheduleManageScreen() {
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity onPress={() => { setIsEditMode(false); setSelectedIds(new Set()); }} style={styles.editBtn}>
-                        <Text style={{color: '#0ea5e9', fontWeight: 'bold'}}>Done</Text>
+                        <Text style={{color: '#0ea5e9', fontWeight: 'bold'}}>{t('schedule.done', 'Done')}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -132,11 +135,11 @@ export default function ScheduleManageScreen() {
                 <View style={styles.batchActionsContainer}>
                     <TouchableOpacity onPress={handleSelectAll} style={styles.selectAllBtn}>
                         <Ionicons name={selectedIds.size === schedules.length && schedules.length > 0 ? "checkbox" : "square-outline"} size={20} color="#0ea5e9" />
-                        <Text style={styles.selectAllText}>Select All</Text>
+                        <Text style={styles.selectAllText}>{t('schedule.select_all', 'Select All')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleDeleteSelected} disabled={selectedIds.size === 0} style={[styles.deleteBatchBtn, selectedIds.size === 0 && { opacity: 0.5 }]}>
                          <Ionicons name="trash-outline" size={18} color="#ef4444" />
-                         <Text style={styles.deleteBatchText}>Delete ({selectedIds.size})</Text>
+                         <Text style={styles.deleteBatchText}>{t('schedule.delete_count', 'Delete ({count})').replace('{count}', selectedIds.size.toString())}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -160,7 +163,7 @@ export default function ScheduleManageScreen() {
                                 <Text style={[styles.dayTitle, { color: colors.text }, isToday && styles.dayTitleToday]}>{day.label}</Text>
 
                                 {daySchedules.length === 0 ? (
-                                    <Text style={styles.emptyDayText}>No scheduled tasks.</Text>
+                                    <Text style={styles.emptyDayText}>{t('schedule.no_schedules', 'No schedules yet')}</Text>
                                 ) : (
                                     <>
                                         {visibleSchedules.map((item) => {
@@ -179,40 +182,47 @@ export default function ScheduleManageScreen() {
                                                         </View>
                                                     )}
                                                     <View style={[styles.iconBox, { backgroundColor: themeObj.bg }]}> 
-                                                        <MaterialCommunityIcons name={themeObj.icon as any} size={22} color={themeObj.color} />
+                                                        {item.type === 'Medical' ? (
+                                                            <Ionicons name={themeObj.icon as any} size={22} color={themeObj.color} />
+                                                        ) : (
+                                                            <MaterialCommunityIcons name={themeObj.icon as any} size={22} color={themeObj.color} />
+                                                        )}
                                                     </View>
                                                     
                                     <View style={styles.cardContent}>
-                                         <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                                             {item.type === 'Medical' ? 'Medication' : item.type}
-                                         </Text>
+                                          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                                              {item.type === 'Medical' ? item.goal : (t(`meal.${item.type.toLowerCase()}`) !== `meal.${item.type.toLowerCase()}` ? t(`meal.${item.type.toLowerCase()}`) : item.type)}
+                                          </Text>
                                          
                                          {item.type === 'Medical' && item.medications && item.medications.length > 0 ? (
                                              <View style={{marginTop: 4, marginBottom: 8}}>
-                                                 {item.medications.slice(0, 2).map((med: any, idx: number) => {
-                                                     const timeSpecificDosage = med.schedules?.find((s: any) => s.time === item.time)?.dosage || med.dosage || "1 dose";
+                                                 {item.medications
+                                                    .filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time))
+                                                    .slice(0, 2)
+                                                    .map((med: any, idx: number) => {
+                                                     const timeSpecificDosage = med.schedules?.find((s: any) => s.time === item.time)?.dosage || med.dosage || t("medical.unit_dose", "1 dose");
                                                      return (
                                                          <Text key={idx} style={{fontSize: 12, color: '#64748b'}} numberOfLines={1}>
                                                              • {med.name} ({timeSpecificDosage})
                                                          </Text>
                                                      );
                                                  })}
-                                                 {item.medications.length > 2 && (
-                                                     <Text style={{fontSize: 10, color: '#0ea5e9', fontWeight: '600'}}>+ {item.medications.length - 2} more</Text>
+                                                 {item.medications.filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time)).length > 2 && (
+                                                     <Text style={{fontSize: 10, color: '#0ea5e9', fontWeight: '600'}}>+ {item.medications.filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time)).length - 2} {t('schedule.more', 'more')}</Text>
                                                  )}
                                              </View>
                                          ) : (
-                                             <Text style={[styles.cardGoal, { color: '#64748b' }]}>{item.goal}</Text>
+                                             <Text style={[styles.cardGoal, { color: '#64748b' }]}>{item.type === 'Medical' ? t('home.medication', 'Medication') : item.goal}</Text>
                                          )}
 
                                          <View style={styles.metaRow}>
                                              <View style={styles.metaItem}>
                                                  <Ionicons name="time-outline" size={14} color="#94a3b8" />
-                                                 <Text style={styles.metaText}>{item.time}</Text>
+                                                 <Text style={styles.metaText}>{item.isGroupedMedical ? item.times.join(', ') : item.time}</Text>
                                              </View>
                                              <View style={styles.metaItem}>
                                                  <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                                 <Text style={styles.metaText}>{item.frequency === 'Daily' ? 'Daily' : item.days.join(', ')}</Text>
+                                                 <Text style={styles.metaText}>{item.frequency === 'Daily' ? t('schedule.daily', 'Daily') : item.days.join(', ')}</Text>
                                              </View>
                                          </View>
                                      </View>
@@ -222,7 +232,7 @@ export default function ScheduleManageScreen() {
                                             style={styles.detailBtn}
                                             onPress={() => router.push({ pathname: '/screen/medication_schedule', params: { recordId: item.sourceId } })}
                                         >
-                                            <Text style={styles.detailBtnText}>Details</Text>
+                                            <Text style={styles.detailBtnText}>{t('schedule.details', 'Details')}</Text>
                                         </TouchableOpacity>
                                     ) : (
                                         <Switch
@@ -241,7 +251,7 @@ export default function ScheduleManageScreen() {
                                                 style={styles.expandBtn}
                                             >
                                                 <Text style={styles.expandText}>
-                                                    {showAll ? 'Show less' : `Show more (${daySchedules.length - 3})`}
+                                                    {showAll ? t('home.show_less', 'Show less') : `${t('home.show_more', 'Show more')} (${daySchedules.length - 3})`}
                                                 </Text>
                                             </TouchableOpacity>
                                         )}

@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useProfile, useUpdateProfile } from '../../hooks/useUser';
 import { useSession } from '../../hooks/useAuth';
 import { useSleepStore } from '../../store/sleepStore';
@@ -22,6 +23,7 @@ import { useGoalStore } from '../../store/goalStore';
 export default function MetricEntryScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const { token } = useSession();
   const { data: profile } = useProfile(token);
   const updateProfileMutation = useUpdateProfile();
@@ -59,7 +61,7 @@ export default function MetricEntryScreen() {
 
   const handleSave = async () => {
     if (!weight || !height) {
-      Alert.alert('Error', 'Please fill in weight and height');
+      Alert.alert(t('metrics.error'), t('metrics.fill_required'));
       return;
     }
 
@@ -87,18 +89,18 @@ export default function MetricEntryScreen() {
       updateProfileMutation.mutate(payload, {
         onSuccess: (data) => {
           console.log('Update Success Response:', data);
-          Alert.alert('Success', 'Profile metrics saved! Welcome to Healthcare Now.', [
-            { text: "Get Started", onPress: () => router.replace('/(tabs)') }
+          Alert.alert(t('metrics.success'), t('metrics.save_success'), [
+            { text: t('metrics.get_started'), onPress: () => router.replace('/(tabs)') }
           ]);
         },
         onError: (err: any) => {
           console.error('Update Error:', err?.response?.data || err.message);
-          Alert.alert('Error', err?.response?.data?.message || 'Failed to save metrics.');
+          Alert.alert(t('metrics.error'), err?.response?.data?.message || t('metrics.save_failed'));
         }
       });
     } catch (e) {
       console.error('Payload Construction Error:', e);
-      Alert.alert('Error', 'Invalid input. Please check your data.');
+      Alert.alert(t('metrics.error'), t('metrics.invalid_input'));
     }
   };
 
@@ -111,13 +113,13 @@ export default function MetricEntryScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Your Metrics</Text>
-          <Text style={styles.subtitle}>Help us personalize your health journey</Text>
+          <Text style={styles.title}>{t('metrics.title')}</Text>
+          <Text style={styles.subtitle}>{t('metrics.subtitle')}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>{t('metrics.full_name')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
               <TextInput
@@ -132,7 +134,7 @@ export default function MetricEntryScreen() {
 
           <View style={styles.row}>
             <MetricInput
-              label="Weight"
+              label={t('metrics.weight')}
               unit="kg"
               value={weight}
               onChangeText={setWeight}
@@ -141,7 +143,7 @@ export default function MetricEntryScreen() {
               styles={styles}
             />
             <MetricInput
-              label="Height"
+              label={t('metrics.height')}
               unit="cm"
               value={height}
               onChangeText={setHeight}
@@ -153,7 +155,7 @@ export default function MetricEntryScreen() {
 
           <View style={styles.row}>
             <MetricInput
-              label="Sleep Goal"
+              label={t('metrics.sleep_goal')}
               unit="hrs"
               value={sleepGoal}
               onChangeText={setSleepGoal}
@@ -162,7 +164,7 @@ export default function MetricEntryScreen() {
               styles={styles}
             />
             <MetricInput
-              label="Steps Goal"
+              label={t('metrics.steps_goal')}
               unit="steps"
               value={stepsGoal}
               onChangeText={setStepsGoal}
@@ -174,7 +176,7 @@ export default function MetricEntryScreen() {
 
           <View style={[styles.row, { justifyContent: 'flex-start' }]}>
             <MetricInput
-              label="Calories Goal"
+              label={t('metrics.calories_goal')}
               unit="kcal"
               value={caloriesGoal}
               onChangeText={setCaloriesGoal}
@@ -185,7 +187,7 @@ export default function MetricEntryScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Date of Birth</Text>
+            <Text style={styles.label}>{t('metrics.dob')}</Text>
             <TouchableOpacity 
                 style={styles.inputWrapper} 
                 onPress={() => setShowDatePicker(true)}
@@ -210,7 +212,7 @@ export default function MetricEntryScreen() {
             )}
           </View>
 
-          <Text style={styles.label}>Gender</Text>
+          <Text style={styles.label}>{t('metrics.gender')}</Text>
           <View style={styles.genderRow}>
             {['Male', 'Female', 'Other'].map((g) => (
               <TouchableOpacity
@@ -224,27 +226,32 @@ export default function MetricEntryScreen() {
                 <Text style={[
                   styles.genderText,
                   gender === g && styles.genderTextActive
-                ]}>{g}</Text>
+                ]}>{t(`metrics.${g.toLowerCase()}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.label}>Activity Level</Text>
+          <Text style={styles.label}>{t('metrics.activity_level')}</Text>
           <View style={styles.activityList}>
-            {['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'].map((level) => (
+            {[
+              { id: 'Sedentary', key: 'activity_sedentary' },
+              { id: 'Lightly Active', key: 'activity_lightly' },
+              { id: 'Moderately Active', key: 'activity_moderately' },
+              { id: 'Very Active', key: 'activity_very' }
+            ].map((level) => (
               <TouchableOpacity
-                key={level}
+                key={level.id}
                 style={[
                   styles.activityItem,
-                  activityLevel === level && styles.activityItemActive
+                  activityLevel === level.id && styles.activityItemActive
                 ]}
-                onPress={() => setActivityLevel(level)}
+                onPress={() => setActivityLevel(level.id)}
               >
                 <Text style={[
                   styles.activityText,
-                  activityLevel === level && styles.activityTextActive
-                ]}>{level}</Text>
-                {activityLevel === level && (
+                  activityLevel === level.id && styles.activityTextActive
+                ]}>{t(`metrics.${level.key}`)}</Text>
+                {activityLevel === level.id && (
                   <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
@@ -257,12 +264,12 @@ export default function MetricEntryScreen() {
             disabled={updateProfileMutation.isPending}
           >
             <Text style={styles.saveButtonText}>
-              {updateProfileMutation.isPending ? 'Saving...' : 'Complete Profile'}
+              {updateProfileMutation.isPending ? t('metrics.saving') : t('metrics.complete')}
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.skipBtn} onPress={() => router.replace('/(tabs)')}>
-            <Text style={styles.skipText}>I&apos;ll do this later (Go to Home)</Text>
+            <Text style={styles.skipText}>{t('metrics.skip')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

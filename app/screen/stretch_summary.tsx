@@ -1,0 +1,245 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { useStretchStore } from '../../store/stretchStore';
+import { activityService } from '../../api/services/activityService';
+import { useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../../context/LanguageContext';
+
+const { width } = Dimensions.get('window');
+
+export default function StretchSummaryScreen() {
+    const router = useRouter();
+    const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
+    const queryClient = useQueryClient();
+    const { activeWorkout, workoutStartTime, endWorkout } = useStretchStore();
+
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Xử lý state cho an toàn
+    const totalDurationSecs = workoutStartTime ? Math.floor((Date.now() - workoutStartTime) / 1000) : 0;
+    // Stretching nhẹ nhàng nên calo tiêu hao ~4 kcal mỗi phút
+    const caloriesBurned = Math.round((totalDurationSecs / 60) * 4);
+
+    const m = Math.floor(totalDurationSecs / 60).toString().padStart(2, '0');
+    const s = (totalDurationSecs % 60).toString().padStart(2, '0');
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            // Stretching cũng dùng Yoga type trong backend để đồng bộ
+            const act = await activityService.start({ type: "YOGA", mode: "INDOOR" });
+            if (act && act.id) {
+                await activityService.finish(act.id, {
+                    active_calories: caloriesBurned,
+                    exercise_minutes: Math.max(1, Math.round(totalDurationSecs / 60))
+                });
+                queryClient.invalidateQueries({ queryKey: ['daily-health'] });
+            }
+            endWorkout();
+            router.replace("/(tabs)/activity");
+        } catch (error) {
+            console.error("Failed to save stretch session", error);
+            alert(t('yoga.save_error', "Errors saving activity. Please try again."));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDiscard = () => {
+        endWorkout();
+        router.replace("/(tabs)/activity");
+    };
+
+    return (
+        <ScrollView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* HER0 BACKGROUND */}
+            <LinearGradient
+                colors={['#8b5cf6', '#a78bfa']}
+                style={styles.heroBackground}
+            >
+                <View style={styles.iconContainer}>
+                    <View style={styles.iconGlow} />
+                    <MaterialCommunityIcons name="human-stretching" size={80} color="#fef08a" />
+                </View>
+                <Text style={styles.title}>{t('stretching.completed', 'Stretching Completed!')}</Text>
+                <Text style={styles.subtitle}>{t('stretching.amazing_effort', 'Your body will thank you for this!')}</Text>
+            </LinearGradient>
+
+            {/* MAIN STATS CARD */}
+            <View style={[styles.card, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+                <Text style={styles.cardTitle}>{t('activity.stretching', 'Stretching')} {t('analysis.title_analysis', 'Analysis')}</Text>
+                <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                        <View style={[styles.iconBox, { backgroundColor: '#ede9fe' }]}>
+                            <Ionicons name="time" size={24} color="#8b5cf6" />
+                        </View>
+                        <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{m}:{s}</Text>
+                        <Text style={styles.statLabel}>{t('yoga.duration_label', 'Duration')}</Text>
+                    </View>
+
+                    <View style={styles.statItem}>
+                        <View style={[styles.iconBox, { backgroundColor: '#fef3c7' }]}>
+                            <Ionicons name="flame" size={24} color="#d97706" />
+                        </View>
+                        <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{caloriesBurned}</Text>
+                        <Text style={styles.statLabel}>{t('yoga.kcal_burned', 'Kcal Burned')}</Text>
+                    </View>
+
+                    <View style={styles.statItem}>
+                        <View style={[styles.iconBox, { backgroundColor: '#dcfce3' }]}>
+                            <MaterialCommunityIcons name="lightning-bolt" size={24} color="#16a34a" />
+                        </View>
+                        <Text style={[styles.statValue, { color: isDark ? '#f8fafc' : '#0f172a' }]}>{activeWorkout?.poses.length || 0}</Text>
+                        <Text style={styles.statLabel}>{t('yoga.poses_count', 'Steps')}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* ACTION BUTTONS */}
+            <View style={styles.actionContainer}>
+                <TouchableOpacity 
+                    style={[styles.saveBtn, isSaving && { opacity: 0.7 }]} 
+                    onPress={handleSave}
+                    disabled={isSaving}
+                >
+                    {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{t('stretching.save_btn', 'Save Stretching Activity')}</Text>}
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
+                    <Text style={styles.discardBtnText}>{t('yoga.discard_btn', 'Discard')}</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    heroBackground: {
+        width: '100%',
+        height: 320,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderBottomLeftRadius: 40,
+        borderBottomRightRadius: 40,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+    },
+    iconContainer: {
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 15,
+        marginTop: 40,
+    },
+    iconGlow: {
+        position: 'absolute',
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#fef08a',
+        opacity: 0.2,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#fff',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 10,
+        fontWeight: '500',
+        textAlign: 'center',
+        paddingHorizontal: 30,
+    },
+    card: {
+        marginHorizontal: 20,
+        marginTop: -40,
+        borderRadius: 20,
+        padding: 24,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.05,
+        shadowRadius: 20,
+    },
+    cardTitle: {
+        fontSize: 14,
+        color: '#64748b',
+        fontWeight: '700',
+        marginBottom: 20,
+        textAlign: 'center',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    iconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    statValue: {
+        fontSize: 22,
+        fontWeight: '900',
+        marginBottom: 2,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '500',
+    },
+    actionContainer: {
+        paddingHorizontal: 20,
+        marginTop: 40,
+    },
+    saveBtn: {
+        backgroundColor: '#8b5cf6',
+        paddingVertical: 18,
+        borderRadius: 20,
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#8b5cf6',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        marginBottom: 16,
+    },
+    saveBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        letterSpacing: 1,
+    },
+    discardBtn: {
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    discardBtnText: {
+        color: '#ef4444',
+        fontSize: 14,
+        fontWeight: '700',
+    }
+});

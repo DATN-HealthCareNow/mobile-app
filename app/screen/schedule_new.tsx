@@ -5,10 +5,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useTheme } from '../../context/ThemeContext';
 import { useScheduleStore, ActivityType, FrequencyType } from '../../store/scheduleStore';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function ScheduleNewScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const { addSchedule } = useScheduleStore();
 
     const [selectedType, setSelectedType] = useState<ActivityType>('Running');
@@ -40,10 +42,10 @@ export default function ScheduleNewScreen() {
     };
 
     const activityTypes = [
-        { type: 'Running', icon: 'run' },
-        { type: 'Gym', icon: 'dumbbell' },
-        { type: 'Stretching', icon: 'human-handsup' },
-        { type: 'Yoga', icon: 'yoga' },
+        { type: 'Running', icon: 'run', label: t('meal.running', 'Running') },
+        { type: 'Gym', icon: 'dumbbell', label: t('meal.gym', 'Gym') },
+        { type: 'Stretching', icon: 'human-handsup', label: t('stretching.title', 'Stretching') },
+        { type: 'Yoga', icon: 'yoga', label: t('meal.yoga', 'Yoga') },
     ];
 
     const allDays = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
@@ -58,13 +60,13 @@ export default function ScheduleNewScreen() {
 
     const handleCreate = async () => {
         if (!goalVal.trim()) {
-            setGoalError('Goal is required. Please enter your training goal.');
-            Alert.alert('Missing goal', 'Bạn cần nhập goal trước khi tạo lịch tập.');
+            setGoalError(t('schedule.goal_required', 'Goal is required. Please enter your training goal.'));
+            Alert.alert(t('schedule.missing_goal', 'Missing goal'), t('schedule.missing_goal_msg', 'You need to enter a goal before creating a schedule.'));
             return;
         }
 
         if (frequency !== 'Daily' && selectedDays.length === 0) {
-            Alert.alert('Missing days', 'Vui lòng chọn ít nhất 1 ngày tập.');
+            Alert.alert(t('schedule.missing_days', 'Missing days'), t('schedule.missing_days_msg', 'Please select at least 1 day.'));
             return;
         }
 
@@ -81,11 +83,11 @@ export default function ScheduleNewScreen() {
                 isActive: true,
             });
 
-            Alert.alert('Success', 'Lịch tập luyện được lưu thành công!');
+            Alert.alert(t('auth.verify_register.success_title', 'Success'), t('schedule.success_msg', 'Workout schedule saved successfully!'));
             router.back();
         } catch (error) {
             console.error('Error creating schedule:', error);
-            Alert.alert('Error', 'Không thể lưu lịch tập. Vui lòng thử lại.');
+            Alert.alert(t('auth.common.error', 'Error'), t('schedule.error_msg', 'Failed to save schedule. Please try again.'));
         } finally {
             setIsSubmitting(false);
         }
@@ -99,15 +101,15 @@ export default function ScheduleNewScreen() {
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <View>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>New Activity</Text>
-                    <Text style={styles.headerSub}>Design your personalized fitness routine</Text>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>{t('schedule.new', 'New Activity')}</Text>
+                    <Text style={styles.headerSub}>{t('schedule.new_subtitle', 'Design your personalized fitness routine')}</Text>
                 </View>
                 <View style={{ width: 40 }} />
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                 {/* SELECT ACTIVITY TYPE */}
-                <Text style={styles.sectionLabel}>SELECT ACTIVITY TYPE</Text>
+                <Text style={styles.sectionLabel}>{t('schedule.select_type', 'SELECT ACTIVITY TYPE')}</Text>
                 <View style={styles.typeGrid}>
                     {activityTypes.map((item) => {
                         const isSelected = selectedType === item.type;
@@ -129,14 +131,14 @@ export default function ScheduleNewScreen() {
                                 <Text style={[
                                     styles.typeLabel,
                                     { color: isSelected ? '#fff' : colors.text }
-                                ]}>{item.type}</Text>
+                                ]}>{item.label}</Text>
                             </TouchableOpacity>
                         );
                     })}
                 </View>
 
                 {/* SET FREQUENCY */}
-                <Text style={styles.sectionLabel}>SET FREQUENCY</Text>
+                <Text style={styles.sectionLabel}>{t('schedule.set_frequency', 'SET FREQUENCY')}</Text>
                 <View style={[styles.segmentContainer, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
                     {['Daily', 'Weekly', 'Custom'].map(f => {
                         const isSel = frequency === f;
@@ -146,7 +148,7 @@ export default function ScheduleNewScreen() {
                                 style={[styles.segmentBtn, isSel && { backgroundColor: '#fff', shadowColor: '#000', elevation: 2 }]}
                                 onPress={() => setFrequency(f as any)}
                             >
-                                <Text style={[styles.segmentText, isSel && { color: '#0ea5e9', fontWeight: 'bold' }]}>{f}</Text>
+                                <Text style={[styles.segmentText, isSel && { color: '#0ea5e9', fontWeight: 'bold' }]}>{t(`schedule.${f.toLowerCase()}`, f)}</Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -155,7 +157,7 @@ export default function ScheduleNewScreen() {
                 {/* SELECT DAYS */}
                 {frequency !== 'Daily' && (
                     <>
-                        <Text style={styles.sectionLabel}>SELECT DAYS</Text>
+                        <Text style={styles.sectionLabel}>{t('schedule.select_days', 'SELECT DAYS')}</Text>
                         <View style={styles.daysRow}>
                             {allDays.map(d => {
                                 const isSel = selectedDays.includes(d);
@@ -181,7 +183,7 @@ export default function ScheduleNewScreen() {
                 )}
 
                 {/* SET TIME */}
-                <Text style={styles.sectionLabel}>SET TIME</Text>
+                <Text style={styles.sectionLabel}>{t('schedule.set_time', 'SET TIME')}</Text>
                 <TouchableOpacity
                     style={[styles.inputBox, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}
                     onPress={() => setShowTimePicker(true)}
@@ -203,7 +205,7 @@ export default function ScheduleNewScreen() {
                 )}
 
                 {/* SET GOAL */}
-                <Text style={styles.sectionLabel}>SET GOAL</Text>
+                <Text style={styles.sectionLabel}>{t('schedule.set_goal', 'SET GOAL')}</Text>
                 <View style={[styles.inputBox, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
                     <Ionicons name="flag" size={20} color="#0ea5e9" style={{ marginRight: 10 }} />
                     <TextInput 
@@ -228,7 +230,7 @@ export default function ScheduleNewScreen() {
                 onPress={handleCreate}
                 disabled={isSubmitting}
             >
-                <Text style={styles.createBtnText}>{isSubmitting ? 'Creating...' : 'Create Schedule'}</Text>
+                <Text style={styles.createBtnText}>{isSubmitting ? t('schedule.creating', 'Creating...') : t('schedule.create', 'Create Schedule')}</Text>
                 <Ionicons name="add-circle" size={20} color="#fff" />
             </TouchableOpacity>
         </View>

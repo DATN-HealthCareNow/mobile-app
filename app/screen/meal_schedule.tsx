@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
     ActivityIndicator,
     Animated,
@@ -23,23 +23,26 @@ import { useDailyHealthMetric } from "../../hooks/useDailyHealthMetric";
 import { useHealthScoreToday } from "../../hooks/useHealthScore";
 import { axiosClient } from "../../api/axiosClient";
 import { Typography } from "../../constants/typography";
+import PremiumUpgradeModal from "../../components/PremiumUpgradeModal";
+import { useLanguage } from "../../context/LanguageContext";
 
 const { width } = Dimensions.get("window");
-
-const ACTIVITIES = [
-    { id: "RUN", label: "Running", icon: "run" },
-    { id: "WALK", label: "Walking", icon: "walk" },
-    { id: "YOGA", label: "Yoga", icon: "yoga" },
-    { id: "GYM", label: "Gym/Weights", icon: "weight-lifter" },
-    { id: "CYCLING", label: "Cycling", icon: "bicycle" },
-];
 
 export default function MealScheduleScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
     const { token, userId } = useSession();
   const { data: profile } = useProfile(token);
   
+  const ACTIVITIES = useMemo(() => [
+    { id: "RUN", label: t("meal.running"), icon: "run" },
+    { id: "WALK", label: t("meal.walking"), icon: "walk" },
+    { id: "YOGA", label: t("meal.yoga"), icon: "yoga" },
+    { id: "GYM", label: t("meal.gym"), icon: "weight-lifter" },
+    { id: "CYCLING", label: t("meal.cycling"), icon: "bicycle" },
+  ], [t]);
+
   const vietnamDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split("T")[0];
   const { data: healthData } = useDailyHealthMetric(vietnamDate);
   const { data: healthSummary } = useHealthScoreToday();
@@ -57,6 +60,7 @@ export default function MealScheduleScreen() {
     const [mealHistory, setMealHistory] = useState<any[]>([]);
   // Danh sách thức ăn cấm tổng hợp (profile + tất cả medical records)
   const [allForbiddenFoods, setAllForbiddenFoods] = useState<string[]>([]);
+  const [mealQuotaExceeded, setMealQuotaExceeded] = useState(false);
   
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const styles = createStyles(colors, isDark);
@@ -163,10 +167,10 @@ export default function MealScheduleScreen() {
     };
 
     const handleDeleteHistoryItem = (id: string) => {
-        Alert.alert("Delete History", "Delete this meal plan from history?", [
-            { text: "Cancel", style: "cancel" },
+        Alert.alert(t("meal.delete_history"), t("meal.delete_confirm"), [
+            { text: t("meal.cancel"), style: "cancel" },
             {
-                text: "Delete",
+                text: t("meal.delete"),
                 style: "destructive",
                 onPress: async () => {
                     const nextHistory = mealHistory.filter((item) => item.id !== id);
@@ -177,10 +181,10 @@ export default function MealScheduleScreen() {
     };
 
     const handleClearAllHistory = () => {
-        Alert.alert("Clear All", "Delete all saved AI meal history?", [
-            { text: "Cancel", style: "cancel" },
+        Alert.alert(t("meal.clear_all"), t("meal.clear_all_confirm"), [
+            { text: t("meal.cancel"), style: "cancel" },
             {
-                text: "Clear",
+                text: t("meal.clear"),
                 style: "destructive",
                 onPress: async () => {
                     await saveHistory([]);
@@ -200,7 +204,7 @@ export default function MealScheduleScreen() {
 
   const handleGenerate = async () => {
         if (selectedActivities.length === 0) {
-            Alert.alert("Choose Activity", "Please select at least one activity.");
+            Alert.alert(t("meal.choose_activity"), t("meal.select_at_least_one"));
             return;
         }
 
@@ -252,7 +256,7 @@ export default function MealScheduleScreen() {
             forbidden_foods: forbiddenFoods,
         };
 
-        const response: any = await axiosClient.post("/ai/predict", payload);
+        const response: any = await axiosClient.post("/api/v1/bff/mobile/ai/meal", payload);
         await applyAndCachePlan(response);
 
                 const historyItem = {
@@ -264,9 +268,14 @@ export default function MealScheduleScreen() {
                 };
                 const nextHistory = [historyItem, ...mealHistory].slice(0, 15);
                 await saveHistory(nextHistory);
-    } catch (error) {
-        console.error("Meal Generation Failed", error);
-        Alert.alert("Error", "Could not connect to AI service. Please try again.");
+    } catch (error: any) {
+        if (error?.response?.status === 403 || error?.response?.data?.error === 'quota_exceeded') {
+            console.log("[Meal] Quota exceeded, showing upgrade modal");
+            setMealQuotaExceeded(true);
+        } else {
+            console.error("Meal Generation Failed", error);
+            Alert.alert(t("auth.common.error"), t("auth.common.try_again"));
+        }
     } finally {
         setIsLoading(false);
     }
@@ -293,9 +302,9 @@ export default function MealScheduleScreen() {
             {/* Header */}
             <View style={styles.historyModalHeader}>
               <View>
-                <Text style={styles.historyModalTitle}>Meal Plan History</Text>
+                <Text style={styles.historyModalTitle}>{t("meal.plan_history")}</Text>
                 <Text style={styles.historyModalSub}>
-                  {mealHistory.length} saved plan{mealHistory.length !== 1 ? "s" : ""}
+                  {mealHistory.length} {t("meal.saved_plans")}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -308,7 +317,7 @@ export default function MealScheduleScreen() {
                     }}
                   >
                     <Ionicons name="trash-outline" size={14} color="#ef4444" />
-                    <Text style={styles.clearAllText}>Clear all</Text>
+                    <Text style={styles.clearAllText}>{t("meal.clear")}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -324,9 +333,9 @@ export default function MealScheduleScreen() {
             {mealHistory.length === 0 ? (
               <View style={styles.historyEmpty}>
                 <MaterialCommunityIcons name="food-off" size={48} color={colors.textSecondary} />
-                <Text style={styles.historyEmptyText}>No saved meal plans yet</Text>
+                <Text style={styles.historyEmptyText}>{t("meal.no_saved_plans")}</Text>
                 <Text style={styles.historyEmptyDesc}>
-                  Generate a plan and it will appear here automatically
+                  {t("meal.generate_automatic")}
                 </Text>
               </View>
             ) : (
@@ -337,7 +346,7 @@ export default function MealScheduleScreen() {
                 >
                   {mealHistory.map((entry, index) => {
                     const dateObj = entry.createdAt ? new Date(entry.createdAt) : new Date();
-                    const displayDate = isNaN(dateObj.getTime()) ? "Past Plan" : dateObj.toLocaleDateString(undefined, { 
+                    const displayDate = isNaN(dateObj.getTime()) ? t("meal.past_plan") : dateObj.toLocaleDateString(undefined, { 
                       weekday: 'short', 
                       month: 'short', 
                       day: 'numeric' 
@@ -389,7 +398,7 @@ export default function MealScheduleScreen() {
                             }}
                           >
                             <Ionicons name="eye" size={16} color={colors.primary} />
-                            <Text style={[styles.historyViewText, { marginLeft: 6 }]}>View</Text>
+                            <Text style={[styles.historyViewText, { marginLeft: 6 }]}>{t("meal.view_btn")}</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -414,8 +423,8 @@ export default function MealScheduleScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ alignItems: "center" }}>
-          <Text style={styles.headerTitle}>AI Nutritionist</Text>
-          <Text style={styles.headerSubtitle}>Scientific Diet Planning</Text>
+          <Text style={styles.headerTitle}>{t("meal.ai_nutritionist")}</Text>
+          <Text style={styles.headerSubtitle}>{t("meal.scientific_diet_planning")}</Text>
         </View>
         {/* ── History Button ── */}
         <TouchableOpacity
@@ -441,19 +450,19 @@ export default function MealScheduleScreen() {
         {!mealPlan ? (
           <View style={styles.inputPhase}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Physical Metrics</Text>
-              <Text style={styles.sectionDesc}>Update your stats for precision</Text>
+              <Text style={styles.sectionTitle}>{t("meal.personal_metrics")}</Text>
+              <Text style={styles.sectionDesc}>{t("meal.update_stats")}</Text>
             </View>
 
             <View style={styles.gridRow}>
-              <MetricInput label="Weight (kg)" value={weight} onChange={setWeight} icon="weight-kilogram" colors={colors} isDark={isDark} styles={styles} />
-              <MetricInput label="Height (cm)" value={height} onChange={setHeight} icon="human-male-height" colors={colors} isDark={isDark} styles={styles} />
+              <MetricInput label={t("meal.weight")} value={weight} onChange={setWeight} icon="weight-kilogram" colors={colors} isDark={isDark} styles={styles} />
+              <MetricInput label={t("meal.height")} value={height} onChange={setHeight} icon="human-male-height" colors={colors} isDark={isDark} styles={styles} />
             </View>
 
             <View style={styles.gridRow}>
-              <MetricInput label="Age" value={age} onChange={setAge} icon="calendar-account" colors={colors} isDark={isDark} styles={styles} />
+              <MetricInput label={t("meal.age")} value={age} onChange={setAge} icon="calendar-account" colors={colors} isDark={isDark} styles={styles} />
               <View style={styles.genderToggle}>
-                <Text style={styles.inputLabel}>Gender</Text>
+                <Text style={styles.inputLabel}>{t("meal.gender")}</Text>
                 <View style={styles.genderRow}>
                   <TouchableOpacity
                     style={[styles.genderBtn, gender === 1 && styles.genderBtnActive]}
@@ -471,7 +480,7 @@ export default function MealScheduleScreen() {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Today&apos;s Activities</Text>
+            <Text style={styles.sectionTitle}>{t("meal.activities")}</Text>
             <View style={styles.activityScroll}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     {ACTIVITIES.map((act) => (
@@ -492,8 +501,8 @@ export default function MealScheduleScreen() {
             </View>
 
             <View style={styles.gridRow}>
-                <MetricInput label="Steps" value={stepCount} onChange={setStepCount} icon="shoe-print" colors={colors} isDark={isDark} styles={styles} />
-                <MetricInput label="Distance (km)" value={distance} onChange={setDistance} icon="map-marker-distance" colors={colors} isDark={isDark} styles={styles} />
+                <MetricInput label={t("meal.steps_label")} value={stepCount} onChange={setStepCount} icon="shoe-print" colors={colors} isDark={isDark} styles={styles} />
+                <MetricInput label={t("meal.distance_label")} value={distance} onChange={setDistance} icon="map-marker-distance" colors={colors} isDark={isDark} styles={styles} />
             </View>
 
             {allForbiddenFoods.length > 0 && (
@@ -501,10 +510,10 @@ export default function MealScheduleScreen() {
                     <Ionicons name="warning" size={20} color="#f59e0b" />
                     <View style={{ marginLeft: 12, flex: 1 }}>
                         <Text style={styles.warningTitle}>
-                            Restricted Ingredients ({allForbiddenFoods.length})
+                            {t("meal.restricted_ingredients")} ({allForbiddenFoods.length})
                         </Text>
                         <Text style={styles.warningText}>
-                            AI will exclude: {allForbiddenFoods.join(", ")}
+                            {t("meal.ai_exclude")}: {allForbiddenFoods.join(", ")}
                         </Text>
                     </View>
                 </View>
@@ -519,7 +528,7 @@ export default function MealScheduleScreen() {
                     <ActivityIndicator color="#fff" />
                 ) : (
                     <>
-                        <Text style={styles.generateBtnText}>Generate Meal Plan</Text>
+                        <Text style={styles.generateBtnText}>{t("meal.generate_plan")}</Text>
                         <Ionicons name="sparkles" size={20} color="#fff" style={{ marginLeft: 8 }} />
                     </>
                 )}
@@ -533,7 +542,7 @@ export default function MealScheduleScreen() {
             >
                 <View style={styles.summaryHeader}>
                     <View>
-                        <Text style={styles.summaryLabel}>Total Daily Energy (TDEE)</Text>
+                        <Text style={styles.summaryLabel}>{t("meal.total_tdee")}</Text>
                         <Text style={styles.summaryValue}>{mealPlan.summary.total_tdee} <Text style={{ fontSize: 16 }}>kcal</Text></Text>
                     </View>
                     <View style={styles.bmrBadge}>
@@ -542,25 +551,31 @@ export default function MealScheduleScreen() {
                 </View>
 
                 <View style={styles.macroGrid}>
-                    <MacroStat label="Protein" val={`${mealPlan.summary.macros_target.protein_g}g`} color="#f87171" styles={styles} />
-                    <MacroStat label="Carbs" val={`${mealPlan.summary.macros_target.carb_g}g`} color="#60a5fa" styles={styles} />
-                    <MacroStat label="Fat" val={`${mealPlan.summary.macros_target.fat_g}g`} color="#fbbf24" styles={styles} />
+                    <MacroStat label={t("meal.protein")} val={`${mealPlan.summary.macros_target.protein_g}g`} color="#f87171" styles={styles} />
+                    <MacroStat label={t("meal.carbs")} val={`${mealPlan.summary.macros_target.carb_g}g`} color="#60a5fa" styles={styles} />
+                    <MacroStat label={t("meal.fat")} val={`${mealPlan.summary.macros_target.fat_g}g`} color="#fbbf24" styles={styles} />
                 </View>
             </LinearGradient>
 
             <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
-                <Text style={styles.sectionTitle}>Quantified Meals</Text>
+                <Text style={styles.sectionTitle}>{t("meal.quantified_meals")}</Text>
                 {mealPlan.meals.map((meal: any, idx: number) => (
-                    <MealCard key={idx} meal={meal} colors={colors} isDark={isDark} styles={styles} />
+                    <MealCard key={idx} meal={meal} colors={colors} isDark={isDark} styles={styles} t={t} />
                 ))}
             </View>
 
             <TouchableOpacity style={styles.resetBtn} onPress={() => applyAndCachePlan(null)}>
-                <Text style={styles.resetBtnText}>Recalculate Metrics</Text>
+                <Text style={styles.resetBtnText}>{t("meal.recalculate")}</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
       </ScrollView>
+
+      <PremiumUpgradeModal 
+        visible={mealQuotaExceeded} 
+        onClose={() => setMealQuotaExceeded(false)} 
+        featureName={t("home.ai_meals")} 
+      />
     </View>
   );
 }
@@ -592,13 +607,23 @@ const MacroStat = ({ label, val, color, styles }: any) => (
     </View>
 );
 
-const MealCard = ({ meal, colors, isDark, styles }: any) => {
+const MealCard = ({ meal, colors, isDark, styles, t }: any) => {
     const getIcon = (type: string) => {
         switch(type) {
             case 'BREAKFAST': return 'coffee';
             case 'LUNCH': return 'food-apple';
             case 'DINNER': return 'weather-night';
             default: return 'food';
+        }
+    };
+
+    const getLabel = (type: string) => {
+        switch(type) {
+            case 'BREAKFAST': return t("meal.breakfast");
+            case 'LUNCH': return t("meal.lunch");
+            case 'DINNER': return t("meal.dinner");
+            case 'SNACKS': return t("meal.snacks");
+            default: return type;
         }
     };
 
@@ -617,7 +642,7 @@ const MealCard = ({ meal, colors, isDark, styles }: any) => {
             <View style={styles.mealCardHeader}>
                 <View style={styles.mealTypeBadge}>
                     <MaterialCommunityIcons name={getIcon(meal.meal_type)} size={18} color={colors.primary} />
-                    <Text style={styles.mealTypeText}>{meal.meal_type}</Text>
+                    <Text style={styles.mealTypeText}>{getLabel(meal.meal_type)}</Text>
                 </View>
                 <Text style={styles.mealTotalCals}>{meal.total_meal_calories} kcal</Text>
             </View>
@@ -629,9 +654,9 @@ const MealCard = ({ meal, colors, isDark, styles }: any) => {
                         <Text style={styles.foodQuantity}>{food.quantity_g}{food.unit} • {food.total_metrics.calories} kcal</Text>
                     </View>
                     <View style={styles.foodMacros}>
-                        <Text style={styles.macroTag}>P: {food.total_metrics.protein}g</Text>
-                        <Text style={styles.macroTag}>C: {food.total_metrics.carb}g</Text>
-                        <Text style={styles.macroTag}>F: {food.total_metrics.fat}g</Text>
+                        <Text style={styles.macroTag}>{t("meal.protein").charAt(0)}: {food.total_metrics.protein}g</Text>
+                        <Text style={styles.macroTag}>{t("meal.carbs").charAt(0)}: {food.total_metrics.carb}g</Text>
+                        <Text style={styles.macroTag}>{t("meal.fat").charAt(0)}: {food.total_metrics.fat}g</Text>
                     </View>
                 </View>
             ))}

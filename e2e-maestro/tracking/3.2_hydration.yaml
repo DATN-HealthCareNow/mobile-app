@@ -1,0 +1,8 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- tapOn: "Home"
+- tapOn: "Water, 2.5L Goal"
+- tapOn: "+ 500ml"
+- tapOn: "+ 250ml"
+- assertVisible: ".*750.*" # Kiểm tra tổng lượng nước đã uống (500 + 250)

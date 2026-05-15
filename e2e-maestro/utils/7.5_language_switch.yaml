@@ -1,0 +1,12 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-7.5: Chuyển đổi ngôn ngữ (Anh/Việt) trong Settings
+- launchApp
+- tapOn: "Profile"
+- tapOn: ".*Settings.*|.*Cài đặt.*"
+- tapOn: ".*Language.*|.*Ngôn ngữ.*"
+- takeScreenshot: "LanguageScreen"
+- tapOn:
+    index: 0 # Chọn ngôn ngữ đầu tiên
+- tapOn: ".*Back.*"
+- assertVisible: ".*Profile.*|.*Hồ sơ.*"

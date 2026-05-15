@@ -1,0 +1,8 @@
+appId: com.danhvip2k4.mobileapp
+---
+# TC-3.1: Xem màn hình theo dõi nước uống
+- launchApp
+- tapOn: "Home"
+- tapOn: "Water, 2.5L Goal"
+- assertVisible: ".*Water.*|.*Nước.*"
+- assertVisible: ".*Goal.*|.*Mục tiêu.*"

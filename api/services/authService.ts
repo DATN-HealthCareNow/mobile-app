@@ -47,6 +47,18 @@ export interface ForgotPasswordConfirmRequest {
   new_password?: string;
 }
 
+export interface ChangeEmailRequest {
+  current_email: string;
+  new_email: string;
+  password?: string;
+}
+
+export interface ChangeEmailConfirmRequest {
+  current_email: string;
+  new_email: string;
+  otp: string;
+}
+
 export const authService = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     return axiosClient.post('/api/v1/auth/login', data);
@@ -78,6 +90,22 @@ export const authService = {
 
   confirmForgotPassword: async (data: ForgotPasswordConfirmRequest): Promise<void> => {
     return axiosClient.post('/api/v1/auth/forgot-password/confirm', data);
+  },
+
+  requestChangeEmailOtp: async (data: ChangeEmailRequest): Promise<void> => {
+    return axiosClient.post('/api/v1/auth/change-email/request-otp', {
+      currentEmail: data.current_email,
+      newEmail: data.new_email,
+      password: data.password
+    });
+  },
+
+  confirmChangeEmail: async (data: ChangeEmailConfirmRequest): Promise<void> => {
+    return axiosClient.post('/api/v1/auth/change-email/confirm', {
+      currentEmail: data.current_email,
+      newEmail: data.new_email,
+      otp: data.otp
+    });
   },
 
   // validate: async () => {

@@ -1,31 +1,26 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
 import { View } from "react-native";
 import Animated, {
-  useAnimatedStyle,
-  withSpring,
+    useAnimatedStyle,
+    withSpring,
 } from "react-native-reanimated";
+import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 
 function AnimatedIcon({ focused, children }: any) {
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [
-        { scale: withSpring(focused ? 1.2 : 1.1) },
-      ],
+      transform: [{ scale: withSpring(focused ? 1.2 : 1.1) }],
     };
   });
 
-  return (
-    <Animated.View style={animatedStyle}>
-      {children}
-    </Animated.View>
-  );
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
 }
 
 export default function TabLayout() {
   const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tabs
@@ -52,7 +47,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '600',
+          fontWeight: "600",
           marginTop: -2,
         },
       }}
@@ -61,10 +56,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabs.home"),
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
+              <Ionicons
+                name={focused ? "home" : "home-outline"}
+                size={22}
+                color={color}
+              />
             </AnimatedIcon>
           ),
         }}
@@ -74,10 +73,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: "Activity",
+          title: t("tabs.activity"),
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
-              <Ionicons name={focused ? "pulse" : "pulse-outline"} size={22} color={color} />
+              <Ionicons
+                name={focused ? "pulse" : "pulse-outline"}
+                size={22}
+                color={color}
+              />
             </AnimatedIcon>
           ),
         }}
@@ -124,7 +127,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="analysis"
         options={{
-          title: "Analysis",
+          title: t("tabs.analysis"),
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
               <MaterialIcons name="description" size={24} color={color} />
@@ -137,7 +140,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon focused={focused}>
               <Ionicons

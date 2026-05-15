@@ -7,12 +7,14 @@ import { useGymStore } from '../../store/gymStore';
 import { activityService } from '../../api/services/activityService';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLanguage } from '../../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 export default function GymSummaryScreen() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage();
     const queryClient = useQueryClient();
     const { exercises, startTime, resetWorkout } = useGymStore();
 
@@ -81,7 +83,7 @@ export default function GymSummaryScreen() {
             router.replace("/(tabs)/activity");
         } catch (error) {
             console.error(error);
-            alert("Failed to save workout. Please try again.");
+            alert(t('gym.save_error', "Failed to save workout. Please try again."));
         } finally {
             setIsSaving(false);
         }
@@ -103,11 +105,11 @@ export default function GymSummaryScreen() {
                     <View style={styles.iconGlow} />
                     <MaterialCommunityIcons name="medal" size={80} color="#fde047" />
                 </View>
-                <Text style={styles.title}>Workout Completed!</Text>
-                <Text style={styles.subtitle}>Amazing effort today!</Text>
+                <Text style={styles.title}>{t('gym.completed', 'Workout Completed!')}</Text>
+                <Text style={styles.subtitle}>{t('gym.amazing_effort', 'Amazing effort today!')}</Text>
 
                 <View style={[styles.timeBadge, { backgroundColor: colors.card }]}>
-                    <Text style={styles.timeLabel}>TOTAL WORKOUT TIME</Text>
+                    <Text style={styles.timeLabel}>{t('gym.total_workout_time', 'TOTAL WORKOUT TIME')}</Text>
                     <Text style={[styles.timeValue, { color: colors.text }]}>{formatTime(stats.durationSecs)}</Text>
                 </View>
             </LinearGradient>
@@ -117,27 +119,27 @@ export default function GymSummaryScreen() {
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <MaterialCommunityIcons name="dumbbell" size={24} color="#0ea5e9" />
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalExercises}</Text>
-                    <Text style={styles.statLabel}>Exercises</Text>
+                    <Text style={styles.statLabel}>{t('gym.exercises_count', 'Exercises')}</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="layers-outline" size={24} color="#0ea5e9" />
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalSets}</Text>
-                    <Text style={styles.statLabel}>Total Sets</Text>
+                    <Text style={styles.statLabel}>{t('gym.total_sets', 'Total Sets')}</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="repeat" size={24} color="#0ea5e9" />
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalReps}</Text>
-                    <Text style={styles.statLabel}>Total Reps</Text>
+                    <Text style={styles.statLabel}>{t('gym.total_reps', 'Total Reps')}</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
                     <Ionicons name="flame-outline" size={24} color="#f97316" />
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats.calories}</Text>
-                    <Text style={styles.statLabel}>Kcal Burned</Text>
+                    <Text style={styles.statLabel}>{t('gym.kcal_burned', 'Kcal Burned')}</Text>
                 </View>
             </View>
 
             {/* EXERCISE BREAKDOWN */}
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Exercise Breakdown</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('gym.breakdown', 'Exercise Breakdown')}</Text>
             <View style={styles.breakdownList}>
                 {exercises.map((item, index) => (
                     <View key={index} style={[styles.exerciseItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -147,12 +149,12 @@ export default function GymSummaryScreen() {
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
                             <Text style={styles.exerciseSummary}>
-                                {item.sets.length} Sets • {item.sets.reduce((s, c) => s + c.reps, 0)} Reps Total
+                                {item.sets.length} {t('gym.sets_count', 'Sets')} • {item.sets.reduce((s, c) => s + c.reps, 0)} {t('gym.reps_total', 'Reps Total')}
                             </Text>
                         </View>
                         <View style={styles.maxWeightBadge}>
                             <Text style={styles.maxWeightText}>
-                                {Math.max(...item.sets.map(s => s.weight))} kg Max
+                                {Math.max(...item.sets.map(s => s.weight))} kg {t('gym.max', 'Max')}
                             </Text>
                         </View>
                     </View>
@@ -169,12 +171,12 @@ export default function GymSummaryScreen() {
                     {isSaving ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.saveBtnText}>Back to Dashboard</Text>
+                        <Text style={styles.saveBtnText}>{t('gym.back_dashboard', 'Back to Dashboard')}</Text>
                     )}
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
-                    <Text style={styles.discardBtnText}>Discard Activity</Text>
+                    <Text style={styles.discardBtnText}>{t('gym.discard', 'Discard Activity')}</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>
