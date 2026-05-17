@@ -50,7 +50,8 @@ export const LanguageProvider = ({
   const translations: Record<Language, Record<string, string>> = {
     vi: {
       "chat.coach_title": "Health Coach",
-      "chat.online_status": "● Đang hoạt động · Powered by Gemini",
+      "chat.online_status": "● Đang hoạt động",
+      "chat.offline_status": "Không hoạt động",
       "chat.empty_title": "Xin chào! Tôi là AI Health Coach",
       "chat.empty_subtitle":
         "Tôi đã được trang bị toàn bộ dữ liệu sức khỏe của bạn.\nHãy hỏi tôi bất cứ điều gì về sức khỏe của bạn!",
@@ -410,7 +411,7 @@ export const LanguageProvider = ({
       "personal_data.unit_h": "giờ",
       "personal_data.unit_m": "phút",
       "personal_data.unit_meter": "m",
-      "activity.hub": "Trung tâm Hoạt động",
+      "activity.hub": "Activity Hub",
       "activity.settings": "Cài đặt",
       "activity.steps": "Bước chân",
       "activity.calories": "Calo",
@@ -866,7 +867,8 @@ export const LanguageProvider = ({
     },
     en: {
       "chat.coach_title": "Health Coach",
-      "chat.online_status": "● Online · Powered by Gemini",
+      "chat.online_status": "● Online",
+      "chat.offline_status": "Service unavailable",
       "chat.empty_title": "Hi! I am your AI Health Coach",
       "chat.empty_subtitle":
         "I have full access to your health data.\nAsk me anything about your health!",

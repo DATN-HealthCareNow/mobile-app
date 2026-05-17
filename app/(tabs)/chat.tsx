@@ -13,6 +13,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -54,8 +55,31 @@ interface LocalMessage {
 }
 
 const CHAT_HISTORY_KEY = "ai_chat_history_v2";
+const CHAT_DATE_KEY = "ai_chat_date_v2"; // tracks the date of last chat session
 const MAX_STORED_MESSAGES = 50;
 const MAX_CONTEXT_TURNS = 10; // How many past turns we send to AI
+
+/** Returns today's date string in Vietnam timezone, e.g. "2026-05-18" */
+function getTodayVN(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Returns milliseconds until the next 00:00 in Vietnam timezone */
+function msUntilMidnightVN(): number {
+  const now = new Date();
+  // Get current VN time parts
+  const vnNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+  );
+  const nextMidnight = new Date(vnNow);
+  nextMidnight.setHours(24, 0, 0, 0); // next midnight in VN local
+  return nextMidnight.getTime() - vnNow.getTime();
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -480,7 +504,10 @@ export default function ChatScreen() {
   // ── Local state ───────────────────────────────────────────────────────────
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [aiError, setAiError] = useState(false);
   const defaultSuggestedQuestions = useMemo(
     () => [
       t("chat.suggest_q1"),
@@ -506,21 +533,57 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const { mutateAsync: sendChat, isPending: isTyping } = useHealthChat();
 
+  // ── Keyboard height tracking ──────────────────────────────────────────────
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   const userId = profile?.id || profile?._id;
   const historyKey = useMemo(
     () => (userId ? `${CHAT_HISTORY_KEY}_${userId}` : null),
     [userId],
   );
 
-  // ── Persist: load from SecureStore ───────────────────────────────────────
+  // ── Persist: load from SecureStore (with daily reset) ───────────────────
   useEffect(() => {
     if (!historyKey) {
       setMessages([]);
       return;
     }
 
+    const dateKey = userId ? `${CHAT_DATE_KEY}_${userId}` : null;
+
     const load = async () => {
       try {
+        const todayVN = getTodayVN();
+
+        // Check if we've crossed midnight since last session
+        const lastDate = dateKey
+          ? await SecureStore.getItemAsync(dateKey)
+          : null;
+
+        if (lastDate && lastDate !== todayVN) {
+          // New day → clear FE history (BE already has its own memory)
+          console.log(`[Chat] New day (${lastDate} → ${todayVN}), clearing local history.`);
+          await SecureStore.deleteItemAsync(historyKey);
+          if (dateKey) await SecureStore.setItemAsync(dateKey, todayVN);
+          setMessages([]);
+          setSuggestedQuestions(defaultSuggestedQuestions);
+          return;
+        }
+
+        // Same day – load existing history
         const raw = await SecureStore.getItemAsync(historyKey);
         if (raw) {
           const parsed: LocalMessage[] = JSON.parse(raw);
@@ -528,12 +591,15 @@ export default function ChatScreen() {
         } else {
           setMessages([]);
         }
+
+        // Always update date stamp so we know when the last session was
+        if (dateKey) await SecureStore.setItemAsync(dateKey, todayVN);
       } catch (e) {
         console.log("[Chat] Failed to load history:", e);
       }
     };
     load();
-  }, [historyKey]);
+  }, [historyKey, userId, defaultSuggestedQuestions]);
 
   // ── Persist: save to SecureStore ─────────────────────────────────────────
   const saveHistory = useCallback(
@@ -542,12 +608,41 @@ export default function ChatScreen() {
       try {
         const trimmed = msgs.slice(-MAX_STORED_MESSAGES);
         await SecureStore.setItemAsync(historyKey, JSON.stringify(trimmed));
+        // Keep date stamp fresh on every save
+        const dateKey = userId ? `${CHAT_DATE_KEY}_${userId}` : null;
+        if (dateKey) await SecureStore.setItemAsync(dateKey, getTodayVN());
       } catch (e) {
         console.log("[Chat] Failed to save history:", e);
       }
     },
-    [historyKey],
+    [historyKey, userId],
   );
+
+  // ── Midnight auto-reset (if app stays open overnight) ────────────────────
+  useEffect(() => {
+    const scheduleReset = () => {
+      const delay = msUntilMidnightVN();
+      console.log(`[Chat] Midnight reset scheduled in ${Math.round(delay / 1000)}s`);
+
+      const timer = setTimeout(async () => {
+        console.log("[Chat] Midnight reached – clearing local chat history.");
+        setMessages([]);
+        setSuggestedQuestions(defaultSuggestedQuestions);
+        if (historyKey) {
+          await SecureStore.deleteItemAsync(historyKey);
+        }
+        const dateKey = userId ? `${CHAT_DATE_KEY}_${userId}` : null;
+        if (dateKey) await SecureStore.setItemAsync(dateKey, getTodayVN());
+        // Schedule the next midnight reset (for the following day)
+        scheduleReset();
+      }, delay);
+
+      return timer;
+    };
+
+    const timer = scheduleReset();
+    return () => clearTimeout(timer);
+  }, [historyKey, userId, defaultSuggestedQuestions]);
 
   // ── Build full analytics context for AI ──────────────────────────────────
   const analyticsContext = useMemo(() => {
@@ -724,6 +819,7 @@ export default function ChatScreen() {
         if (response.suggested_questions?.length > 0) {
           setSuggestedQuestions(response.suggested_questions);
         }
+        setAiError(false);
       } catch (e: any) {
         console.error(
           "[Chat] API error:",
@@ -856,7 +952,7 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#f0f9ff", "#ffffff"]}
+        colors={isDark ? ["#0d1c2e", "#12263d"] : ["#b9dbf5", "#d7ebfa", "#e7f2fb"]}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -872,7 +968,9 @@ export default function ChatScreen() {
               <Text style={{ color: "#0f3f67" }}>AI </Text>
               <Text style={{ color: "#1497dd" }}>{t("chat.coach_title")}</Text>
             </Text>
-            <Text style={styles.online}>{t("chat.online_status")}</Text>
+            <Text style={aiError ? styles.onlineError : styles.online}>
+              {aiError ? "● " + t("chat.offline_status") : t("chat.online_status")}
+            </Text>
           </View>
         </View>
         <TouchableOpacity onPress={handleClearHistory} style={styles.menuBtn}>
@@ -965,7 +1063,7 @@ export default function ChatScreen() {
       {/* INPUT AREA - absolute, floats above tab bar */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 104 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 104 : 130}
         style={styles.inputAreaWrapper}
       >
         {/* QUOTA EXCEEDED BANNER REMOVED (Replaced by Modal) */}
@@ -1064,6 +1162,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           ) : null}
 
+
           {/* Input Bar */}
           <View style={[styles.inputBar, quotaExceeded && { opacity: 0.4 }]}>
             <TextInput
@@ -1082,6 +1181,8 @@ export default function ChatScreen() {
               onSubmitEditing={() => handleSend(input)}
               blurOnSubmit={false}
               editable={!quotaExceeded}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
             />
             <TouchableOpacity
               style={[
@@ -1102,6 +1203,72 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Typing Preview Popup - floats above keyboard */}
+      {isInputFocused && input.trim().length > 0 && keyboardHeight > 0 && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: keyboardHeight + 62,
+            left: 12,
+            right: 12,
+            backgroundColor: isDark ? "#162032" : "#dbeafe",
+            borderRadius: 16,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: isDark ? "#1e4976" : "#93c5fd",
+            shadowColor: "#1497dd",
+            shadowOffset: { width: 0, height: -3 },
+            shadowOpacity: 0.18,
+            shadowRadius: 10,
+            elevation: 8,
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 10,
+            zIndex: 100,
+          }}
+          pointerEvents="none"
+        >
+          <View
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: isDark ? "#0f3f67" : "#bfdbfe",
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 1,
+            }}
+          >
+            <MaterialCommunityIcons name="pencil" size={14} color="#1497dd" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: "800",
+                color: isDark ? "#60a5fa" : "#1d4ed8",
+                marginBottom: 4,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              {language === "vi" ? "Đang soạn tin" : "Composing"}
+            </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                color: isDark ? "#e2e8f0" : "#1e3a5f",
+                lineHeight: 20,
+                ...Typography.body,
+              }}
+              numberOfLines={3}
+            >
+              {input}
+            </Text>
+          </View>
+        </View>
+      )}
 
       <PremiumUpgradeModal
         visible={quotaExceeded}
@@ -1151,6 +1318,12 @@ const createStyles = (colors: any, isDark: boolean) =>
     online: {
       fontSize: 12,
       color: "#22c55e",
+      marginTop: 2,
+      fontWeight: "600",
+    },
+    onlineError: {
+      fontSize: 12,
+      color: "#ef4444",
       marginTop: 2,
       fontWeight: "600",
     },
@@ -1213,7 +1386,7 @@ const createStyles = (colors: any, isDark: boolean) =>
     inputArea: {
       borderTopWidth: 1,
       borderTopColor: isDark ? "#1e293b" : "#e2e8f0",
-      backgroundColor: isDark ? "#0d1b2acc" : "#ffffffee",
+      backgroundColor: isDark ? "#0f1419" : "#f5f8fa",
       paddingBottom: Platform.OS === "ios" ? 12 : 8,
     },
     chipsRow: {
