@@ -1,0 +1,27 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Vào Tab Lịch trình (Tọa độ 87%, 92%)
+- tapOn:
+    point: 87%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Cuộn để tìm danh sách thuốc
+- scroll
+
+# Bước 3: Chọn một mục thuốc cụ thể (Tọa độ 50%, 49%)
+- tapOn:
+    point: 50%,49%
+
+# Bước 4: Thao tác phụ (Tọa độ 12%, 10%)
+- tapOn:
+    point: 12%,10%
+
+

@@ -1,0 +1,22 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Chuyển sang Tab Analysis (Sử dụng tọa độ 69%, 92%)
+- tapOn:
+    point: 69%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Thao tác phụ trên màn hình Analysis (Sử dụng tọa độ 12%, 10%)
+- tapOn:
+    point: 12%,10%
+    retryTapIfNoChange: true
+
+# Bước 3: Cuộn xuống để xem toàn bộ các biểu đồ phân tích
+- scroll 

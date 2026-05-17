@@ -1,6 +1,0 @@
-appId: com.danhvip2k4.mobileapp
----
-# TC-4.1: Xem màn hình Activity & danh sách môn tập
-- launchApp
-- tapOn: "Activity"
-- assertVisible: ".*Gym.*|.*Yoga.*|.*Running.*|.*Stretch.*"

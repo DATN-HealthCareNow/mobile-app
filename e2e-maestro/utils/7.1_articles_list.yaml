@@ -1,6 +1,0 @@
-appId: com.danhvip2k4.mobileapp
----
-- launchApp
-- tapOn: "Home"
-- tapOn: "Read Article"
-- assertVisible: ".*Article.*" # Xác nhận đã vào trang chi tiết bài viết

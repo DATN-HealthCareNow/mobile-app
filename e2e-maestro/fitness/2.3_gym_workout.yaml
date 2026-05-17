@@ -1,0 +1,46 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Vào Tab Fitness (31%, 92%)
+- tapOn:
+    point: 31%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn Gym Workout (70%, 67%)
+- tapOn:
+    point: 70%,67%
+    retryTapIfNoChange: true
+
+# Bước 3: Chọn bài tập cụ thể (73%, 54%)
+- tapOn:
+    point: 73%,54%
+
+# Bước 4: Xem hướng dẫn (50%, 50%)
+- tapOn:
+    point: 50%,50%
+
+# Bước 5: Bắt đầu Timer (80%, 58%)
+- tapOn:
+    point: 80%,58%
+
+# Bước 6: Tạm dừng/Tiếp tục (50%, 82%)
+- tapOn:
+    point: 50%,82%
+
+# Bước 7: Chuyển bước/Xác nhận (74%, 92%)
+- tapOn:
+    point: 74%,92%
+
+# Bước 8: Cuộn xuống cuối để thấy nút Finish
+- scroll
+
+# Bước 9: Bấm nút Finish cuối cùng (50%, 84%)
+- tapOn:
+    point: 50%,84%

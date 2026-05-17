@@ -1,0 +1,27 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Chuyển sang Tab tương ứng (Tọa độ Home/Dashboard)
+- tapOn:
+    point: 69%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn chức năng Nhập chỉ số
+- tapOn:
+    point: 20%,25%
+    retryTapIfNoChange: true
+
+
+
+# Bước 5: Bấm Lưu bằng tọa độ ở góc trên (89%, 11%)
+- tapOn:
+    point: 89%,11%
+    retryTapIfNoChange: true
+

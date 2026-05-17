@@ -1,0 +1,30 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Vào Tab Sleep (13%, 92%)
+- tapOn:
+    point: 13%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chuỗi thao tác cài đặt báo thức (Point sequence)
+- tapOn:
+    point: 50%,93%
+- tapOn:
+    point: 50%,17%
+- tapOn:
+    point: 38%,33%
+- tapOn:
+    point: 50%,62%
+- tapOn:
+    point: 78%,73%
+- tapOn:
+    point: 50%,93%
+- tapOn:
+    point: 81%,58%

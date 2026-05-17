@@ -1,0 +1,29 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Về Tab Home (Tọa độ 13%, 92%)
+- tapOn:
+    point: 13%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn Card Meal Plan (Tọa độ 81%, 46%)
+- tapOn:
+    point: 81%,46%
+    retryTapIfNoChange: true
+
+# Bước 3: Thao tác nhắc nhở (Tọa độ 50%, 94%)
+- tapOn:
+    point: 50%,94%
+
+
+
+# Bước 5: Quay lại (Tọa độ 12%, 10%)
+- tapOn:
+    point: 12%,10%

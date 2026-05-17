@@ -1,0 +1,26 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Về Tab Home (Sử dụng tọa độ 13%, 92%)
+- tapOn:
+    point: 13%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Vào màn hình Hydration (Sử dụng tọa độ 50%, 46%)
+- tapOn:
+    point: 50%,46%
+    retryTapIfNoChange: true
+
+# Bước 3: Cuộn xuống để tìm phần Lịch sử
+- scroll
+
+# Bước 4: Thao tác tiếp theo bằng tọa độ
+- tapOn:
+    point: 12%,10%

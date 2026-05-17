@@ -1,0 +1,26 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Chuyển sang Tab Home/Dashboard (13%, 92%)
+- tapOn:
+    point: 13%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn Card theo dõi nước (50%, 46%)
+- tapOn:
+    point: 50%,46%
+    retryTapIfNoChange: true
+
+# Bước 3: Thêm nước (Sử dụng tọa độ tuyệt đối cho nút 500ml và 250ml)
+- tapOn:
+    point: 50%,94% # Nút 500ml
+- tapOn:
+    point: 20%,94% # Nút 250ml
+

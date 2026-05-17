@@ -1,0 +1,23 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+- tapOn:
+    id: "tab-fitness"
+    retryTapIfNoChange: true
+- tapOn:
+    id: "btn-activity-log"
+    retryTapIfNoChange: true
+- tapOn:
+    id: "btn-filter"
+- tapOn:
+    id: "filter-running"
+- tapOn:
+    id: "btn-calendar-view"
+- assertVisible: "Workout History"

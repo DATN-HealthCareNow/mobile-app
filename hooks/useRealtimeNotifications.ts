@@ -109,10 +109,9 @@ export const useRealtimeNotifications = (token: string | null, userId: string | 
   useEffect(() => {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        // Set to false to prevent the system banner from appearing and getting stuck 
-        // while the app is in the foreground. Important alerts are handled by the
-        // in-app Modal via showAlert() below.
-        shouldShowBanner: false,
+        // Set to true so that all notifications show up as system banners (external)
+        // even when the app is in the foreground, matching the user's request.
+        shouldShowBanner: true,
         shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
@@ -165,30 +164,9 @@ export const useRealtimeNotifications = (token: string | null, userId: string | 
             }
 
             const eventId = notification.eventId || message.eventType || "";
-            
-            // BUSINESS LOGIC: Filter which notifications show an in-app Alert Modal.
-            // - MEAL_REMINDER: Should show in-app (User confirmed OK).
-            // - WATER_REMINDER / ACTIVITY_REMINDER: Should ONLY be push notifications,
-            //   NOT in-app popups (User said 'hoàn toàn sai' if they appear in-app).
-            const isWater = eventId === "WATER_REMINDER";
-            const isExercise = 
-              eventId === "ACTIVITY_REMINDER" || 
-              eventId === "LOW_EXERCISE_REMINDER" || 
-              eventId === "EXERCISE_SCHEDULE" ||
-              eventId === "EXERCISE_SCHEDULE_REMINDER";
-            const isMedication = eventId === "MEDICATION_REMINDER" || eventId === "MEDICATION_TIME";
-            
-            // Only show in-app alert for specific types (e.g. Meals).
-            // User confirmed: Medication, Water, and Exercise should NOT be in-app popups.
-            if (!isWater && !isExercise && !isMedication) {
-              showAlert(
-                notification.title || "HealthCareNow",
-                notification.content || "Bạn có một thông báo mới.",
-              );
-            }
-
-            // Invalidate queries to refresh the notification list if the user is on that screen
-            queryClient.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
+            // The user has completely disabled in-app alerts (showAlert) and the notification page.
+            // All notifications are now handled purely via Expo system banners (external notifications).
+            // Keeping event triggers below for other system integrations.
             
             // Specific UI event triggers
             if (eventId === "NEW_ARTICLE_PUBLISHED" || message.eventType === "NEW_ARTICLE_PUBLISHED") {

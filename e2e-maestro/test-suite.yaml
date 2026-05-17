@@ -1,38 +1,23 @@
 appId: com.danhvip2k4.mobileapp
 ---
-# ─── Nhóm 1: Xác thực & Hồ sơ người dùng ───────────────────────────
-- runFlow: auth/1.1_launch_app.yaml
-- runFlow: auth/1.2_login.yaml
-- runFlow: auth/1.3_view_profile.yaml
+# ─── Nhóm 1: Chỉ số & Nước (Metrics & Hydration) ─────────────────────
+- runFlow: tracking/1.1_metric_entry.yaml
+- runFlow: tracking/1.2_hydration.yaml
+- runFlow: tracking/1.3_hydration_history.yaml
+- runFlow: tracking/1.4_analysis_charts.yaml
 
-# ─── Nhóm 2: Điều hướng giao diện chính ─────────────────────────────
-- runFlow: auth/2.1_home_display.yaml
-- runFlow: auth/2.2_tab_navigation.yaml
+# ─── Nhóm 2: Luyện tập Thể chất (Fitness & Activities) ───────────────
+- runFlow: fitness/2.1_running.yaml
+- runFlow: fitness/2.3_gym_workout.yaml
+- runFlow: fitness/2.4_yoga_flow.yaml
+- runFlow: fitness/2.5_stretching.yaml
 
-# ─── Nhóm 3: Theo dõi nước uống (Hydration) ─────────────────────────
-- runFlow: tracking/3.1_hydration_view.yaml
-- runFlow: tracking/3.2_hydration.yaml
-- runFlow: tracking/3.3_hydration_multiple_logs.yaml
+# ─── Nhóm 3: Giấc ngủ & Thư giãn (Sleep & Wellness) ──────────────────
+- runFlow: sleep/3.1_sleep_track.yaml
+- runFlow: sleep/3.2_alarm_setup.yaml
+- runFlow: sleep/3.3_sleep_music.yaml
 
-# ─── Nhóm 4: Hoạt động thể chất (Fitness) ───────────────────────────
-- runFlow: fitness/4.1_activity_list.yaml
-- runFlow: fitness/4.2_running.yaml
-- runFlow: fitness/4.3_gym_workout.yaml
-- runFlow: fitness/4.4_yoga.yaml
-- runFlow: fitness/4.5_stretch.yaml
-
-# ─── Nhóm 5: Quản lý giấc ngủ (Sleep) ──────────────────────────────
-- runFlow: sleep/5.1_sleep_view.yaml
-- runFlow: sleep/5.3_sleep_music.yaml
-
-# ─── Nhóm 6: Quản lý lịch (Schedule) ───────────────────────────────
-- runFlow: schedules/6.1_schedule_view.yaml
-- runFlow: schedules/6.2_schedule_toggle.yaml
-
-# ─── Nhóm 7: Tiện ích & Cài đặt ─────────────────────────────────────
-- runFlow: utils/7.1_articles_list.yaml
-- runFlow: utils/7.2_article_detail.yaml
-- runFlow: utils/7.3_health_analysis.yaml
-- runFlow: utils/7.4_theming.yaml
-- runFlow: utils/7.5_language_switch.yaml
-- runFlow: utils/7.6_notifications.yaml
+# ─── Nhóm 4: Quản lý Lịch trình & Dinh dưỡng (Schedules & Nutrition) ──
+- runFlow: schedules/4.1_medication.yaml
+- runFlow: schedules/4.2_meal_plan.yaml
+- runFlow: schedules/4.3_new_schedule.yaml
