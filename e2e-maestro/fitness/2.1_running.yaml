@@ -1,0 +1,34 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Chuyển sang Tab Fitness (Tọa độ 31%, 92%)
+- tapOn:
+    point: 31%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn Card Running (Tọa độ 27%, 54%)
+- tapOn:
+    point: 27%,54%
+    retryTapIfNoChange: true
+
+# Bước 3: Bấm nút Start (Tọa độ 50%, 58%)
+- tapOn:
+    point: 50%,58%
+
+
+
+# Bước 5: Bấm nút Stop/Pause (Tọa độ 62%, 94%)
+- tapOn:
+    point: 62%,94%
+
+# Bước 6: Bấm nút Xác nhận/Lưu (Tọa độ 19%, 94%)
+- tapOn:
+    point: 19%,94%
+

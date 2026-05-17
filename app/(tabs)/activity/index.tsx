@@ -336,7 +336,7 @@ export default function Activity() {
                   keyboardType="numeric"
                   value={tempSteps}
                   onChangeText={setTempSteps}
-                  placeholder="e.g. 10000"
+                  placeholder={t("activity.steps_placeholder", "e.g. 10000")}
                   placeholderTextColor={colors.textSecondary}
                 />
 
@@ -353,7 +353,7 @@ export default function Activity() {
                   keyboardType="numeric"
                   value={tempCalories}
                   onChangeText={setTempCalories}
-                  placeholder="e.g. 500"
+                  placeholder={t("activity.calories_placeholder", "e.g. 500")}
                   placeholderTextColor={colors.textSecondary}
                 />
 

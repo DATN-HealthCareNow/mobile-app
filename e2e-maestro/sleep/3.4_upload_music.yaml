@@ -1,0 +1,25 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+- tapOn:
+    id: "tab-sleep"
+    retryTapIfNoChange: true
+- tapOn:
+    id: "btn-sleep-music"
+    retryTapIfNoChange: true
+- tapOn:
+    id: "btn-upload-music"
+- tapOn:
+    id: "btn-select-file"
+- tapOn:
+    id: "file-upload-success"
+- tapOn:
+    id: "btn-upload-cloud"
+- assertVisible: "Upload Complete"

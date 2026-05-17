@@ -36,7 +36,6 @@ import {
   useHealthInsights,
   useHealthProactive,
 } from "../../hooks/useHealthInsights";
-import { useUnreadNotificationCount } from "../../hooks/useNotifications";
 import { useProfile } from "../../hooks/useUser";
 import { useWaterProgress } from "../../hooks/useWaterIntake";
 import { isScheduleToday, useScheduleStore } from "../../store/scheduleStore";
@@ -62,7 +61,6 @@ export default function HomeScreen() {
   const { token, userId } = useSession();
   const { data: profile } = useProfile(token);
   const { data: waterProgress } = useWaterProgress();
-  const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const { isSyncing, syncData, authorize, hasToken } = useHealthData();
   const { schedules, loadSchedules } = useScheduleStore();
   const { sleepGoal } = useSleepStore();
@@ -383,17 +381,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.notificationBtn}
-            onPress={() => router.push("/screen/notifications")}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={colors.text}
-            />
-            {unreadCount > 0 && <View style={styles.dot} />}
-          </TouchableOpacity>
+
         </View>
 
         {/* WELCOME SECTION */}

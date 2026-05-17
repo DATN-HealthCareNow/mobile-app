@@ -1,9 +1,0 @@
-appId: com.danhvip2k4.mobileapp
----
-# TC-1.4: Đăng xuất tài khoản
-- launchApp
-- tapOn: "Profile"
-- scrollTo:
-    direction: down
-- tapOn: ".*Logout.*|.*Đăng xuất.*"
-- assertVisible: "Sign In"

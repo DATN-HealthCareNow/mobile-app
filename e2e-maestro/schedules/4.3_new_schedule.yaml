@@ -1,0 +1,40 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Mở form tạo lịch trình mới (Tọa độ 80%, 63%)
+- tapOn:
+    point: 80%,63%
+    retryTapIfNoChange: true
+
+# Bước 2: Chuyển sang Tab Lịch trình (Tọa độ 86%, 92%)
+- tapOn:
+    point: 86%,92%
+    retryTapIfNoChange: true
+
+# Bước 3: Cuộn trang để xem hết các tùy chọn
+- scroll
+
+# Bước 4: Thiết lập các tùy chọn (Tọa độ 54%, 78% và 20%, 78%)
+- tapOn:
+    point: 54%,78%
+- tapOn:
+    point: 20%,78%
+
+# Bước 5: Bấm nút Tiếp theo/Lưu (Tọa độ 92%, 91%)
+- tapOn:
+    point: 92%,91%
+
+# Bước 6: Xác nhận lưu (Tọa độ 50%, 93%)
+- tapOn:
+    point: 50%,93%
+
+# Bước 7: Hoàn tất (Tọa độ 81%, 58%)
+- tapOn:
+    point: 81%,58%

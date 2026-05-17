@@ -1,0 +1,22 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Chuyển sang Tab Sleep (Tọa độ 13%, 92%)
+- tapOn:
+    point: 13%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Bắt đầu theo dõi giấc ngủ (Tọa độ 19%, 46%)
+- tapOn:
+    point: 19%,46%
+
+
+# Bước 4: Thức dậy (Sử dụng ID hoặc Point nếu cần)
+

@@ -1,0 +1,39 @@
+appId: com.danhvip2k4.mobileapp
+---
+- launchApp
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "(?i)allow|ok|skip|continue|cho phép|while using|đóng|close"
+          optional: true
+
+# Bước 1: Vào Tab Fitness (Tọa độ 31%, 92%)
+- tapOn:
+    point: 31%,92%
+    retryTapIfNoChange: true
+
+# Bước 2: Chọn Card Yoga (Tọa độ 73%, 74%)
+- tapOn:
+    point: 73%,74%
+    retryTapIfNoChange: true
+
+# Bước 3: Chọn cấp độ bài tập (Tọa độ 50%, 50%)
+- tapOn:
+    point: 50%,50%
+
+# Bước 4: Bấm nút Start Flow (Tọa độ 80%, 60%)
+- tapOn:
+    point: 80%,60%
+
+
+# Bước 6: Cuộn xuống cuối giao diện
+- scroll
+
+# Bước 7: Bấm nút Kết thúc buổi tập (Tọa độ 12%, 85%)
+- tapOn:
+    point: 12%,85%
+
+# Bước 8: Bấm nút Xác nhận hoàn thành (Tọa độ 50%, 68%)
+- tapOn:
+    point: 50%,68%

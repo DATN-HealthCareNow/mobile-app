@@ -566,6 +566,9 @@ export default function ChatScreen() {
         sleep_minutes: d.metrics?.sleep_minutes ?? null,
       })) ?? [];
 
+    // Extract today's specific metrics (most recent entry) for Tool access
+    const todayEntry = weekSummary.length > 0 ? weekSummary[weekSummary.length - 1] : null;
+
     return {
       bmi: aiData?.analytics?.bmi ?? null,
       bmi_category: aiData?.analytics?.bmi_category ?? null,
@@ -581,6 +584,12 @@ export default function ChatScreen() {
       risks: aiData?.insight?.risks ?? [],
       recommendations: aiData?.insight?.recommendations ?? [],
       water_logs: Array.isArray(waterLogs) ? waterLogs.slice(0, 50) : [],
+      // Today's realtime metrics — used by AI Agent tools
+      steps_today: todayEntry?.steps ?? null,
+      heart_rate: todayEntry?.heart_rate ?? null,
+      calories_today: todayEntry?.calories ?? null,
+      sleep_minutes_today: todayEntry?.sleep_minutes ?? null,
+      exercise_minutes_today: todayEntry?.exercise_minutes ?? null,
     };
   }, [aiData, weeklyData, waterLogs]);
 
