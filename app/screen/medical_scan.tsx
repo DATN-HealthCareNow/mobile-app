@@ -238,53 +238,79 @@ export default function MedicalScanScreen() {
         );
       }
 
-      // Create schedules on server
+      // Create unified schedule on server
       const medications = result.medications || [];
+      const timeSet = new Set<string>();
+      medications.forEach((med) => {
+        if (med.schedules && Array.isArray(med.schedules)) {
+          med.schedules.forEach((s) => {
+            if (s.time) timeSet.add(s.time);
+          });
+        }
+      });
+      const uniqueTimes = Array.from(timeSet);
       let scheduleCount = 0;
-      for (const med of medications) {
-        if (med.schedules && med.schedules.length > 0) {
-          for (const sched of med.schedules) {
-            try {
-              await scheduleService.createSchedule({
-                title: t("home.medication", "Medication") + ": " + med.name,
-                schedule_type: "RECURRING",
-                start_date: new Date().toISOString(),
-                reminder_enabled: true,
-                source_id: savedRecord.id,
-                recurrence_config: {
-                  repeat_days: [0, 1, 2, 3, 4, 5, 6],
-                  reminder_time: sched.time,
-                },
-              });
 
-              // Schedule Local Notification
+      if (uniqueTimes.length > 0) {
+        try {
+          await scheduleService.createSchedule({
+            title: t("home.medication", "Medication"),
+            schedule_type: "RECURRING",
+            start_date: new Date().toISOString(),
+            reminder_enabled: true,
+            source_id: savedRecord.id,
+            diagnosis: result.diagnosis || t("medical.default_title", "Medical Record"),
+            medications: medications,
+            recurrence_config: {
+              repeat_days: [0, 1, 2, 3, 4, 5, 6],
+              reminder_times: uniqueTimes,
+              reminder_time: uniqueTimes[0],
+            },
+          });
+
+          // Schedule Local Notifications for each medicine
+          for (const med of medications) {
+            let medSchedules = med.schedules && med.schedules.length > 0 ? med.schedules : [];
+            
+            // Fallback logic for frequency if empty
+            if (medSchedules.length === 0) {
+              const note = (med.note || "").toLowerCase();
+              const dosage = (med.dosage || "").toLowerCase();
+              if (note.includes("2 lần") || dosage.includes("2 lần")) {
+                medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
+              } else if (note.includes("3 lần") || dosage.includes("3 lần")) {
+                medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "13:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
+              } else {
+                medSchedules = [{ time: "08:00", dosage: med.dosage || "" }];
+              }
+            }
+
+            for (const sched of medSchedules) {
               const [hour, minute] = sched.time.split(":").map(Number);
+              const dosageText = sched.dosage || med.dosage || "";
+              
               await Notifications.scheduleNotificationAsync({
                 content: {
                   title: t("medical.notif_title", "💊 Medication Reminder"),
-                  body: t(
-                    "medical.notif_body",
-                    "It's time to take {name} ({dosage})",
-                  )
+                  body: t("medical.notif_body", "It's time to take {name} ({dosage})")
                     .replace("{name}", med.name)
-                    .replace(
-                      "{dosage}",
-                      sched.dosage || med.dosage || t("medical.unit_dose", "1 dose"),
-                    ),
-                  data: { recordId: savedRecord.id },
+                    .replace("{dosage}", dosageText || t("medical.unit_dose", "1 dose")),
+                  data: { screen: 'medication_schedule', recordId: savedRecord.id },
+                  sound: true,
+                  priority: Notifications.AndroidNotificationPriority.HIGH,
                 },
                 trigger: {
+                  type: 'daily',
                   hour,
                   minute,
                   repeats: true,
-                  type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-                } as Notifications.NotificationTriggerInput,
+                } as any,
               });
-              scheduleCount++;
-            } catch (e) {
-              console.log("Failed to create sub-schedule", e);
             }
           }
+          scheduleCount = medications.length;
+        } catch (e) {
+          console.log("Failed to create unified schedule", e);
         }
       }
 
@@ -319,55 +345,81 @@ export default function MedicalScanScreen() {
   };
 
   const createRemindersForRecord = async (
-    recordId: string,
-    medications: any[],
+    record: any,
   ) => {
+    const recordId = record.id;
+    const medications = record.medications || [];
+    const timeSet = new Set<string>();
+    medications.forEach((med: any) => {
+      if (med.schedules && Array.isArray(med.schedules)) {
+        med.schedules.forEach((s: any) => {
+          if (s.time) timeSet.add(s.time);
+        });
+      }
+    });
+    const uniqueTimes = Array.from(timeSet);
     let count = 0;
-    for (const med of medications) {
-      if (med.schedules && med.schedules.length > 0) {
-        for (const sched of med.schedules) {
-          try {
-            await scheduleService.createSchedule({
-              title: t("home.medication", "Medication") + ": " + med.name,
-              schedule_type: "RECURRING",
-              start_date: new Date().toISOString(),
-              reminder_enabled: true,
-              source_id: recordId,
-              recurrence_config: {
-                repeat_days: [0, 1, 2, 3, 4, 5, 6],
-                reminder_time: sched.time,
-              },
-            });
 
-            // Schedule Local Notification
+    if (uniqueTimes.length > 0) {
+      try {
+        await scheduleService.createSchedule({
+          title: t("home.medication", "Medication"),
+          schedule_type: "RECURRING",
+          start_date: new Date().toISOString(),
+          reminder_enabled: true,
+          source_id: recordId,
+          diagnosis: record.diagnosis || t("medical.default_title", "Medical Record"),
+          medications: medications,
+          recurrence_config: {
+            repeat_days: [0, 1, 2, 3, 4, 5, 6],
+            reminder_times: uniqueTimes,
+            reminder_time: uniqueTimes[0],
+          },
+        });
+
+        // Schedule Local Notifications for each medicine
+        for (const med of medications) {
+          let medSchedules = med.schedules && med.schedules.length > 0 ? med.schedules : [];
+          
+          // Fallback logic for frequency if empty
+          if (medSchedules.length === 0) {
+            const note = (med.note || "").toLowerCase();
+            const dosage = (med.dosage || "").toLowerCase();
+            if (note.includes("2 lần") || dosage.includes("2 lần")) {
+              medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
+            } else if (note.includes("3 lần") || dosage.includes("3 lần")) {
+              medSchedules = [{ time: "08:00", dosage: med.dosage || "" }, { time: "13:00", dosage: med.dosage || "" }, { time: "20:00", dosage: med.dosage || "" }];
+            } else {
+              medSchedules = [{ time: "08:00", dosage: med.dosage || "" }];
+            }
+          }
+
+          for (const sched of medSchedules) {
             const [hour, minute] = sched.time.split(":").map(Number);
+            const dosageText = sched.dosage || med.dosage || "";
+            
             await Notifications.scheduleNotificationAsync({
               content: {
                 title: t("medical.notif_title", "💊 Medication Reminder"),
-                body: t(
-                  "medical.notif_body",
-                  "It's time to take {name} ({dosage})",
-                )
+                body: t("medical.notif_body", "It's time to take {name} ({dosage})")
                   .replace("{name}", med.name)
-                  .replace(
-                    "{dosage}",
-                    sched.dosage ||
-                      med.dosage ||
-                      t("medical.unit_dose", "1 dose"),
-                  ),
-                data: { recordId },
+                  .replace("{dosage}", dosageText || t("medical.unit_dose", "1 dose")),
+                data: { screen: 'medication_schedule', recordId },
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
               },
               trigger: {
-                type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                type: 'daily',
                 hour,
                 minute,
-              } as Notifications.NotificationTriggerInput,
+                repeats: true,
+              } as any,
             });
-            count++;
-          } catch (e) {
-            console.log("Failed to create sub-schedule", e);
           }
         }
+        count = medications.length;
+      } catch (e) {
+        console.log("Failed to create unified schedule", e);
       }
     }
     return count;
@@ -388,8 +440,7 @@ export default function MedicalScanScreen() {
     } else {
       // Enable: Create
       const count = await createRemindersForRecord(
-        record.id,
-        record.medications || [],
+        record
       );
       if (count > 0) {
         Alert.alert(t("auth.verify_register.success_title"), t("medical.reminders_enabled"));

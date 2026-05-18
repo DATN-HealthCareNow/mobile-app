@@ -29,7 +29,7 @@ export default function ChangePasswordScreen() {
   const { t } = useLanguage();
 
   const { token } = useSession();
-  const { data: profile } = useProfile(token);
+  const { data: profile, isLoading: isProfileLoading } = useProfile(token);
 
   const requestOtpMutation = useRequestChangePasswordOtp();
   const confirmMutation = useConfirmChangePassword();
@@ -241,11 +241,14 @@ export default function ChangePasswordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.actionBtn}
+              style={[
+                styles.actionBtn,
+                (requestOtpMutation.isPending || isProfileLoading) && { opacity: 0.7 }
+              ]}
               onPress={handleRequestOtp}
-              disabled={requestOtpMutation.isPending}
+              disabled={requestOtpMutation.isPending || isProfileLoading}
             >
-              {requestOtpMutation.isPending ? (
+              {requestOtpMutation.isPending || isProfileLoading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <Text style={styles.actionBtnText}>
