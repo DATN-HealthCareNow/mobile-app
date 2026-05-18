@@ -94,16 +94,16 @@ export const authService = {
 
   requestChangeEmailOtp: async (data: ChangeEmailRequest): Promise<void> => {
     return axiosClient.post('/api/v1/auth/change-email/request-otp', {
-      currentEmail: data.current_email,
-      newEmail: data.new_email,
+      current_email: data.current_email,
+      new_email: data.new_email,
       password: data.password
     });
   },
 
   confirmChangeEmail: async (data: ChangeEmailConfirmRequest): Promise<void> => {
     return axiosClient.post('/api/v1/auth/change-email/confirm', {
-      currentEmail: data.current_email,
-      newEmail: data.new_email,
+      current_email: data.current_email,
+      new_email: data.new_email,
       otp: data.otp
     });
   },

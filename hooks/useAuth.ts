@@ -148,9 +148,14 @@ export const useRequestChangeEmailOtp = () => {
 };
 
 export const useConfirmChangeEmail = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: ChangeEmailConfirmRequest) =>
       authService.confirmChangeEmail(data),
+    onSuccess: () => {
+      // Invalidate profile cache so the new email is fetched
+      queryClient.invalidateQueries({ queryKey: ["user", "profile"] });
+    },
   });
 };
 

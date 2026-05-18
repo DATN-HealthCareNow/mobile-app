@@ -17,7 +17,7 @@ export default function ScheduleManageScreen() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const activeCount = schedules.filter(s => s.isActive).length;
+    const activeCount = schedules.filter(s => s.isActive && s.type !== 'Medical').length;
     const weekDays = [
         { key: 'M', label: t('common.mon', 'Mon') },
         { key: 'T', label: t('common.tue', 'Tue') },
@@ -49,19 +49,29 @@ export default function ScheduleManageScreen() {
         
         const groupedMedicals: Record<string, any> = {};
         medicalSchedules.forEach(med => {
-            const groupKey = med.goal;
+            const groupKey = med.sourceId || med.goal || 'Medical';
             if (!groupedMedicals[groupKey]) {
                 groupedMedicals[groupKey] = {
                     ...med,
                     isGroupedMedical: true,
                     times: [med.time],
-                    originalIds: [med.id]
+                    originalIds: [med.id],
+                    medications: Array.isArray(med.medications) ? [...med.medications] : []
                 };
             } else {
                 if (!groupedMedicals[groupKey].times.includes(med.time)) {
                     groupedMedicals[groupKey].times.push(med.time);
                 }
                 groupedMedicals[groupKey].originalIds.push(med.id);
+                if (Array.isArray(med.medications)) {
+                    // Merge medications that are not already in the list (by name to avoid exact duplicates if any)
+                    med.medications.forEach((newMed: any) => {
+                        const exists = groupedMedicals[groupKey].medications.some((existingMed: any) => existingMed.name === newMed.name);
+                        if (!exists) {
+                            groupedMedicals[groupKey].medications.push(newMed);
+                        }
+                    });
+                }
             }
         });
 
@@ -80,7 +90,7 @@ export default function ScheduleManageScreen() {
             case 'Yoga': return { icon: 'yoga', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' };
             case 'Pool Laps': return { icon: 'swim', color: '#14b8a6', bg: 'rgba(20, 184, 166, 0.15)' };
             case 'HIIT Training': return { icon: 'flash', color: '#f43f5e', bg: 'rgba(244, 63, 94, 0.15)' };
-            case 'Medical': return { icon: 'medical', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' };
+            case 'Medical': return { icon: 'pill', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' };
             default: return { icon: 'human-handsup', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' };
         }
     };
@@ -182,38 +192,17 @@ export default function ScheduleManageScreen() {
                                                         </View>
                                                     )}
                                                     <View style={[styles.iconBox, { backgroundColor: themeObj.bg }]}> 
-                                                        {item.type === 'Medical' ? (
-                                                            <Ionicons name={themeObj.icon as any} size={22} color={themeObj.color} />
-                                                        ) : (
-                                                            <MaterialCommunityIcons name={themeObj.icon as any} size={22} color={themeObj.color} />
-                                                        )}
+                                                        <MaterialCommunityIcons name={themeObj.icon as any} size={22} color={themeObj.color} />
                                                     </View>
                                                     
                                     <View style={styles.cardContent}>
                                           <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                                              {item.type === 'Medical' ? item.goal : (t(`meal.${item.type.toLowerCase()}`) !== `meal.${item.type.toLowerCase()}` ? t(`meal.${item.type.toLowerCase()}`) : item.type)}
+                                              {item.type === 'Medical' ? t('schedule.medical', 'Medication') : (t(`meal.${item.type.toLowerCase()}`) !== `meal.${item.type.toLowerCase()}` ? t(`meal.${item.type.toLowerCase()}`) : item.type)}
                                           </Text>
                                          
-                                         {item.type === 'Medical' && item.medications && item.medications.length > 0 ? (
-                                             <View style={{marginTop: 4, marginBottom: 8}}>
-                                                 {item.medications
-                                                    .filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time))
-                                                    .slice(0, 2)
-                                                    .map((med: any, idx: number) => {
-                                                     const timeSpecificDosage = med.schedules?.find((s: any) => s.time === item.time)?.dosage || med.dosage || t("medical.unit_dose", "1 dose");
-                                                     return (
-                                                         <Text key={idx} style={{fontSize: 12, color: '#64748b'}} numberOfLines={1}>
-                                                             • {med.name} ({timeSpecificDosage})
-                                                         </Text>
-                                                     );
-                                                 })}
-                                                 {item.medications.filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time)).length > 2 && (
-                                                     <Text style={{fontSize: 10, color: '#0ea5e9', fontWeight: '600'}}>+ {item.medications.filter((m: any) => !m.schedules || m.schedules.length === 0 || m.schedules.some((s: any) => s.time === item.time)).length - 2} {t('schedule.more', 'more')}</Text>
-                                                 )}
-                                             </View>
-                                         ) : (
-                                             <Text style={[styles.cardGoal, { color: '#64748b' }]}>{item.type === 'Medical' ? t('home.medication', 'Medication') : item.goal}</Text>
-                                         )}
+                                          <Text style={[styles.cardGoal, { color: '#64748b' }]} numberOfLines={2}>
+                                              {item.goal}
+                                          </Text>
 
                                          <View style={styles.metaRow}>
                                              <View style={styles.metaItem}>

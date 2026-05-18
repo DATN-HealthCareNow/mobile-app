@@ -226,41 +226,32 @@ export default function HomeScreen() {
     const normal = upcomingSchedules.filter((s) => s.type !== "Medical");
     const medical = upcomingSchedules.filter((s) => s.type === "Medical");
 
-    // 3. For medical, group by sourceId to find the NEXT upcoming time slot
-    const medicalBySource: Record<string, any[]> = {};
-    medical.forEach((s) => {
-      const key = s.sourceId || s.id; // Fallback to id if sourceId is missing
-      if (!medicalBySource[key]) medicalBySource[key] = [];
-      medicalBySource[key].push(s);
-    });
-
-    const nextMedicalSchedules: any[] = [];
-    Object.values(medicalBySource).forEach((schedulesList) => {
-      schedulesList.sort((a, b) => a.time.localeCompare(b.time));
-      if (schedulesList.length > 0) {
-        const nextTime = schedulesList[0].time;
-        const nextSlotSchedules = schedulesList.filter(
-          (s) => s.time === nextTime,
-        );
-        nextMedicalSchedules.push(...nextSlotSchedules);
-      }
-    });
-
-    // 4. Group the selected next medical schedules by time for UI display
+    // 3. For medical, group by sourceId (so legacy broken schedules group correctly)
     const medicalGroups: Record<string, any[]> = {};
-    nextMedicalSchedules.forEach((s) => {
-      if (!medicalGroups[s.time]) medicalGroups[s.time] = [];
-      medicalGroups[s.time].push(s);
+    medical.forEach((s) => {
+      const key = s.sourceId || s.goal || "Medical";
+      if (!medicalGroups[key]) medicalGroups[key] = [];
+      medicalGroups[key].push(s);
     });
 
     const combined: any[] = [...normal];
-    Object.keys(medicalGroups).forEach((time) => {
+    Object.keys(medicalGroups).forEach((groupKey) => {
+      const items = medicalGroups[groupKey];
+      // Sort items by time
+      items.sort((a, b) => a.time.localeCompare(b.time));
+      
+      const times = Array.from(new Set(items.map(item => item.time)));
+      const timeStr = times.join(", ");
+      
+      const displayGoal = items[0].goal || "Medical";
+
       combined.push({
-        id: "med_group_" + time,
+        id: "med_group_" + groupKey,
         isGroup: true,
         type: "Medical",
-        time: time,
-        items: medicalGroups[time],
+        time: timeStr,
+        goal: displayGoal,
+        items: items,
       });
     });
 
@@ -605,14 +596,14 @@ export default function HomeScreen() {
                         onPress={() => setSelectedMedGroup(schedule)}
                       >
                         <View style={styles.reminderIconBox}>
-                          <Ionicons name="medical" size={20} color="#10b981" />
+                          <MaterialCommunityIcons name="pill" size={20} color="#10b981" />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.reminderHeading}>
-                            {t("home.medication")}
+                          <Text style={styles.reminderHeading} numberOfLines={1}>
+                            {t("home.medication")} - {schedule.goal}
                           </Text>
                           <Text style={styles.reminderSub} numberOfLines={2}>
-                            {schedule.time} - {schedule.items.length}{" "}
+                            {schedule.time} - {schedule.items.reduce((acc: number, item: any) => acc + (item.medications?.length || 1), 0)}{" "}
                             {t("home.medications")}
                           </Text>
                         </View>

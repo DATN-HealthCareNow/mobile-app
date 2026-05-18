@@ -69,16 +69,16 @@ function getTodayVN(): string {
   }).format(new Date());
 }
 
-/** Returns milliseconds until the next 00:00 in Vietnam timezone */
+/** Returns milliseconds until the next 00:00 in Vietnam timezone (+7) */
 function msUntilMidnightVN(): number {
-  const now = new Date();
-  // Get current VN time parts
-  const vnNow = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-  );
-  const nextMidnight = new Date(vnNow);
-  nextMidnight.setHours(24, 0, 0, 0); // next midnight in VN local
-  return nextMidnight.getTime() - vnNow.getTime();
+  const now = Date.now(); // UTC epoch ms
+  const vnOffsetMs = 7 * 60 * 60 * 1000; // +7 hours
+  const vnTimeMs = now + vnOffsetMs;
+  
+  const msInDay = 24 * 60 * 60 * 1000;
+  const msPassedToday = vnTimeMs % msInDay;
+  
+  return msInDay - msPassedToday;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

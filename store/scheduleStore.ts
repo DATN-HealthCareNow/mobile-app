@@ -192,13 +192,26 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
       // Convert backend ExerciseSchedule format to ISchedule format
       const mappedSchedules: ISchedule[] = [];
       backendSchedules.forEach(bs => {
-        const isMedication = bs.title.startsWith('Uống thuốc') || bs.title.startsWith('Medication');
+        const hasMedications = Array.isArray(bs.medications) && bs.medications.length > 0;
+        const isMedication = hasMedications || !!bs.diagnosis || 
+                             bs.title.startsWith('Uống thuốc') || 
+                             bs.title.startsWith('Medication') || 
+                             bs.title.startsWith('Thuốc');
+        
         let type = bs.title.split(' - ')[0] as ActivityType;
-        let goal = bs.title.split(' - ')[1] || '';
+        let goal = bs.title.split(' - ').slice(1).join(' - ') || '';
         
         if (isMedication) {
             type = 'Medical' as any;
-            goal = bs.title.replace('Uống thuốc: ', '').replace('Medication: ', '');
+            if (bs.diagnosis) {
+                goal = bs.diagnosis;
+            } else if (bs.title.includes(' - ')) {
+                goal = bs.title.split(' - ').slice(1).join(' - ');
+            } else if (bs.title.startsWith('Uống thuốc: ') || bs.title.startsWith('Medication: ') || bs.title.startsWith('Thuốc: ')) {
+                goal = bs.title.replace('Uống thuốc: ', '').replace('Medication: ', '').replace('Thuốc: ', '');
+            } else {
+                goal = bs.title;
+            }
         }
         
         let times: string[] = [];

@@ -30,7 +30,7 @@ export default function ChangeEmailScreen() {
   const { t } = useLanguage();
 
   const { token, authProvider } = useSession();
-  const { data: profile } = useProfile(token);
+  const { data: profile, isLoading: isProfileLoading } = useProfile(token);
 
   const requestOtpMutation = useRequestChangeEmailOtp();
   const confirmMutation = useConfirmChangeEmail();
@@ -215,11 +215,14 @@ export default function ChangeEmailScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.actionBtn}
+              style={[
+                styles.actionBtn,
+                (requestOtpMutation.isPending || isProfileLoading) && { opacity: 0.7 }
+              ]}
               onPress={handleRequestOtp}
-              disabled={requestOtpMutation.isPending}
+              disabled={requestOtpMutation.isPending || isProfileLoading}
             >
-              {requestOtpMutation.isPending ? (
+              {requestOtpMutation.isPending || isProfileLoading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <Text style={styles.actionBtnText}>{t("change_email.send_otp")}</Text>

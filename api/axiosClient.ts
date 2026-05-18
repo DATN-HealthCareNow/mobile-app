@@ -103,11 +103,19 @@ axiosClient.interceptors.response.use(
 
     // Xử lý các lỗi common như 401 Unauthorized (hết hạn token)
     if (error.response?.status === 401) {
-      console.log('Token expired or unauthorized');
-      await SecureStore.deleteItemAsync('accessToken');
-      await SecureStore.deleteItemAsync('userId');
-      await SecureStore.deleteItemAsync('authProvider');
-      notifySessionChange();
+      const isAuthEndpoint = requestConfig?.url?.includes('/auth/login') || 
+                             requestConfig?.url?.includes('/auth/change-password') || 
+                             requestConfig?.url?.includes('/auth/change-email');
+      
+      if (!isAuthEndpoint) {
+        console.log('Token expired or unauthorized');
+        await SecureStore.deleteItemAsync('accessToken');
+        await SecureStore.deleteItemAsync('userId');
+        await SecureStore.deleteItemAsync('authProvider');
+        notifySessionChange();
+      } else {
+        console.log('401 on auth endpoint, ignoring logout');
+      }
     }
 
     if (__DEV__) {

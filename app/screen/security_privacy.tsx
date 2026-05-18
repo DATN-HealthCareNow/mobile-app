@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useEffect, useState } from "react";
 import {
@@ -17,6 +17,7 @@ import {
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useSession } from "../../hooks/useAuth";
+import { useSubscriptionStatus } from "../../hooks/useSubscription";
 import { iotService } from "../../api/services/iotService";
 
 type SectionItem = {
@@ -104,6 +105,7 @@ export default function SecurityPrivacyScreen() {
   const { t } = useLanguage();
   const styles = createStyles(colors, isDark);
   const { userId, authProvider } = useSession();
+  const { data: subscription } = useSubscriptionStatus();
 
   const filteredSections = SECTIONS.map(section => ({
     ...section,
@@ -155,6 +157,20 @@ export default function SecurityPrivacyScreen() {
 
   const handleExportData = async (format: "json" | "xml") => {
     try {
+      const today = new Date().toISOString().split("T")[0];
+
+      if (!subscription?.is_premium && userId) {
+        const lastExportDate = await SecureStore.getItemAsync(`lastExportDate_${userId}`);
+        if (lastExportDate === today) {
+          Alert.alert(
+            t("premium.limit_reached", "Đã đạt giới hạn"),
+            t("premium.description", "Bạn đã đạt đến giới hạn số lần sử dụng cho {featureName}.")
+              .replace("{featureName}", t("security.export_google_fit", "Xuất dữ liệu"))
+          );
+          return;
+        }
+      }
+
       // Get last 30 days of data
       const endDate = new Date().toISOString().split("T")[0];
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -197,6 +213,10 @@ export default function SecurityPrivacyScreen() {
       // Force cast to any to bypass broken TS definitions
       await (FileSystem as any).writeAsStringAsync(fileUri, fileContent);
   
+      if (!subscription?.is_premium && userId) {
+        await SecureStore.setItemAsync(`lastExportDate_${userId}`, today);
+      }
+
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
       } else {
